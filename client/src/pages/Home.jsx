@@ -1,6 +1,7 @@
 import Hero from '../components/home/Hero.jsx'
 import FeatureCard from '../components/home/FeatureCard.jsx'
 import LinuxTerminal from '../components/linux/LinuxTerminal.jsx'
+import CodeBackground from '../components/layout/CodeBackground.jsx'
 
 const features = [
   {
@@ -22,7 +23,9 @@ const features = [
 
 export default function Home() {
   return (
-    <section className="page">
+    <>
+      <CodeBackground />
+      <section className="page">
       <Hero
         title="Welcome to GLUG"
         subtitle="A community built by students, for students — learn Linux, share ideas, and grow together."
@@ -41,6 +44,7 @@ export default function Home() {
           />
         ))}
       </div>
-    </section>
+      </section>
+    </>
   )
 }
