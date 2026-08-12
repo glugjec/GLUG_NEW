@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext.jsx'
+import { avatarInitials, avatarColor } from '../common/avatar.js'
 
 const NAV_SECTIONS = [
   {
@@ -45,17 +47,6 @@ const icon = (name) => {
   }
 }
 
-function avatarInitials(username) {
-  return (username || '?').slice(0, 2).toUpperCase()
-}
-
-function avatarColor(username) {
-  const colors = ['#5865f2', '#eb459e', '#57f287', '#fee75c', '#ed4245', '#00a8fc', '#f47fff']
-  let hash = 0
-  for (const c of (username || '')) hash = (hash * 31 + c.charCodeAt(0)) & 0xffffffff
-  return colors[Math.abs(hash) % colors.length]
-}
-
 const SectionIcon = ({ name }) => icon(name)
 
 export default function Sidebar({ collapsed, onToggle, mobileOpen, onToggleMobile }) {
@@ -66,6 +57,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onToggleMobil
   const [cardPos, setCardPos] = useState({ bottom: 0, left: 0 })
   const wrapRef = useRef(null)
   const btnRef = useRef(null)
+  const cardRef = useRef(null)
 
   const linkClass = ({ isActive }) =>
     `sidebar-link${isActive ? ' sidebar-link-active' : ''}`
@@ -95,10 +87,11 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onToggleMobil
 
   const toggleCard = () => cardOpen ? setCardOpen(false) : openCard()
 
-  // Close card on outside click
+  // Close card on outside click (including clicks inside errors of the card)
   useEffect(() => {
     if (!cardOpen) return
     const handler = (e) => {
+      if (cardRef.current && cardRef.current.contains(e.target)) return
       if (wrapRef.current && !wrapRef.current.contains(e.target)) setCardOpen(false)
     }
     document.addEventListener('mousedown', handler)
@@ -162,35 +155,40 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onToggleMobil
         <div className="sidebar-bottom">
           {user ? (
             <div className="sb-profile-wrap" ref={wrapRef}>
-              {/* Floating profile card — fixed-positioned so it escapes sidebar overflow */}
-              <div
-                className={`sb-profile-card${cardOpen ? ' sb-profile-card--open' : ''}${cardDir === 'right' ? ' sb-profile-card--right' : ''}`}
-                style={{ bottom: cardPos.bottom, left: cardPos.left }}
-              >
-                {/* Card header banner */}
-                <div className="sb-card-banner" style={{ background: `linear-gradient(135deg, ${avatarColor(user.username)}55, ${avatarColor(user.username)}22)` }} />
-                <div className="sb-card-identity">
-                  <div
-                    className="sb-card-avatar"
-                    style={{ background: avatarColor(user.username) }}
-                  >
-                    {avatarInitials(user.username)}
+              {/* Floating profile card — portaled to <body> so it escapes the
+                  sidebar's overflow/transform and always renders on screen */}
+              {createPortal(
+                <div
+                  ref={cardRef}
+                  className={`sb-profile-card${cardOpen ? ' sb-profile-card--open' : ''}${cardDir === 'right' ? ' sb-profile-card--right' : ''}`}
+                  style={{ bottom: cardPos.bottom, left: cardPos.left }}
+                >
+                  {/* Card header banner */}
+                  <div className="sb-card-banner" style={{ background: `linear-gradient(135deg, ${avatarColor(user.username)}55, ${avatarColor(user.username)}22)` }} />
+                  <div className="sb-card-identity">
+                    <div
+                      className="sb-card-avatar"
+                      style={{ background: avatarColor(user.username) }}
+                    >
+                      {avatarInitials(user.username)}
+                    </div>
+                    <div className="sb-card-names">
+                      <span className="sb-card-username">{user.username}</span>
+                      <span className="sb-card-email">{user.email}</span>
+                    </div>
                   </div>
-                  <div className="sb-card-names">
-                    <span className="sb-card-username">{user.username}</span>
-                    <span className="sb-card-email">{user.email}</span>
-                  </div>
-                </div>
 
-                <div className="sb-card-divider" />
+                  <div className="sb-card-divider" />
 
-                <button className="sb-card-action" onClick={handleLogout}>
-                  <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor">
-                    <path d="M17 8l-1.41 1.41L17.17 11H9v2h8.17l-1.58 1.58L17 16l4-4-4-4ZM5 5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7v-2H5V5Z" />
-                  </svg>
-                  Log out
-                </button>
-              </div>
+                  <button className="sb-card-action" onClick={handleLogout}>
+                    <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor">
+                      <path d="M17 8l-1.41 1.41L17.17 11H9v2h8.17l-1.58 1.58L17 16l4-4-4-4ZM5 5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7v-2H5V5Z" />
+                    </svg>
+                    Log out
+                  </button>
+                </div>,
+                document.body
+              )}
 
               {/* Clickable profile strip */}
               <button
