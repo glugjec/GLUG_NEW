@@ -1,5 +1,6 @@
 import Hero from '../components/home/Hero.jsx'
 import FeatureCard from '../components/home/FeatureCard.jsx'
+import LinuxTerminal from '../components/linux/LinuxTerminal.jsx'
 
 const features = [
   {
@@ -27,7 +28,9 @@ export default function Home() {
         subtitle="A community built by students, for students — learn Linux, share ideas, and grow together."
         primaryAction={{ to: '/resources', label: 'Explore Resources' }}
         secondaryAction={{ to: '/forum', label: 'Join the Forum' }}
-      />
+      >
+        <LinuxTerminal username="student" hostname="glug" height={400} />
+      </Hero>
 
       <div className="cards">
         {features.map((feature) => (

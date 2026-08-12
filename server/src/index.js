@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import authRoutes from './routes/auth.routes.js';
 import postRoutes from './routes/posts.routes.js';
+import compileRoutes from './routes/compile.routes.js';
 
 const app = express();
 
@@ -13,6 +14,7 @@ app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api', postRoutes);
+app.use('/api', compileRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err);

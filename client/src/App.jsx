@@ -1,9 +1,9 @@
 import { Routes, Route, useLocation } from 'react-router-dom'
-import Navbar from './components/Navbar.jsx'
-import Footer from './components/common/Footer.jsx'
+import Layout from './components/layout/Layout.jsx'
 import Home from './pages/Home.jsx'
 import Resources from './pages/Resources.jsx'
 import Forum from './pages/Forum.jsx'
+import Compiler from './pages/Compiler.jsx'
 import PostDetail from './pages/PostDetail.jsx'
 import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
@@ -14,18 +14,25 @@ export default function App() {
 
   return (
     <div className="app-container">
-      {!isAuthPage && <Navbar />}
-      <main className={isAuthPage ? 'main-content main-content-flush' : 'main-content'}>
+      {isAuthPage ? (
+        <main className="main-content-flush">
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+          </Routes>
+        </main>
+      ) : (
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/resources" element={<Resources />} />
-          <Route path="/forum" element={<Forum />} />
-          <Route path="/forum/posts/:id" element={<PostDetail />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          <Route element={<Layout />}>
+            <Route path="/" element={<Home />} />
+            <Route path="/resources" element={<Resources />} />
+            <Route path="/compiler" element={<Compiler />} />
+            <Route path="/forum" element={<Forum />} />
+            <Route path="/forum/posts/:id" element={<PostDetail />} />
+            <Route path="*" element={<Home />} />
+          </Route>
         </Routes>
-      </main>
-      {!isAuthPage && <Footer />}
+      )}
     </div>
   )
 }
