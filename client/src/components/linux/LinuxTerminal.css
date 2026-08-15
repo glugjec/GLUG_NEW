@@ -81,28 +81,39 @@
 
 .terminal-buttons {
   display: flex;
-  gap: 7px;
-}
-
-.terminal-button {
-  width: 12px;
-  height: 12px;
-
-  border-radius: 50%;
-
-  display: block;
-}
-
-.terminal-button.close {
-  background: #ff5f56;
-}
-
-.terminal-button.minimize {
-  background: #ffbd2e;
+  align-items: center;
 }
 
 .terminal-button.maximize {
+  width: 13px;
+  height: 13px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
   background: #27c93f;
+  color: #0d1117;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    filter 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.terminal-button.maximize:hover {
+  transform: scale(1.18);
+  filter: brightness(1.12);
+  box-shadow: 0 0 0 3px rgba(39, 201, 63, 0.25);
+}
+
+.terminal-button.maximize.is-active {
+  background: #f2c94c;
+}
+
+.terminal-button.maximize.is-active:hover {
+  box-shadow: 0 0 0 3px rgba(242, 201, 76, 0.3);
 }
 
 .terminal-title {
@@ -115,10 +126,6 @@
   color: #8b949e;
 
   user-select: none;
-}
-
-.terminal-spacer {
-  width: 60px;
 }
 
 /* --------------------------------
@@ -256,6 +263,46 @@
   }
 }
 
+
+/* --------------------------------
+   EXPANDED STATE
+   Fills the area between the top
+   navbar and the left sidebar.
+-------------------------------- */
+
+.terminal-frame.is-expanded {
+  position: fixed;
+  top: var(--topbar-h);
+  left: var(--sidebar-w);
+  right: 0;
+  bottom: 0;
+  z-index: 45;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  animation: none;
+  transform: none;
+  transition: none;
+}
+
+body.glug-collapsed .terminal-frame.is-expanded {
+  left: var(--sidebar-w-collapsed);
+}
+
+.terminal-frame.is-expanded .linux-terminal {
+  height: 100% !important;
+  min-height: 0;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+}
+
+@media (max-width: 899px) {
+  .terminal-frame.is-expanded {
+    top: 0;
+    left: 0;
+  }
+}
 
 /* =================================
    NANO EDITOR

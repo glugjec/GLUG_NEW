@@ -13,6 +13,12 @@ export default function Layout() {
     setMobileOpen(false)
   }, [location.pathname])
 
+  // Let portaled overlays (e.g. expanded terminal) know about the sidebar width
+  useEffect(() => {
+    document.body.classList.toggle('glug-collapsed', collapsed)
+    return () => document.body.classList.remove('glug-collapsed')
+  }, [collapsed])
+
   useEffect(() => {
     const onResize = () => {
       if (window.innerWidth >= 900) setMobileOpen(false)

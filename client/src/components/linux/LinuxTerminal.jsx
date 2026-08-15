@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import "./LinuxTerminal.css";
 
 
@@ -191,6 +192,7 @@ export default function LinuxTerminal({
   ]);
 
   const [input, setInput] = useState("");
+  const [expanded, setExpanded] = useState(false);
 
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -200,6 +202,7 @@ export default function LinuxTerminal({
   const frameRef = useRef(null);
 
   function handleMouseMove(e) {
+    if (expanded) return;
     const el = frameRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
@@ -210,6 +213,7 @@ export default function LinuxTerminal({
   }
 
   function handleMouseLeave() {
+    if (expanded) return;
     const el = frameRef.current;
     if (!el) return;
     el.style.setProperty("--tiltX", "0deg");
@@ -233,6 +237,11 @@ export default function LinuxTerminal({
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  // Keep focus after expand/restore
+  useEffect(() => {
+    if (expanded) inputRef.current?.focus();
+  }, [expanded]);
 
   const interceptRef = useRef(null);
 
@@ -1367,7 +1376,7 @@ export default function LinuxTerminal({
     }
   }
 
-  return (
+  const terminal = (
     <>
       {editor && (
         <div className="nano-overlay">
@@ -1448,7 +1457,7 @@ export default function LinuxTerminal({
       )}
 
       <div
-        className="terminal-frame"
+        className={`terminal-frame${expanded ? " is-expanded" : ""}`}
         ref={frameRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
@@ -1460,16 +1469,28 @@ export default function LinuxTerminal({
       >
         <div className="terminal-titlebar">
           <div className="terminal-buttons">
-            <span className="terminal-button close" />
-            <span className="terminal-button minimize" />
-            <span className="terminal-button maximize" />
+            <button
+              type="button"
+              className={`terminal-button maximize${expanded ? " is-active" : ""}`}
+              onClick={() => setExpanded(!expanded)}
+              aria-label={expanded ? "Restore terminal" : "Expand terminal"}
+              title={expanded ? "Restore" : "Expand"}
+            >
+              {expanded ? (
+                <svg viewBox="0 0 24 24" width="9" height="9" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                  <path d="M8 5H5v3M16 5h3v3M8 19H5v-3M16 19h3v-3" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" width="9" height="9" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                  <path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5" />
+                </svg>
+              )}
+            </button>
           </div>
 
           <div className="terminal-title">
             {username}@{hostname}
           </div>
-
-          <div className="terminal-spacer" />
         </div>
 
         <div
@@ -1531,4 +1552,6 @@ export default function LinuxTerminal({
       </div>
     </>
   );
+
+  return expanded ? createPortal(terminal, document.body) : terminal;
 }
