@@ -9,11 +9,16 @@
     "preview": "vite preview"
   },
   "devDependencies": {
+    "gh-pages": "^6.3.0",
     "typescript": "~6.0.2",
     "vite": "^8.2.0"
   },
   "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
     "@vitejs/plugin-react": "^6.0.5",
+    "axios": "^1.19.0",
+    "lucide-react": "^1.33.0",
+    "monaco-editor": "^0.56.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.2"
