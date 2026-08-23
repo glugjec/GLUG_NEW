@@ -1,7 +1,13 @@
-import { Play, Loader2 } from 'lucide-react';
+import { Play, Square } from 'lucide-react';
 import LanguageSelector from './LanguageSelector';
 
-export default function Header({ selectedLanguage, onLanguageChange, onRun, isRunning }) {
+export default function Header({
+  selectedLanguage,
+  onLanguageChange,
+  onRun,
+  onStop,
+  isRunning,
+}) {
   return (
     <header className="header">
       <div className="header-left">
@@ -19,20 +25,28 @@ export default function Header({ selectedLanguage, onLanguageChange, onRun, isRu
 
       <div className="header-right">
         <span className="keyboard-hint">Ctrl + Enter</span>
-        <button
-          className={`run-btn ${isRunning ? 'loading' : ''}`}
-          onClick={onRun}
-          disabled={isRunning}
-          id="run-code-btn"
-          title="Run code (Ctrl+Enter)"
-        >
-          {isRunning ? (
-            <Loader2 className="run-icon" />
-          ) : (
-            <Play className="run-icon" />
-          )}
-          <span>{isRunning ? 'Running...' : 'Run Code'}</span>
-        </button>
+
+        {isRunning ? (
+          <button
+            className="stop-btn"
+            onClick={onStop}
+            id="stop-code-btn"
+            title="Stop / Interrupt Execution"
+          >
+            <Square className="stop-icon" size={14} fill="currentColor" />
+            <span>Stop</span>
+          </button>
+        ) : (
+          <button
+            className="run-btn"
+            onClick={onRun}
+            id="run-code-btn"
+            title="Run code (Ctrl+Enter)"
+          >
+            <Play className="run-icon" size={15} fill="currentColor" />
+            <span>Run Code</span>
+          </button>
+        )}
       </div>
     </header>
   );

@@ -36,9 +36,9 @@ const STATUS = {
 
 /**
  * Submit code for execution and wait for the result.
- * Uses ?wait=true for synchronous mode.
+ * Uses ?wait=true for synchronous mode. Supports AbortSignal.
  */
-export async function executeCode(languageId, sourceCode, stdin = '') {
+export async function executeCode(languageId, sourceCode, stdin = '', signal = null) {
   const lang = LANGUAGES[languageId];
   if (!lang) {
     throw new Error(`Unsupported language: ${languageId}`);
@@ -68,11 +68,28 @@ export async function executeCode(languageId, sourceCode, stdin = '') {
         language_id: lang.judge0Id,
         stdin: stdin || undefined,
       },
-      { headers }
+      { headers, signal }
     );
 
-    return parseResponse(response.data, languageId);
+    return parseResponse(response.data, languageId, sourceCode, stdin);
   } catch (error) {
+    if (axios.isCancel(error) || error.name === 'CanceledError' || error.name === 'AbortError') {
+      return {
+        success: false,
+        output: '',
+        error: 'Execution cancelled by user.',
+        statusDescription: 'Cancelled',
+        statusId: -1,
+        time: null,
+        memory: null,
+        errorLines: [],
+        compilationError: false,
+        runtimeError: false,
+        timeLimitExceeded: false,
+        isInputMissing: false,
+      };
+    }
+
     if (error.response) {
       const status = error.response.status;
       if (status === 429) {
@@ -88,9 +105,42 @@ export async function executeCode(languageId, sourceCode, stdin = '') {
 }
 
 /**
+ * Check if the code has standard input statements.
+ */
+export function detectCodeNeedsInput(languageId, sourceCode) {
+  if (!sourceCode) return false;
+
+  const patterns = {
+    python: /\b(input|sys\.stdin\.readline|sys\.stdin\.read)\b/,
+    c: /\b(scanf|getchar|gets|fgets|cin)\b/,
+    cpp: /\b(cin|scanf|getchar|getline)\b/,
+    java: /\b(Scanner|BufferedReader|System\.in)\b/,
+    csharp: /\b(Console\.ReadLine|Console\.Read)\b/,
+  };
+
+  const pattern = patterns[languageId];
+  return pattern ? pattern.test(sourceCode) : false;
+}
+
+/**
+ * Check if an error was caused by missing standard input.
+ */
+export function isMissingInputError(stderr = '', stdout = '') {
+  const combined = (stderr + ' ' + stdout).toLowerCase();
+  return (
+    combined.includes('eoferror') ||
+    combined.includes('nosuchelementexception') ||
+    combined.includes('end of file') ||
+    combined.includes('eof when reading') ||
+    combined.includes('input past end') ||
+    combined.includes('unexpected end of stream')
+  );
+}
+
+/**
  * Parse the Judge0 API response into a structured result.
  */
-function parseResponse(data, languageId) {
+function parseResponse(data, languageId, sourceCode = '', stdin = '') {
   const statusId = data.status?.id;
   const isError =
     statusId === STATUS.COMPILATION_ERROR ||
@@ -101,6 +151,9 @@ function parseResponse(data, languageId) {
   const stderr = data.stderr || data.compile_output || '';
   const stdout = data.stdout || '';
   const errorLines = isError ? extractAllErrorLines(languageId, stderr) : [];
+
+  const inputMissing = (isError && isMissingInputError(stderr, stdout)) ||
+    (!stdin.trim() && detectCodeNeedsInput(languageId, sourceCode) && !stdout.trim() && statusId === STATUS.TLE);
 
   return {
     success: !isError,
@@ -114,6 +167,7 @@ function parseResponse(data, languageId) {
     compilationError: statusId === STATUS.COMPILATION_ERROR,
     runtimeError: statusId >= STATUS.RUNTIME_SIGSEGV && statusId <= STATUS.RUNTIME_OTHER,
     timeLimitExceeded: statusId === STATUS.TLE,
+    isInputMissing: inputMissing,
   };
 }
 

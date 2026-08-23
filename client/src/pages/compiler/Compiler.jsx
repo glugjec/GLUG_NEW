@@ -2,9 +2,9 @@ import { useState, useCallback, useRef } from 'react';
 import Header from './components/Header';
 import CodeEditor from './components/CodeEditor';
 import OutputPanel from './components/OutputPanel';
-import TerminalStdin from './components/TerminalStdin';
 import { LANGUAGES } from './utils/languageConfig';
 import { executeCode } from './api/judge0';
+import { runPythonInteractive, sendInputToPyodide, abortPyodideExecution } from './api/pyodideRunner';
 import './compiler.css';
 
 export default function Compiler() {
@@ -14,24 +14,19 @@ export default function Compiler() {
   const [activeFileName, setActiveFileName] = useState('main.py');
   const [result, setResult] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [isWaitingForInput, setIsWaitingForInput] = useState(false);
+  const [inputPrompt, setInputPrompt] = useState('');
   const [errorLines, setErrorLines] = useState([]);
   const [stdin, setStdin] = useState('');
-  const [stdinOpen, setStdinOpen] = useState(false);
+  const [terminalLogs, setTerminalLogs] = useState([]);
+  const [activeTab, setActiveTab] = useState('terminal');
 
-  // Terminal history logs
-  const [terminalHistory, setTerminalHistory] = useState([
-    { type: 'info', text: 'Welcome to GLUG Compiler Terminal.' },
-    { type: 'info', text: 'Type "help" for a list of available commands.' }
-  ]);
-
-  // Resizable panel widths & heights
-  const [editorWidth, setEditorWidth] = useState(70);
-  const [terminalHeight, setTerminalHeight] = useState(180);
-  const [isResizingHeight, setIsResizingHeight] = useState(false);
+  // Resizable panel width state
+  const [editorWidth, setEditorWidth] = useState(60);
   const [isResizingWidth, setIsResizingWidth] = useState(false);
+
   const containerRef = useRef(null);
-  const terminalHeightRef = useRef(terminalHeight);
-  terminalHeightRef.current = terminalHeight;
+  const abortControllerRef = useRef(null);
 
   const activeFile = files.find(f => f.name === activeFileName) || files[0];
   const code = activeFile.content;
@@ -110,163 +105,217 @@ export default function Compiler() {
     setErrorLines([]);
   }, [files]);
 
+  // Append new log to the terminal logs
+  const addTerminalLog = useCallback((type, text) => {
+    if (text === undefined || text === null) return;
+    setTerminalLogs((prev) => [
+      ...prev,
+      {
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        type,
+        text,
+      },
+    ]);
+  }, []);
+
+  // Clear all terminal state
+  const handleClearTerminal = useCallback(() => {
+    setTerminalLogs([]);
+    setResult(null);
+    setErrorLines([]);
+  }, []);
+
+  // Stop / interrupt code execution
+  const handleStop = useCallback(() => {
+    if (language === 'python') {
+      abortPyodideExecution();
+    }
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsWaitingForInput(false);
+    setIsRunning(false);
+    addTerminalLog('system', '\n[Execution cancelled by user]\n');
+  }, [language, addTerminalLog]);
+
+  // Handle inputs sent from the prompt bar
+  const handleSendInput = useCallback((inputValue) => {
+    const textToSend = inputValue;
+
+    if (isWaitingForInput) {
+      // Echo input to the terminal log
+      addTerminalLog('stdin', textToSend + '\n');
+      setIsWaitingForInput(false);
+      setInputPrompt('');
+
+      if (language === 'python') {
+        const sent = sendInputToPyodide(textToSend);
+        if (!sent) {
+          setStdin((prev) => (prev ? `${prev}\n${textToSend}` : textToSend));
+        }
+      }
+    } else {
+      // Direct stdin editing (simulates appending to stdin during idle)
+      addTerminalLog('stdin', textToSend + '\n');
+      setStdin((prev) => (prev ? `${prev}\n${textToSend}` : textToSend));
+
+      if (result?.isInputMissing) {
+        addTerminalLog(
+          'system',
+          `[Input buffered: "${textToSend}". Click "Run Code" or press Ctrl+Enter to re-execute with new input]\n`
+        );
+      }
+    }
+  }, [isWaitingForInput, language, addTerminalLog, result]);
+
   // Internal execution method
   const runCode = async (fileToRun) => {
     setIsRunning(true);
+    setIsWaitingForInput(false);
+    setInputPrompt('');
     setResult(null);
     setErrorLines([]);
+    setActiveTab('terminal');
 
-    try {
-      const execResult = await executeCode(fileToRun.language, fileToRun.content, stdin);
-      setResult(execResult);
-      if (execResult.errorLines && execResult.errorLines.length > 0) {
-        setErrorLines(execResult.errorLines);
-      }
+    const langConfig = LANGUAGES[fileToRun.language];
+    const timestamp = new Date().toLocaleTimeString();
+    addTerminalLog(
+      'system',
+      `▶ [${timestamp}] Running ${langConfig?.name || fileToRun.language}...\n`
+    );
 
-      if (execResult.success) {
-        const out = execResult.output || '(No output)';
-        setTerminalHistory(prev => [
-          ...prev,
-          { type: 'output', text: out },
-          { type: 'info', text: `Program exited successfully (Time: ${execResult.time || 'N/A'}, Memory: ${execResult.memory || 'N/A'})` }
-        ]);
-      } else {
-        const err = execResult.error || execResult.output || 'Unknown error';
-        setTerminalHistory(prev => [
-          ...prev,
-          { type: 'error', text: `${execResult.statusDescription}:` },
-          { type: 'error', text: err }
-        ]);
+    abortControllerRef.current = new AbortController();
+
+    if (fileToRun.language === 'python') {
+      // 🐍 Client-side interactive Python (WebAssembly/Pyodide)
+      try {
+        const execResult = await runPythonInteractive(fileToRun.content, {
+          onStdout: (text) => addTerminalLog('stdout', text),
+          onStderr: (text) => addTerminalLog('stderr', text),
+          onRequestInput: (prompt) => {
+            setIsWaitingForInput(true);
+            setInputPrompt(prompt || '');
+          },
+          prefilledStdin: stdin,
+        });
+
+        setResult(execResult);
+        if (execResult.errorLines && execResult.errorLines.length > 0) {
+          setErrorLines(execResult.errorLines);
+        }
+
+        if (execResult.success) {
+          addTerminalLog(
+            'system',
+            `\n[Process completed successfully in ${execResult.time || '0.01s'}]\n`
+          );
+        } else if (execResult.statusDescription === 'Interrupted') {
+          addTerminalLog('system', `\n[Process interrupted]\n`);
+        } else {
+          addTerminalLog(
+            'system',
+            `\n[Process exited with error in ${execResult.time || '0.01s'}]\n`
+          );
+        }
+      } catch (err) {
+        const errorMsg = err.message || String(err);
+        addTerminalLog('stderr', `${errorMsg}\n`);
+        setResult({
+          success: false,
+          output: '',
+          error: errorMsg,
+          statusDescription: 'Execution Error',
+          statusId: -1,
+          time: null,
+          memory: null,
+          errorLines: [],
+          compilationError: false,
+          runtimeError: true,
+          timeLimitExceeded: false,
+        });
+      } finally {
+        setIsRunning(false);
+        setIsWaitingForInput(false);
+        abortControllerRef.current = null;
       }
-    } catch (error) {
-      const errMsg = error.message;
-      setResult({
-        success: false,
-        output: '',
-        error: errMsg,
-        statusDescription: 'Error',
-        statusId: -1,
-        time: null,
-        memory: null,
-        errorLines: [],
-      });
-      setTerminalHistory(prev => [
-        ...prev,
-        { type: 'error', text: `Execution failed: ${errMsg}` }
-      ]);
-    } finally {
-      setIsRunning(false);
+    } else {
+      // ☁️ Judge0 execution for other languages
+      try {
+        const execResult = await executeCode(
+          fileToRun.language,
+          fileToRun.content,
+          stdin,
+          abortControllerRef.current?.signal
+        );
+
+        setResult(execResult);
+
+        if (execResult.output) {
+          addTerminalLog('stdout', execResult.output);
+        }
+
+        if (execResult.error) {
+          addTerminalLog('stderr', execResult.error);
+        }
+
+        if (execResult.errorLines && execResult.errorLines.length > 0) {
+          setErrorLines(execResult.errorLines);
+        }
+
+        if (execResult.success) {
+          addTerminalLog(
+            'system',
+            `\n[Process finished in ${execResult.time || '0.01s'} with exit code 0]\n`
+          );
+        } else if (execResult.isInputMissing) {
+          addTerminalLog(
+            'system',
+            `\n[Program paused: missing standard input for ${langConfig.name}. Type input in the prompt bar below]\n`
+          );
+        } else {
+          addTerminalLog(
+            'system',
+            `\n[Process finished with error (${execResult.statusDescription}) in ${execResult.time || '0.01s'}]\n`
+          );
+        }
+      } catch (error) {
+        if (error.name === 'CanceledError' || error.message === 'canceled') {
+          addTerminalLog('system', `\n[Process execution aborted]\n`);
+        } else {
+          addTerminalLog('stderr', `Execution failed: ${error.message}\n`);
+          setResult({
+            success: false,
+            output: '',
+            error: error.message,
+            statusDescription: 'Error',
+            statusId: -1,
+            time: null,
+            memory: null,
+            errorLines: [],
+            compilationError: false,
+            runtimeError: false,
+            timeLimitExceeded: false,
+          });
+        }
+      } finally {
+        setIsRunning(false);
+        setIsWaitingForInput(false);
+        abortControllerRef.current = null;
+      }
     }
   };
 
-  // Run triggered by click / shortcut
   const handleRun = useCallback(async () => {
     if (isRunning || !activeFile.content.trim()) return;
-
-    // Simulate running command in terminal
-    const runCmd = activeFile.language === 'python' ? `python3 ${activeFile.name}` :
-                   activeFile.language === 'javascript' ? `node ${activeFile.name}` :
-                   activeFile.language === 'cpp' ? `g++ ${activeFile.name} && ./a.out` :
-                   activeFile.language === 'c' ? `gcc ${activeFile.name} && ./a.out` : `run ${activeFile.name}`;
-
-    setTerminalHistory(prev => [
-      ...prev,
-      { type: 'prompt', text: runCmd },
-      { type: 'info', text: `Compiling & executing ${activeFile.name}...` }
-    ]);
-
-    // Force-open terminal panel so users see the running prompt & output
-    setStdinOpen(true);
-
     await runCode(activeFile);
   }, [isRunning, activeFile, stdin]);
 
-  // Terminal shell commands parser
-  const handleExecuteCommand = useCallback(async (cmdStr) => {
-    const trimmed = cmdStr.trim();
-    if (!trimmed) {
-      // Just empty enter, add prompt line only
-      setTerminalHistory(prev => [...prev, { type: 'prompt', text: '' }]);
-      return;
-    }
+  const handleSelectErrorLine = useCallback((line) => {
+    setErrorLines([line]);
+  }, []);
 
-    // Add command prompt line to history
-    setTerminalHistory(prev => [...prev, { type: 'prompt', text: trimmed }]);
-
-    const parts = trimmed.split(/\s+/);
-    const cmd = parts[0];
-    const args = parts.slice(1);
-
-    if (cmd === 'clear') {
-      setTerminalHistory([]);
-      return;
-    }
-
-    if (cmd === 'help') {
-      setTerminalHistory(prev => [
-        ...prev,
-        { type: 'info', text: 'Available commands:' },
-        { type: 'info', text: '  run               - Compile and run the active file' },
-        { type: 'info', text: '  python3 <file>    - Run python file (e.g. python3 main.py)' },
-        { type: 'info', text: '  node <file>       - Run javascript file (e.g. node main.js)' },
-        { type: 'info', text: '  g++ <file>        - Compile C++ file (e.g. g++ main.cpp)' },
-        { type: 'info', text: '  gcc <file>        - Compile C file (e.g. gcc main.c)' },
-        { type: 'info', text: '  cat <file>        - View file contents' },
-        { type: 'info', text: '  ls                - List files in current directory' },
-        { type: 'info', text: '  clear             - Clear terminal screen' },
-        { type: 'info', text: '  * Note: switch to "Raw Mode" to provide stdin buffer.' }
-      ]);
-      return;
-    }
-
-    if (cmd === 'ls') {
-      const fileList = files.map(f => f.name).join('    ');
-      setTerminalHistory(prev => [...prev, { type: 'output', text: fileList }]);
-      return;
-    }
-
-    if (cmd === 'cat') {
-      if (args.length === 0) {
-        setTerminalHistory(prev => [...prev, { type: 'error', text: 'cat: missing file operand' }]);
-        return;
-      }
-      const targetFile = files.find(f => f.name === args[0]);
-      if (!targetFile) {
-        setTerminalHistory(prev => [...prev, { type: 'error', text: `cat: ${args[0]}: No such file or directory` }]);
-        return;
-      }
-      setTerminalHistory(prev => [...prev, { type: 'output', text: targetFile.content }]);
-      return;
-    }
-
-    const isRunPython = (cmd === 'python3' || cmd === 'python');
-    const isRunNode = (cmd === 'node');
-    const isRunCpp = (cmd === 'g++');
-    const isRunC = (cmd === 'gcc');
-    const isRunGeneric = (cmd === 'run' || cmd === './a.out');
-
-    if (isRunPython || isRunNode || isRunCpp || isRunC || isRunGeneric) {
-      let fileToRun = activeFile;
-      if (args.length > 0 && !isRunGeneric) {
-        const found = files.find(f => f.name === args[0]);
-        if (found) {
-          fileToRun = found;
-        } else {
-          setTerminalHistory(prev => [...prev, { type: 'error', text: `${cmd}: ${args[0]}: No such file or directory` }]);
-          return;
-        }
-      }
-
-      setTerminalHistory(prev => [...prev, { type: 'info', text: `Compiling & executing ${fileToRun.name}...` }]);
-      await runCode(fileToRun);
-      return;
-    }
-
-    // Command not found
-    setTerminalHistory(prev => [...prev, { type: 'error', text: `bash: ${cmd}: command not found` }]);
-  }, [files, activeFile, stdin]);
-
-  // Resize handlers
+  // Resize handler for split-screen panel
   const handleResizeStart = useCallback((e) => {
     e.preventDefault();
     setIsResizingWidth(true);
@@ -279,7 +328,7 @@ export default function Compiler() {
       const rect = container.getBoundingClientRect();
       const x = moveEvent.clientX - rect.left;
       const percentage = (x / rect.width) * 100;
-      const clamped = Math.min(Math.max(percentage, 30), 85);
+      const clamped = Math.min(Math.max(percentage, 25), 80);
       setEditorWidth(clamped);
     };
 
@@ -295,46 +344,13 @@ export default function Compiler() {
     window.addEventListener('mouseup', handleResizeEnd);
   }, []);
 
-  const handleHeightResizeStart = useCallback((e) => {
-    e.preventDefault();
-    setIsResizingHeight(true);
-    document.body.style.cursor = 'row-resize';
-    document.body.style.userSelect = 'none';
-
-    const startY = e.clientY;
-    const startHeight = terminalHeightRef.current;
-
-    const handleResizeMove = (moveEvent) => {
-      const deltaY = moveEvent.clientY - startY;
-      const newHeight = startHeight - deltaY;
-      
-      let maxHeight = 600;
-      if (containerRef.current) {
-        maxHeight = containerRef.current.getBoundingClientRect().height - 150;
-      }
-      const clamped = Math.min(Math.max(newHeight, 80), maxHeight);
-      setTerminalHeight(clamped);
-    };
-
-    const handleResizeEnd = () => {
-      setIsResizingHeight(false);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      window.removeEventListener('mousemove', handleResizeMove);
-      window.removeEventListener('mouseup', handleResizeEnd);
-    };
-
-    window.addEventListener('mousemove', handleResizeMove);
-    window.addEventListener('mouseup', handleResizeEnd);
-  }, []);
-
-
   return (
     <div className="compiler-scoped-container">
       <Header
         selectedLanguage={language}
         onLanguageChange={handleLanguageChange}
         onRun={handleRun}
+        onStop={handleStop}
         isRunning={isRunning}
       />
 
@@ -352,33 +368,6 @@ export default function Compiler() {
             onAddFile={handleAddFile}
             onCloseFile={handleCloseFile}
           />
-
-          {/* Stdin section */}
-          {!stdinOpen && (
-            <div className="stdin-toggle-bar" onClick={() => setStdinOpen(true)}>
-              <span className="stdin-toggle-label">
-                <span>📥</span>
-                <span>Open Terminal Input (stdin)</span>
-              </span>
-            </div>
-          )}
-
-          {stdinOpen && (
-            <div
-              className={`terminal-resize-handle ${isResizingHeight ? 'active' : ''}`}
-              onMouseDown={handleHeightResizeStart}
-            />
-          )}
-
-          <TerminalStdin
-            stdin={stdin}
-            onChange={setStdin}
-            stdinOpen={stdinOpen}
-            setStdinOpen={setStdinOpen}
-            height={terminalHeight}
-            terminalHistory={terminalHistory}
-            onExecuteCommand={handleExecuteCommand}
-          />
         </div>
 
         <div
@@ -387,12 +376,27 @@ export default function Compiler() {
         />
 
         <div style={{ width: `${100 - editorWidth}%`, height: '100%', minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <OutputPanel result={result} isRunning={isRunning} />
+          <OutputPanel
+            terminalLogs={terminalLogs}
+            isRunning={isRunning}
+            isWaitingForInput={isWaitingForInput}
+            inputPrompt={inputPrompt}
+            onSendInput={handleSendInput}
+            onClearTerminal={handleClearTerminal}
+            result={result}
+            stdin={stdin}
+            onStdinChange={setStdin}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            errorLines={errorLines}
+            onSelectErrorLine={handleSelectErrorLine}
+            language={language}
+          />
         </div>
       </div>
 
       {/* Resizing Overlay to capture mouse events and bypass Monaco */}
-      {(isResizingWidth || isResizingHeight) && (
+      {isResizingWidth && (
         <div
           style={{
             position: 'fixed',
@@ -401,7 +405,7 @@ export default function Compiler() {
             right: 0,
             bottom: 0,
             zIndex: 9999,
-            cursor: isResizingHeight ? 'row-resize' : 'col-resize',
+            cursor: 'col-resize',
             background: 'transparent',
             userSelect: 'none',
           }}
