@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { api } from '../api.js'
+import { authApi } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import AuthLayout from '../components/auth/AuthLayout.jsx'
 import AuthField from '../components/auth/AuthField.jsx'
+import GoogleAuthButton from '../components/auth/GoogleAuthButton.jsx'
 
 export default function Login() {
   const { login } = useAuth()
@@ -18,7 +19,7 @@ export default function Login() {
     setError('')
     setLoading(true)
     try {
-      const data = await api.post('/auth/login', { email, password })
+      const data = await authApi.login({ email, password })
       login(data.user, data.token)
       navigate('/')
     } catch (err) {
@@ -69,6 +70,12 @@ export default function Login() {
           </button>
         </form>
 
+        <div className="auth-separator">
+          <span>OR</span>
+        </div>
+
+        <GoogleAuthButton onError={(msg) => setError(msg)} />
+
         <div className="auth-divider" />
         <p className="auth-footer">
           Need an account? <Link to="/register">Register</Link>
@@ -77,3 +84,4 @@ export default function Login() {
     </AuthLayout>
   )
 }
+

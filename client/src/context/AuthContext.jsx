@@ -1,4 +1,5 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useState, useEffect } from 'react'
+import { authApi } from '../api.js'
 
 const AuthContext = createContext(null)
 
@@ -14,6 +15,36 @@ export function AuthProvider({ children }) {
       return null
     }
   })
+  const [authLoading, setAuthLoading] = useState(true)
+
+  // Verify token and fetch fresh user profile on initial load
+  useEffect(() => {
+    const checkAuth = async () => {
+      const storedToken = localStorage.getItem(TOKEN_KEY)
+      if (!storedToken) {
+        setAuthLoading(false)
+        return
+      }
+
+      try {
+        const data = await authApi.getMe()
+        if (data?.user) {
+          setUser(data.user)
+          localStorage.setItem(USER_KEY, JSON.stringify(data.user))
+        }
+      } catch (err) {
+        console.warn('Session expired or invalid, logging out:', err.message)
+        localStorage.removeItem(TOKEN_KEY)
+        localStorage.removeItem(USER_KEY)
+        setUser(null)
+        setToken(null)
+      } finally {
+        setAuthLoading(false)
+      }
+    }
+
+    checkAuth()
+  }, [])
 
   const login = (userData, tokenValue) => {
     localStorage.setItem(TOKEN_KEY, tokenValue)
@@ -29,8 +60,16 @@ export function AuthProvider({ children }) {
     setToken(null)
   }
 
+  const updateUser = (updatedFields) => {
+    setUser((prev) => {
+      const next = { ...prev, ...updatedFields }
+      localStorage.setItem(USER_KEY, JSON.stringify(next))
+      return next
+    })
+  }
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout }}>
+    <AuthContext.Provider value={{ user, token, authLoading, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   )

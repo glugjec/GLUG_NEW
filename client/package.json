@@ -4,13 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "homepage": "https://glugjec.github.io/GLUG_NEW",
-
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist" 
+    "deploy": "gh-pages -d dist"
   },
   "devDependencies": {
     "gh-pages": "^6.3.0",
@@ -19,6 +18,7 @@
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
+    "@react-oauth/google": "^0.12.2",
     "@vitejs/plugin-react": "^6.0.5",
     "axios": "^1.19.0",
     "lucide-react": "^1.33.0",
