@@ -194,6 +194,18 @@ export default function LinuxTerminal({
   const [syncStatus, setSyncStatus] = useState(user ? "syncing" : "guest");
   const isLoadedRef = useRef(false);
   const saveTimeoutRef = useRef(null);
+  const [isAwaitingStdin, setIsAwaitingStdin] = useState(false);
+  const stdinResolverRef = useRef(null);
+
+  function promptForInput() {
+    setIsAwaitingStdin(true);
+    return new Promise((resolve) => {
+      stdinResolverRef.current = (val) => {
+        setIsAwaitingStdin(false);
+        resolve(val);
+      };
+    });
+  }
 
   const [env, setEnv] = useState({
     USER: effectiveUser,
@@ -1415,7 +1427,18 @@ export default function LinuxTerminal({
       }
 
       try {
-        const inputData = stdin || "";
+        let inputData = stdin;
+        if (inputData === null) {
+          const needsInput = /input\s*\(|sys\.stdin/.test(node.content || "");
+          if (needsInput) {
+            print("Enter standard input (or press Enter for EOF):");
+            const entered = await promptForInput();
+            if (entered === null) return;
+            inputData = entered;
+          } else {
+            inputData = "";
+          }
+        }
         const res = await executeCode("python", node.content, inputData);
         if (res.output) {
           print(res.output.trimEnd());
@@ -1530,7 +1553,18 @@ export default function LinuxTerminal({
       }
 
       try {
-        const inputData = stdin || "";
+        let inputData = stdin;
+        if (inputData === null) {
+          const needsInput = /scanf\s*\(|cin\s*>>|getchar\s*\(|fgets\s*\(|getline\s*\(/.test(execNode.sourceCode || "");
+          if (needsInput) {
+            print("Enter standard input (or press Enter for EOF):");
+            const entered = await promptForInput();
+            if (entered === null) return;
+            inputData = entered;
+          } else {
+            inputData = "";
+          }
+        }
         const res = await executeCode(execNode.executableLang || "c", execNode.sourceCode, inputData);
         if (res.output) {
           print(res.output.trimEnd());
@@ -1548,17 +1582,38 @@ export default function LinuxTerminal({
      * UNKNOWN COMMAND
      */
 
+    if (cmd === "./a/out") {
+      printError(`${cmd}: command not found (Did you mean './a.out'?)`);
+      return;
+    }
+
     printError(
       `${cmd}: command not found`
     );
   }
 
   async function runPipeline(cmdPartStr) {
-    // Parse redirections (> and >>)
-    const redirectMatch = cmdPartStr.match(/^(.*?)\s*(>>|>)\s*(.+)$/);
+    let initialStdin = null;
+    let cmdPart = cmdPartStr;
+
+    // Parse input redirection (<)
+    const inputMatch = cmdPart.match(/^(.*?)\s*<\s*([^>]+)$/);
+    if (inputMatch) {
+      cmdPart = inputMatch[1].trim();
+      const inputTarget = inputMatch[2].trim();
+      const inPath = resolvePath(inputTarget, cwd);
+      const inNode = getNode(fs, inPath);
+      if (!inNode || inNode.type !== "file") {
+        printError(`bash: ${inputTarget}: No such file or directory`);
+        return false;
+      }
+      initialStdin = inNode.content;
+    }
+
+    // Parse output redirections (> and >>)
+    const redirectMatch = cmdPart.match(/^(.*?)\s*(>>|>)\s*(.+)$/);
     let redirectTo = null;
     let redirectAppend = false;
-    let cmdPart = cmdPartStr;
 
     if (redirectMatch) {
       cmdPart = redirectMatch[1].trim();
@@ -1573,7 +1628,7 @@ export default function LinuxTerminal({
     const pipeParts = cmdPart.split("|").map((p) => p.trim()).filter(Boolean);
     if (pipeParts.length === 0) return true;
 
-    let currentStdin = null;
+    let currentStdin = initialStdin;
     let hasError = false;
 
     for (let i = 0; i < pipeParts.length; i++) {
@@ -1720,6 +1775,21 @@ export default function LinuxTerminal({
     e.preventDefault();
 
     const command = input;
+    setInput("");
+
+    if (stdinResolverRef.current) {
+      setLines((prev) => [
+        ...prev,
+        {
+          type: "input-echo",
+          text: command,
+        },
+      ]);
+      const resolver = stdinResolverRef.current;
+      stdinResolverRef.current = null;
+      resolver(command);
+      return;
+    }
 
     setLines((prev) => [
       ...prev,
@@ -1729,8 +1799,6 @@ export default function LinuxTerminal({
         text: command,
       },
     ]);
-
-    setInput("");
 
     execute(command);
   }
@@ -1742,6 +1810,22 @@ export default function LinuxTerminal({
 
     if (e.ctrlKey && e.key === "c") {
       e.preventDefault();
+
+      if (stdinResolverRef.current) {
+        setLines((prev) => [
+          ...prev,
+          {
+            type: "input-echo",
+            text: input + "^C",
+          },
+        ]);
+        const resolver = stdinResolverRef.current;
+        stdinResolverRef.current = null;
+        setIsAwaitingStdin(false);
+        resolver(null);
+        setInput("");
+        return;
+      }
 
       setLines((prev) => [
         ...prev,
@@ -1931,6 +2015,18 @@ export default function LinuxTerminal({
           className="terminal-body"
         >
           {lines.map((line, index) => {
+            if (line.type === "input-echo") {
+              return (
+                <div
+                  className="terminal-line command-line"
+                  key={index}
+                >
+                  <span className="terminal-prompt">&gt;&nbsp;</span>
+                  <span className="terminal-command">{line.text}</span>
+                </div>
+              );
+            }
+
             if (line.type === "command") {
               return (
                 <div
@@ -1967,7 +2063,7 @@ export default function LinuxTerminal({
             onSubmit={handleSubmit}
           >
             <span className="terminal-prompt">
-              {effectiveUser}@${hostname}:{formatPrompt(cwd)}$
+              {isAwaitingStdin ? "> " : `${effectiveUser}@${hostname}:${formatPrompt(cwd)}$ `}
             </span>
 
             <input
