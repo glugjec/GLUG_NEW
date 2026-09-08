@@ -8,6 +8,8 @@ import { connectDB } from './config/db.js';
 import authRoutes from './routes/auth.routes.js';
 import postRoutes from './routes/posts.routes.js';
 import userRoutes from './routes/user.routes.js';
+import resourceRoutes from './routes/resource.routes.js';
+import adminRoutes from './routes/admin.routes.js';
 import compileRoutes from './routes/compile.routes.js';
 
 const app = express();
@@ -54,6 +56,8 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/resources', resourceRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api', compileRoutes);
 
 app.use('/api/*', (req, res) => {

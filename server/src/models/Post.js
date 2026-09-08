@@ -43,6 +43,10 @@ const postSchema = new mongoose.Schema(
       default: false,
       index: true,
     },
+    isLocked: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

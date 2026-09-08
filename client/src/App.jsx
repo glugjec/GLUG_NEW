@@ -7,6 +7,7 @@ import Compiler from './pages/compiler/Compiler.jsx'
 import PostDetail from './pages/PostDetail.jsx'
 import Profile from './pages/Profile.jsx'
 import Settings from './pages/Settings.jsx'
+import AdminDashboard from './pages/AdminDashboard.jsx'
 import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
 
@@ -33,6 +34,7 @@ export default function App() {
             <Route path="/forum/posts/:id" element={<PostDetail />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/admin" element={<AdminDashboard />} />
             <Route path="*" element={<Home />} />
           </Route>
         </Routes>

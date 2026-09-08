@@ -64,5 +64,24 @@ export const usersApi = {
   saveTerminalState: (state) => client.put('/users/me/terminal', state),
 };
 
+export const resourcesApi = {
+  list: () => client.get('/resources'),
+  create: (data) => client.post('/resources', data),
+  update: (id, data) => client.put(`/resources/${id}`, data),
+  delete: (id) => client.delete(`/resources/${id}`),
+};
+
+export const adminApi = {
+  getStats: () => client.get('/admin/stats'),
+  getUsers: (params = {}) => client.get('/admin/users', { params }),
+  updateUserRole: (id, role) => client.put(`/admin/users/${id}/role`, { role }),
+  deleteUser: (id) => client.delete(`/admin/users/${id}`),
+  getPosts: (params = {}) => client.get('/admin/posts', { params }),
+  togglePinPost: (id) => client.put(`/admin/posts/${id}/pin`),
+  toggleLockPost: (id) => client.put(`/admin/posts/${id}/lock`),
+  deletePost: (id) => client.delete(`/admin/posts/${id}`),
+  deleteComment: (id) => client.delete(`/admin/comments/${id}`),
+};
+
 export default api;
 

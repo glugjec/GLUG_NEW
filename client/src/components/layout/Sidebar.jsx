@@ -42,6 +42,12 @@ const icon = (name) => {
           <path d="M8.7 15.9 4.8 12l3.9-3.9a1 1 0 0 0-1.4-1.4L2.4 11.3a1 1 0 0 0 0 1.4l4.9 4.9a1 1 0 0 0 1.4-1.4Zm6.6 0 3.9-3.9-3.9-3.9a1 1 0 1 1 1.4-1.4l4.9 4.9a1 1 0 0 1 0 1.4l-4.9 4.9a1 1 0 0 1-1.4-1.4ZM13 6.3a1 1 0 0 0-1.9-.5l-4 12a1 1 0 1 0 1.9.5l4-12Z" />
         </svg>
       )
+    case 'shield':
+      return (
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+          <path d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4Zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8Z" />
+        </svg>
+      )
     default:
       return null
   }
@@ -149,6 +155,16 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onToggleMobil
               ))}
             </div>
           ))}
+
+          {user?.role === 'admin' && (
+            <div className="sidebar-section">
+              <p className="sidebar-section-title">Administration</p>
+              <NavLink to="/admin" className={linkClass}>
+                <span className="sidebar-icon" style={{ color: '#f2c94c' }}>{SectionIcon({ name: 'shield' })}</span>
+                <span className="sidebar-label" style={{ color: '#f2c94c', fontWeight: 600 }}>Admin Panel</span>
+              </NavLink>
+            </div>
+          )}
         </nav>
 
         {/* ── Profile area at the bottom ── */}

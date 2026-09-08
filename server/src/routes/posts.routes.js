@@ -138,6 +138,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
       voteScore: post.voteScore || 0,
       commentCount: post.commentCount || 0,
       isPinned: !!post.isPinned,
+      isLocked: !!post.isLocked,
       createdAt: post.createdAt,
       updatedAt: post.updatedAt,
       author: post.author
@@ -342,6 +343,10 @@ router.post('/:id/comments', requireAuth, async (req, res) => {
     const post = await Post.findById(req.params.id);
     if (!post) {
       return res.status(404).json({ error: 'Post not found' });
+    }
+
+    if (post.isLocked && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'This discussion has been locked by an administrator' });
     }
 
     let parentId = null;
