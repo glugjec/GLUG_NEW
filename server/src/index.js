@@ -1,6 +1,86 @@
 import 'dotenv/config';
-import app from './app.js';
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+
 import { connectDB } from './config/db.js';
+import authRoutes from './routes/auth.routes.js';
+import postRoutes from './routes/posts.routes.js';
+import userRoutes from './routes/user.routes.js';
+import resourceRoutes from './routes/resource.routes.js';
+import adminRoutes from './routes/admin.routes.js';
+import compileRoutes from './routes/compile.routes.js';
+
+const app = express();
+
+app.use(
+  helmet({
+    crossOriginResourcePolicy: false,
+  })
+);
+
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+  })
+);
+
+app.use(express.json({ limit: '1mb' }));
+
+// Ensure database connection for all incoming requests (crucial for serverless environments)
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error('[Database Middleware Error]', err.message);
+    res.status(503).json({ error: 'Database service unavailable. Please check MongoDB Atlas connection.' });
+  }
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { error: 'Too many authentication attempts, please try again after 15 minutes' },
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 300,
+  message: { error: 'Too many requests, please slow down' },
+});
+
+app.use('/api', apiLimiter);
+app.use('/api/auth', authLimiter);
+
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'glug-api',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.use('/api/auth', authRoutes);
+app.use('/api/posts', postRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/resources', resourceRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api', compileRoutes);
+
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ error: 'Endpoint not found' });
+});
+
+app.use((err, req, res, next) => {
+  console.error('[Unhandled Error]', err);
+  res.status(err.status || 500).json({
+    error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message || 'Server error',
+  });
+});
 
 const PORT = process.env.PORT || 5000;
 
@@ -159,4 +239,9 @@ async function startServer() {
   }
 }
 
-startServer();
+if (process.env.VERCEL !== '1' && process.env.NODE_ENV !== 'test') {
+  startServer();
+}
+
+export default app;
+
