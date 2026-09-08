@@ -128,6 +128,35 @@
   user-select: none;
 }
 
+.terminal-cloud-status {
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #8b949e;
+  user-select: none;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.terminal-cloud-status.synced {
+  color: #3fb950;
+}
+
+.terminal-cloud-status.saving,
+.terminal-cloud-status.syncing {
+  color: #e3b341;
+}
+
+.terminal-cloud-status.error {
+  color: #f85149;
+}
+
+.terminal-cloud-status.guest {
+  color: #6e7681;
+}
+
+
 /* --------------------------------
    TERMINAL BODY
 -------------------------------- */

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useAuth } from "../../context/AuthContext.jsx";
+import { usersApi } from "../../api.js";
 import "./LinuxTerminal.css";
 
 
@@ -159,9 +161,13 @@ export default function LinuxTerminal({
   height = 500,
   storageKey = STORAGE_KEY,
 }) {
+  const { user } = useAuth();
+  const effectiveUser = user?.username || username;
+  const activeStorageKey = user ? `virtual-linux-fs_${user.id || user._id}` : storageKey;
+
   const [fs, setFs] = useState(() => {
     try {
-      const saved = localStorage.getItem(storageKey);
+      const saved = localStorage.getItem(activeStorageKey);
 
       return saved ? JSON.parse(saved) : clone(DEFAULT_FS);
     } catch {
@@ -171,18 +177,91 @@ export default function LinuxTerminal({
 
   const [cwd, setCwd] = useState("/home/user");
   const [editor, setEditor] = useState(null);
+  const [syncStatus, setSyncStatus] = useState(user ? "syncing" : "guest");
+  const isLoadedRef = useRef(false);
+  const saveTimeoutRef = useRef(null);
+
   const [env, setEnv] = useState({
-    USER: username,
+    USER: effectiveUser,
     HOSTNAME: hostname,
     HOME: "/home/user",
     PWD: "/home/user",
   });
+
+  useEffect(() => {
+    setEnv((prev) => ({ ...prev, USER: effectiveUser }));
+  }, [effectiveUser]);
 
   function updateCwd(path) {
     setCwd(path);
     setEnv((prev) => ({ ...prev, PWD: path }));
   }
 
+  // Load persistent terminal session from MongoDB Atlas when authenticated
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCloudTerminal() {
+      if (!user) {
+        try {
+          const local = localStorage.getItem(activeStorageKey);
+          if (local) setFs(JSON.parse(local));
+          else setFs(clone(DEFAULT_FS));
+        } catch {
+          setFs(clone(DEFAULT_FS));
+        }
+        setSyncStatus("guest");
+        isLoadedRef.current = true;
+        return;
+      }
+
+      setSyncStatus("syncing");
+      try {
+        const res = await usersApi.getTerminalState();
+        if (cancelled) return;
+
+        if (res?.terminalState?.fs) {
+          setFs(res.terminalState.fs);
+          if (res.terminalState.cwd) {
+            setCwd(res.terminalState.cwd);
+            setEnv((prev) => ({ ...prev, PWD: res.terminalState.cwd }));
+          }
+          if (Array.isArray(res.terminalState.history)) {
+            setHistory(res.terminalState.history);
+          }
+          localStorage.setItem(activeStorageKey, JSON.stringify(res.terminalState.fs));
+          setSyncStatus("synced");
+        } else {
+          // No cloud terminal yet, check local storage or use default
+          let initialFs = clone(DEFAULT_FS);
+          try {
+            const local = localStorage.getItem(activeStorageKey);
+            if (local) initialFs = JSON.parse(local);
+          } catch {
+            // fallback
+          }
+          setFs(initialFs);
+          await usersApi.saveTerminalState({
+            fs: initialFs,
+            history: [],
+            cwd: "/home/user",
+          });
+          setSyncStatus("synced");
+        }
+      } catch (err) {
+        console.error("Failed to load cloud terminal state:", err);
+        if (!cancelled) setSyncStatus("error");
+      } finally {
+        if (!cancelled) isLoadedRef.current = true;
+      }
+    }
+
+    loadCloudTerminal();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, activeStorageKey]);
 
   const [lines, setLines] = useState([
     {
@@ -220,10 +299,37 @@ export default function LinuxTerminal({
     el.style.setProperty("--tiltY", "0deg");
   }
 
-  // Persist filesystem
+  // Persist filesystem to localStorage and sync to MongoDB Atlas with debounce
   useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify(fs));
-  }, [fs, storageKey]);
+    localStorage.setItem(activeStorageKey, JSON.stringify(fs));
+
+    if (!user || !isLoadedRef.current) return;
+
+    setSyncStatus("saving");
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        await usersApi.saveTerminalState({
+          fs,
+          history,
+          cwd,
+        });
+        setSyncStatus("synced");
+      } catch (err) {
+        console.error("Failed to sync terminal state to cloud:", err);
+        setSyncStatus("error");
+      }
+    }, 1200);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [fs, history, cwd, user, activeStorageKey]);
 
   // Auto scroll
   useEffect(() => {
@@ -434,7 +540,7 @@ export default function LinuxTerminal({
      */
 
     if (cmd === "whoami") {
-      print(username);
+      print(effectiveUser);
       return;
     }
 
@@ -498,7 +604,7 @@ export default function LinuxTerminal({
       }
 
       if (node.type === "file") {
-        print(longFormat ? `-rw-r--r-- 1 ${username} ${basename(target)}` : basename(target));
+        print(longFormat ? `-rw-r--r-- 1 ${effectiveUser} ${basename(target)}` : basename(target));
         return;
       }
 
@@ -515,8 +621,8 @@ export default function LinuxTerminal({
 
           if (longFormat) {
             return child.type === "dir"
-              ? `drwxr-xr-x 2 ${username} ${name}`
-              : `-rw-r--r-- 1 ${username} ${name}`;
+              ? `drwxr-xr-x 2 ${effectiveUser} ${name}`
+              : `-rw-r--r-- 1 ${effectiveUser} ${name}`;
           }
 
           return child.type === "dir"
@@ -1071,7 +1177,7 @@ export default function LinuxTerminal({
 
         setFs(fresh);
         localStorage.setItem(
-          storageKey,
+          activeStorageKey,
           JSON.stringify(fresh)
         );
 
@@ -1259,7 +1365,7 @@ export default function LinuxTerminal({
       ...prev,
       {
         type: "command",
-        prompt: `${username}@${hostname}:${formatPrompt(cwd)}$`,
+        prompt: `${effectiveUser}@${hostname}:${formatPrompt(cwd)}$`,
         text: command,
       },
     ]);
@@ -1281,7 +1387,7 @@ export default function LinuxTerminal({
         ...prev,
         {
           type: "command",
-          prompt: `${username}@${hostname}:${formatPrompt(cwd)}$`,
+          prompt: `${effectiveUser}@${hostname}:${formatPrompt(cwd)}$`,
           text: input + "^C",
         },
       ]);
@@ -1489,7 +1595,15 @@ export default function LinuxTerminal({
           </div>
 
           <div className="terminal-title">
-            {username}@{hostname}
+            {effectiveUser}@{hostname}
+          </div>
+
+          <div className={`terminal-cloud-status ${syncStatus}`}>
+            {syncStatus === "syncing" && <span title="Connecting to cloud terminal session">🔄 Syncing...</span>}
+            {syncStatus === "saving" && <span title="Saving changes to cloud">☁️ Syncing...</span>}
+            {syncStatus === "synced" && <span title="Terminal session saved in MongoDB Atlas">☁️ Cloud Synced</span>}
+            {syncStatus === "error" && <span title="Cloud sync offline - saving locally">⚠️ Local</span>}
+            {syncStatus === "guest" && <span title="Log in to persist your terminal across devices">💾 Guest Mode</span>}
           </div>
         </div>
 
@@ -1534,7 +1648,7 @@ export default function LinuxTerminal({
             onSubmit={handleSubmit}
           >
             <span className="terminal-prompt">
-              {username}@{hostname}:{formatPrompt(cwd)}$
+              {effectiveUser}@${hostname}:{formatPrompt(cwd)}$
             </span>
 
             <input
