@@ -334,114 +334,231 @@ body.glug-collapsed .terminal-frame.is-expanded {
 }
 
 /* =================================
-   NANO EDITOR
+   NANO & VIM EDITORS
 ================================= */
 
-.nano-overlay {
+.nano-overlay,
+.vim-overlay {
   position: absolute;
-
   inset: 0;
-
   z-index: 100;
-
   display: flex;
   flex-direction: column;
-
-  background: #000;
-
-  color: #fff;
-
-  font-family:
-    "JetBrains Mono",
-    "Fira Code",
-    Consolas,
-    monospace;
+  background: #0d1117;
+  color: #c9d1d9;
+  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+  outline: none;
 }
 
+/* NANO */
 .nano-editor {
   width: 100%;
   height: 100%;
-
   display: flex;
   flex-direction: column;
 }
 
 .nano-header {
-  height: 32px;
-
+  height: 30px;
   display: flex;
   align-items: center;
-  justify-content: center;
-
+  justify-content: space-between;
+  padding: 0 16px;
   background: #1f6feb;
-
-  color: white;
-
-  font-size: 13px;
+  color: #ffffff;
+  font-size: 12px;
   font-weight: 600;
+}
+
+.nano-header-right {
+  color: #ffeb3b;
+}
+
+.nano-body {
+  flex: 1;
+  display: flex;
+  background: #090d13;
+  overflow: hidden;
+}
+
+.nano-linenumbers {
+  width: 42px;
+  padding: 10px 8px 10px 0;
+  background: #0d1117;
+  border-right: 1px solid #21262d;
+  color: #484f58;
+  font-size: 13px;
+  text-align: right;
+  user-select: none;
+  line-height: 1.5;
+}
+
+.nano-line-no.active {
+  color: #58a6ff;
+  font-weight: bold;
 }
 
 .nano-textarea {
   flex: 1;
-
-  width: 100%;
-
-  resize: none;
-
+  padding: 10px 14px;
+  background: transparent;
+  color: #f0f6fc;
   border: none;
   outline: none;
-
-  padding: 12px;
-
-  background: #000;
-
-  color: #fff;
-
-  font-family:
-    "JetBrains Mono",
-    "Fira Code",
-    Consolas,
-    monospace;
-
-  font-size: 14px;
-
+  resize: none;
+  font-family: inherit;
+  font-size: 13px;
   line-height: 1.5;
-
   white-space: pre-wrap;
 }
 
 .nano-status {
   height: 26px;
-
   display: flex;
   align-items: center;
-
-  padding: 0 12px;
-
-  background: #000;
-
-  color: #aaa;
-
+  padding: 0 14px;
+  background: #161b22;
+  color: #8b949e;
   font-size: 12px;
+  border-top: 1px solid #21262d;
 }
 
 .nano-footer {
-  min-height: 42px;
-
+  min-height: 40px;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 6px 14px;
+  background: #161b22;
+  border-top: 1px solid #30363d;
+  font-size: 11px;
+}
 
-  gap: 24px;
+.nano-key-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
 
+.nano-key {
+  background: #30363d;
+  color: #ffffff;
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-weight: bold;
+}
+
+/* VIM */
+.vim-overlay {
+  background: #0d1117;
+}
+
+.vim-body {
+  flex: 1;
+  display: flex;
+  background: #0b0f14;
+  overflow: hidden;
+}
+
+.vim-linenumbers {
+  width: 44px;
+  padding: 10px 8px 10px 0;
+  background: #0d1117;
+  border-right: 1px solid #21262d;
+  color: #484f58;
+  font-size: 13px;
+  text-align: right;
+  user-select: none;
+  line-height: 1.5;
+}
+
+.vim-line-no.active {
+  color: #e3b341;
+  font-weight: bold;
+}
+
+.vim-tilde {
+  color: #388bfd;
+  text-align: center;
+  font-weight: bold;
+}
+
+.vim-textarea {
+  flex: 1;
+  padding: 10px 14px;
+  background: transparent;
+  color: #f0f6fc;
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.vim-bottombar {
+  height: 28px;
+  background: #161b22;
+  border-top: 1px solid #30363d;
+  display: flex;
+  align-items: center;
   padding: 0 12px;
-
-  background: #222;
-
-  color: white;
-
   font-size: 12px;
 }
 
-.nano-footer span {
-  white-space: nowrap;
+.vim-status-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vim-status-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.vim-mode-badge.insert {
+  color: #3fb950;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+}
+
+.vim-message {
+  color: #c9d1d9;
+}
+
+.vim-status-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: #8b949e;
+  font-size: 11px;
+}
+
+.vim-commandline {
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.vim-colon {
+  color: #58a6ff;
+  font-weight: bold;
+  font-size: 14px;
+  margin-right: 4px;
+}
+
+.vim-command-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 13px;
 }
