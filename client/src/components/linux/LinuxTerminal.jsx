@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { usersApi } from "../../api.js";
+import VimEditor from "./VimEditor.jsx";
+import NanoEditor from "./NanoEditor.jsx";
+import { executeCode } from "../../pages/compiler/api/judge0.js";
 import "./LinuxTerminal.css";
 
 
@@ -19,7 +22,17 @@ const DEFAULT_FS = {
             "README.txt": {
               type: "file",
               content:
-                "Welcome to the virtual Linux terminal!\n\nThis filesystem is stored in localStorage.",
+                "Welcome to the GLUG Virtual Linux Terminal!\n\nFeatures:\n- Persistent Cloud File System (MongoDB Atlas)\n- Text Editors: vim, nano\n- Compilers: gcc, g++, python3, javac, java\n\nQuick Start:\n  gcc hello.c && ./a.out\n  python3 hello.py\n  vim hello.c\n  nano hello.py\n  help",
+            },
+            "hello.c": {
+              type: "file",
+              content:
+                "#include <stdio.h>\n\nint main() {\n    printf(\"Hello from GLUG Linux Terminal (GCC)!\\n\");\n    return 0;\n}\n",
+            },
+            "hello.py": {
+              type: "file",
+              content:
+                "print(\"Hello from GLUG Python 3!\")\nfor i in range(1, 4):\n    print(f\"  [Task {i}] System operational!\")\n",
             },
           },
         },
@@ -177,6 +190,7 @@ export default function LinuxTerminal({
 
   const [cwd, setCwd] = useState("/home/user");
   const [editor, setEditor] = useState(null);
+  const [isRunning, setIsRunning] = useState(false);
   const [syncStatus, setSyncStatus] = useState(user ? "syncing" : "guest");
   const isLoadedRef = useRef(false);
   const saveTimeoutRef = useRef(null);
@@ -407,7 +421,7 @@ export default function LinuxTerminal({
     });
   }
 
-  function executeSingleCommand(cmd, args, stdin) {
+  async function executeSingleCommand(cmd, args, stdin) {
     /*
      * HELP
      */
@@ -443,6 +457,14 @@ export default function LinuxTerminal({
           "  date            Current date",
           "  export <var>=<val> Set environment variables",
           "  wc <file>       Word, line, and byte count",
+          "  vim <file>      Vim modal text editor (:w, :q, :wq, dd, i)",
+          "  nano <file>     GNU nano text editor (^O, ^X, ^K, ^U)",
+          "  gcc <file.c>    Compile C program (GCC 9.2.0)",
+          "  g++ <file.cpp>  Compile C++ program (G++ 9.2.0)",
+          "  ./<binary>      Execute compiled binary",
+          "  python3 <file>  Execute Python 3 script",
+          "  javac <file>    Compile Java class (OpenJDK 13)",
+          "  java <class>    Execute Java class",
           "  resetfs         Reset virtual filesystem",
           "",
         ].join("\n")
@@ -1199,9 +1221,34 @@ export default function LinuxTerminal({
     }
 
     /*
+     * VIM / VI
+     */
+    if (cmd === "vim" || cmd === "vi") {
+      if (!args.length) {
+        printError("vim: missing file operand");
+        return;
+      }
+
+      const path = resolvePath(args[0], cwd);
+      const node = getNode(fs, path);
+
+      if (node && node.type === "dir") {
+        printError(`vim: ${args[0]}: Is a directory`);
+        return;
+      }
+
+      setEditor({
+        type: "vim",
+        path,
+        content: node?.content || "",
+      });
+
+      return;
+    }
+
+    /*
      * NANO
      */
-
     if (cmd === "nano") {
       if (!args.length) {
         printError("nano: missing file operand");
@@ -1217,10 +1264,283 @@ export default function LinuxTerminal({
       }
 
       setEditor({
+        type: "nano",
         path,
         content: node?.content || "",
       });
 
+      return;
+    }
+
+    /*
+     * GCC (C Compiler)
+     */
+    if (cmd === "gcc") {
+      if (!args.length) {
+        printError("gcc: fatal error: no input files");
+        printError("compilation terminated.");
+        return;
+      }
+
+      let outFile = "a.out";
+      const oIndex = args.indexOf("-o");
+      if (oIndex !== -1 && args[oIndex + 1]) {
+        outFile = args[oIndex + 1];
+      }
+
+      const sourceFile = args.find((a) => !a.startsWith("-") && a !== outFile);
+      if (!sourceFile) {
+        printError("gcc: fatal error: no input files");
+        return;
+      }
+
+      const sourcePath = resolvePath(sourceFile, cwd);
+      const node = getNode(fs, sourcePath);
+
+      if (!node) {
+        printError(`gcc: error: ${sourceFile}: No such file or directory`);
+        return;
+      }
+      if (node.type === "dir") {
+        printError(`gcc: error: ${sourceFile}: Is a directory`);
+        return;
+      }
+
+      try {
+        const res = await executeCode("c", node.content, "");
+        if (res.compilationError || (!res.success && res.error)) {
+          printError(res.error || "compilation error");
+          return;
+        }
+
+        const outPath = resolvePath(outFile, cwd);
+        updateFS((root) => {
+          const result = getParent(root, outPath);
+          if (!result?.parent) return;
+          result.parent.children[result.name] = {
+            type: "file",
+            isExecutable: true,
+            executableLang: "c",
+            sourceCode: node.content,
+            cachedResult: res.output,
+            content: "\x7fELF 64-bit LSB pie executable, x86-64, dynamically linked",
+          };
+        });
+      } catch (err) {
+        printError(`gcc: error: ${err.message}`);
+      }
+      return;
+    }
+
+    /*
+     * G++ (C++ Compiler)
+     */
+    if (cmd === "g++") {
+      if (!args.length) {
+        printError("g++: fatal error: no input files");
+        printError("compilation terminated.");
+        return;
+      }
+
+      let outFile = "a.out";
+      const oIndex = args.indexOf("-o");
+      if (oIndex !== -1 && args[oIndex + 1]) {
+        outFile = args[oIndex + 1];
+      }
+
+      const sourceFile = args.find((a) => !a.startsWith("-") && a !== outFile);
+      if (!sourceFile) {
+        printError("g++: fatal error: no input files");
+        return;
+      }
+
+      const sourcePath = resolvePath(sourceFile, cwd);
+      const node = getNode(fs, sourcePath);
+
+      if (!node) {
+        printError(`g++: error: ${sourceFile}: No such file or directory`);
+        return;
+      }
+      if (node.type === "dir") {
+        printError(`g++: error: ${sourceFile}: Is a directory`);
+        return;
+      }
+
+      try {
+        const res = await executeCode("cpp", node.content, "");
+        if (res.compilationError || (!res.success && res.error)) {
+          printError(res.error || "compilation error");
+          return;
+        }
+
+        const outPath = resolvePath(outFile, cwd);
+        updateFS((root) => {
+          const result = getParent(root, outPath);
+          if (!result?.parent) return;
+          result.parent.children[result.name] = {
+            type: "file",
+            isExecutable: true,
+            executableLang: "cpp",
+            sourceCode: node.content,
+            cachedResult: res.output,
+            content: "\x7fELF 64-bit LSB pie executable, x86-64, dynamically linked",
+          };
+        });
+      } catch (err) {
+        printError(`g++: error: ${err.message}`);
+      }
+      return;
+    }
+
+    /*
+     * PYTHON / PYTHON3
+     */
+    if (cmd === "python" || cmd === "python3") {
+      if (!args.length) {
+        print("Python 3.10.12 (main, virtual terminal)\nType \"help\" for more information.\n(Pass a script file: python3 <script.py>)");
+        return;
+      }
+
+      const fileArg = args[0];
+      const filePath = resolvePath(fileArg, cwd);
+      const node = getNode(fs, filePath);
+
+      if (!node) {
+        printError(`python3: can\x27t open file \x27${fileArg}\x27: [Errno 2] No such file or directory`);
+        return;
+      }
+      if (node.type === "dir") {
+        printError(`python3: error: \x27${fileArg}\x27 is a directory`);
+        return;
+      }
+
+      try {
+        const inputData = stdin || "";
+        const res = await executeCode("python", node.content, inputData);
+        if (res.output) {
+          print(res.output.trimEnd());
+        }
+        if (res.error) {
+          printError(res.error.trimEnd());
+        }
+      } catch (err) {
+        printError(`python3 runtime error: ${err.message}`);
+      }
+      return;
+    }
+
+    /*
+     * JAVAC
+     */
+    if (cmd === "javac") {
+      if (!args.length) {
+        printError("javac: no source files specified");
+        return;
+      }
+
+      const fileArg = args[0];
+      const filePath = resolvePath(fileArg, cwd);
+      const node = getNode(fs, filePath);
+
+      if (!node) {
+        printError(`javac: file not found: ${fileArg}`);
+        return;
+      }
+
+      try {
+        const res = await executeCode("java", node.content, "");
+        if (res.compilationError || (!res.success && res.error)) {
+          printError(res.error || "javac compilation error");
+          return;
+        }
+
+        const base = basename(filePath).replace(/\.java$/, "");
+        const classPath = resolvePath(`${base}.class`, cwd);
+        updateFS((root) => {
+          const result = getParent(root, classPath);
+          if (!result?.parent) return;
+          result.parent.children[result.name] = {
+            type: "file",
+            isExecutable: true,
+            executableLang: "java",
+            sourceCode: node.content,
+            cachedResult: res.output,
+            content: `Compiled Java class [${base}]`,
+          };
+        });
+      } catch (err) {
+        printError(`javac: error: ${err.message}`);
+      }
+      return;
+    }
+
+    /*
+     * JAVA
+     */
+    if (cmd === "java") {
+      if (!args.length) {
+        printError("Usage: java [options] <mainclass> [args...]");
+        return;
+      }
+
+      const className = args[0].replace(/\.class$/, "").replace(/\.java$/, "");
+      const javaPath = resolvePath(`${className}.java`, cwd);
+      const classPath = resolvePath(`${className}.class`, cwd);
+
+      const javaNode = getNode(fs, javaPath);
+      const classNode = getNode(fs, classPath);
+
+      if (!javaNode && !classNode) {
+        printError(`Error: Could not find or load main class ${className}`);
+        return;
+      }
+
+      const source = javaNode?.content || classNode?.sourceCode;
+      if (!source) {
+        printError(`Error: Could not find or load main class ${className}`);
+        return;
+      }
+
+      try {
+        const inputData = stdin || "";
+        const res = await executeCode("java", source, inputData);
+        if (res.output) {
+          print(res.output.trimEnd());
+        }
+        if (res.error) {
+          printError(res.error.trimEnd());
+        }
+      } catch (err) {
+        printError(`java execution error: ${err.message}`);
+      }
+      return;
+    }
+
+    /*
+     * EXECUTE COMPILED BINARY (e.g. ./a.out)
+     */
+    const isLocalRun = cmd.startsWith("./") || cmd.startsWith("/");
+    const execPath = resolvePath(cmd, cwd);
+    const execNode = getNode(fs, execPath);
+
+    if (execNode && execNode.type === "file" && (isLocalRun || execNode.isExecutable)) {
+      if (!execNode.isExecutable) {
+        printError(`bash: ${cmd}: Permission denied`);
+        return;
+      }
+
+      try {
+        const inputData = stdin || "";
+        const res = await executeCode(execNode.executableLang || "c", execNode.sourceCode, inputData);
+        if (res.output) {
+          print(res.output.trimEnd());
+        }
+        if (res.error) {
+          printError(res.error.trimEnd());
+        }
+      } catch (err) {
+        printError(`Execution error: ${err.message}`);
+      }
       return;
     }
 
@@ -1233,43 +1553,28 @@ export default function LinuxTerminal({
     );
   }
 
-  function execute(command) {
-    const trimmed = command.trim();
-
-    if (!trimmed) return;
-
-    setHistory((prev) => {
-      const next = [...prev, trimmed];
-
-      return next.slice(-100);
-    });
-
-    setHistoryIndex(-1);
-
-    // Expand environment variables
-    const expanded = expandEnvVars(trimmed);
-
+  async function runPipeline(cmdPartStr) {
     // Parse redirections (> and >>)
-    const redirectMatch = expanded.match(/^(.*?)\s*(>>|>)\s*(.+)$/);
+    const redirectMatch = cmdPartStr.match(/^(.*?)\s*(>>|>)\s*(.+)$/);
     let redirectTo = null;
     let redirectAppend = false;
-    let cmdPart = expanded;
+    let cmdPart = cmdPartStr;
 
     if (redirectMatch) {
       cmdPart = redirectMatch[1].trim();
       const operator = redirectMatch[2];
       const target = redirectMatch[3].trim();
-      
+
       redirectTo = resolvePath(target, cwd);
       redirectAppend = (operator === ">>");
     }
 
     // Split by pipes
     const pipeParts = cmdPart.split("|").map((p) => p.trim()).filter(Boolean);
-
-    if (pipeParts.length === 0) return;
+    if (pipeParts.length === 0) return true;
 
     let currentStdin = null;
+    let hasError = false;
 
     for (let i = 0; i < pipeParts.length; i++) {
       const part = pipeParts[i];
@@ -1290,7 +1595,7 @@ export default function LinuxTerminal({
         interceptRef.current = null;
       }
 
-      executeSingleCommand(cmd, args, currentStdin);
+      await executeSingleCommand(cmd, args, currentStdin);
 
       interceptRef.current = null;
 
@@ -1298,6 +1603,7 @@ export default function LinuxTerminal({
         currentStdin = localBuffer.stdout.join("\n");
 
         if (localBuffer.stderr.length > 0) {
+          hasError = true;
           localBuffer.stderr.forEach((err) => {
             setLines((prev) => [
               ...prev,
@@ -1317,6 +1623,7 @@ export default function LinuxTerminal({
         const result = getParent(root, redirectTo);
 
         if (!result?.parent) {
+          hasError = true;
           setLines((prev) => [
             ...prev,
             {
@@ -1331,6 +1638,7 @@ export default function LinuxTerminal({
           result.parent.children[result.name] &&
           result.parent.children[result.name].type === "dir"
         ) {
+          hasError = true;
           setLines((prev) => [
             ...prev,
             {
@@ -1353,6 +1661,58 @@ export default function LinuxTerminal({
           content: existingContent + newContent,
         };
       });
+    }
+
+    return !hasError;
+  }
+
+  async function execute(command) {
+    const trimmed = command.trim();
+    if (!trimmed) return;
+
+    setHistory((prev) => {
+      const next = [...prev, trimmed];
+      return next.slice(-100);
+    });
+
+    setHistoryIndex(-1);
+
+    // Expand environment variables
+    const expanded = expandEnvVars(trimmed);
+
+    // Split by command sequence operators (&& or ;)
+    const chainTokens = expanded.split(/(&&|;)/g);
+    const chain = [];
+    let curCmd = "";
+    let curOp = null;
+
+    for (let i = 0; i < chainTokens.length; i++) {
+      const tok = chainTokens[i].trim();
+      if (tok === "&&" || tok === ";") {
+        if (curCmd.trim()) {
+          chain.push({ cmd: curCmd.trim(), op: curOp });
+        }
+        curOp = tok;
+        curCmd = "";
+      } else {
+        curCmd += (curCmd ? " " : "") + chainTokens[i];
+      }
+    }
+    if (curCmd.trim()) {
+      chain.push({ cmd: curCmd.trim(), op: curOp });
+    }
+
+    setIsRunning(true);
+    try {
+      for (const item of chain) {
+        const ok = await runPipeline(item.cmd);
+        // Abort on failure if chained with &&
+        if (item.op === "&&" && !ok) {
+          break;
+        }
+      }
+    } finally {
+      setIsRunning(false);
     }
   }
 
@@ -1484,82 +1844,40 @@ export default function LinuxTerminal({
 
   const terminal = (
     <>
-      {editor && (
-        <div className="nano-overlay">
-          <div className="nano-editor">
-            <div className="nano-header">
-              GNU nano
-            </div>
+      {editor && editor.type === "vim" && (
+        <VimEditor
+          path={editor.path}
+          initialContent={editor.content}
+          onSave={(newContent) => {
+            updateFS((root) => {
+              const result = getParent(root, editor.path);
+              if (!result?.parent) return;
+              result.parent.children[result.name] = {
+                type: "file",
+                content: newContent,
+              };
+            });
+          }}
+          onClose={() => setEditor(null)}
+        />
+      )}
 
-            <textarea
-              className="nano-textarea"
-              value={editor.content}
-              autoFocus
-              onChange={(e) =>
-                setEditor({
-                  ...editor,
-                  content: e.target.value,
-                })
-              }
-              onKeyDown={(e) => {
-                // Ctrl + X = exit
-                if (e.ctrlKey && e.key.toLowerCase() === "x") {
-                  e.preventDefault();
-
-                  const save = window.confirm(
-                    "Save modified buffer?"
-                  );
-
-                  if (save) {
-                    updateFS((root) => {
-                      const result = getParent(
-                        root,
-                        editor.path
-                      );
-
-                      if (!result?.parent) return;
-
-                      result.parent.children[result.name] = {
-                        type: "file",
-                        content: editor.content,
-                      };
-                    });
-                  }
-
-                  setEditor(null);
-                }
-
-                // Ctrl + O = save
-                if (e.ctrlKey && e.key.toLowerCase() === "o") {
-                  e.preventDefault();
-
-                  updateFS((root) => {
-                    const result = getParent(
-                      root,
-                      editor.path
-                    );
-
-                    if (!result?.parent) return;
-
-                    result.parent.children[result.name] = {
-                      type: "file",
-                      content: editor.content,
-                    };
-                  });
-                }
-              }}
-            />
-
-            <div className="nano-status">
-              {editor.path}
-            </div>
-
-            <div className="nano-footer">
-              <span>^O Write Out</span>
-              <span>^X Exit</span>
-            </div>
-          </div>
-        </div>
+      {editor && editor.type === "nano" && (
+        <NanoEditor
+          path={editor.path}
+          initialContent={editor.content}
+          onSave={(newContent) => {
+            updateFS((root) => {
+              const result = getParent(root, editor.path);
+              if (!result?.parent) return;
+              result.parent.children[result.name] = {
+                type: "file",
+                content: newContent,
+              };
+            });
+          }}
+          onClose={() => setEditor(null)}
+        />
       )}
 
       <div
@@ -1599,11 +1917,12 @@ export default function LinuxTerminal({
           </div>
 
           <div className={`terminal-cloud-status ${syncStatus}`}>
-            {syncStatus === "syncing" && <span title="Connecting to cloud terminal session">🔄 Syncing...</span>}
-            {syncStatus === "saving" && <span title="Saving changes to cloud">☁️ Syncing...</span>}
-            {syncStatus === "synced" && <span title="Terminal session saved in MongoDB Atlas">☁️ Cloud Synced</span>}
-            {syncStatus === "error" && <span title="Cloud sync offline - saving locally">⚠️ Local</span>}
-            {syncStatus === "guest" && <span title="Log in to persist your terminal across devices">💾 Guest Mode</span>}
+            {isRunning && <span style={{ color: "#58a6ff" }}>⚡ Executing...</span>}
+            {!isRunning && syncStatus === "syncing" && <span title="Connecting to cloud terminal session">🔄 Syncing...</span>}
+            {!isRunning && syncStatus === "saving" && <span title="Saving changes to cloud">☁️ Syncing...</span>}
+            {!isRunning && syncStatus === "synced" && <span title="Terminal session saved in MongoDB Atlas">☁️ Cloud Synced</span>}
+            {!isRunning && syncStatus === "error" && <span title="Cloud sync offline - saving locally">⚠️ Local</span>}
+            {!isRunning && syncStatus === "guest" && <span title="Log in to persist your terminal across devices">💾 Guest Mode</span>}
           </div>
         </div>
 
