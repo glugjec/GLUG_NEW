@@ -317,39 +317,12 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="home-hero-art">
-            <div className="home-hero-quote">
-              <span>Better</span>
-              <span>Systems</span>
-              <span>Brighter</span>
-              <span>People</span>
-            </div>
-
-            <div className="home-hero-stars">
-              <span className="star star-1">✦</span>
-              <span className="star star-2">✦</span>
-              <span className="star star-3">⋆</span>
-              <span className="star star-4">✦</span>
-              <div className="home-moon-glow"></div>
-            </div>
-
-            <div className="home-tux-cliff">
-              <svg viewBox="0 0 160 160" className="home-tux-svg">
-                <ellipse cx="80" cy="155" rx="75" ry="25" fill="#090d16" />
-                <ellipse cx="80" cy="98" rx="34" ry="42" fill="#0f172a" />
-                <ellipse cx="80" cy="102" rx="23" ry="32" fill="#f8fafc" />
-                <circle cx="80" cy="55" r="22" fill="#0f172a" />
-                <ellipse cx="73" cy="51" rx="4" ry="6" fill="#f8fafc" />
-                <circle cx="74" cy="51" r="2.2" fill="#090d16" />
-                <ellipse cx="87" cy="51" rx="4" ry="6" fill="#f8fafc" />
-                <circle cx="86" cy="51" r="2.2" fill="#090d16" />
-                <polygon points="75,58 85,58 80,67" fill="#f59e0b" />
-                <ellipse cx="48" cy="100" rx="8" ry="24" fill="#0f172a" transform="rotate(-15 48 100)" />
-                <ellipse cx="112" cy="100" rx="8" ry="24" fill="#0f172a" transform="rotate(15 112 100)" />
-                <ellipse cx="64" cy="144" rx="14" ry="7" fill="#f59e0b" />
-                <ellipse cx="96" cy="144" rx="14" ry="7" fill="#f59e0b" />
-              </svg>
-            </div>
+          <div className="home-hero-banner-bg">
+            <img
+              src="/homebannerorg.png"
+              alt="GLUG Community Banner"
+              className="home-hero-banner-img"
+            />
           </div>
         </div>
 
