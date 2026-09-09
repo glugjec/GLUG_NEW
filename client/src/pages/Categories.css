@@ -20,12 +20,12 @@
   justify-content: space-between;
   align-items: center;
   background: radial-gradient(circle at 80% 50%, #1e1b4b 0%, #0d1222 65%, #080c18 100%);
-  border: 1px solid #1e2638;
+  border: 1px solid var(--border);
   border-radius: 20px;
   padding: 2rem 2.5rem;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-card);
 }
 
 .cat-hero-text {
@@ -117,8 +117,8 @@
 }
 
 .cat-card {
-  background: #111622;
-  border: 1px solid #1c2436;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: 16px;
   padding: 1.35rem;
   display: flex;
@@ -126,12 +126,13 @@
   transition: all 0.2s ease-out;
   cursor: pointer;
   position: relative;
+  box-shadow: var(--shadow-card);
 }
 
 .cat-card:hover {
   transform: translateY(-3px);
-  border-color: var(--cat-border, #3b82f6);
-  background: #151b2a;
+  border-color: var(--cat-border, var(--accent));
+  background: var(--bg-hover);
   box-shadow: 0 12px 24px -10px var(--cat-glow, rgba(59, 130, 246, 0.25));
 }
 
@@ -161,22 +162,22 @@
 .cat-card-name {
   font-size: 1.05rem;
   font-weight: 700;
-  color: #f1f5f9;
+  color: var(--text);
 }
 
 .cat-card-arrow {
-  color: #475569;
+  color: var(--text-dim);
   transition: transform 0.2s ease, color 0.2s ease;
 }
 
 .cat-card:hover .cat-card-arrow {
-  color: var(--cat-color, #3b82f6);
+  color: var(--cat-color, var(--accent));
   transform: translateX(3px);
 }
 
 .cat-card-desc {
   font-size: 0.86rem;
-  color: #8391a7;
+  color: var(--text-muted);
   line-height: 1.5;
   margin-bottom: 1.25rem;
   flex: 1;
@@ -192,7 +193,7 @@
   gap: 0.5rem;
   background: rgba(16, 185, 129, 0.15);
   border: 1px solid rgba(16, 185, 129, 0.4);
-  color: #34d399;
+  color: #10b981;
   padding: 0.45rem 0.85rem;
   border-radius: 8px;
   font-size: 0.82rem;
@@ -212,7 +213,7 @@
   align-items: center;
   gap: 1rem;
   padding-top: 0.85rem;
-  border-top: 1px solid #1a2233;
+  border-top: 1px solid var(--border);
 }
 
 .cat-stat {
@@ -220,7 +221,7 @@
   align-items: center;
   gap: 0.35rem;
   font-size: 0.78rem;
-  color: #64748b;
+  color: var(--text-dim);
   font-weight: 500;
 }
 
@@ -231,16 +232,18 @@
 }
 
 .cat-widget-card {
-  background: #111622;
-  border: 1px solid #1c2436;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: 18px;
   padding: 1.35rem;
+  box-shadow: var(--shadow-card);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .cat-widget-title {
   font-size: 1.05rem;
   font-weight: 700;
-  color: #f1f5f9;
+  color: var(--text);
   margin-bottom: 1rem;
 }
 
@@ -251,13 +254,14 @@
 }
 
 .cat-stat-box {
-  background: #151b2a;
-  border: 1px solid #1f293d;
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 0.9rem 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .cat-stat-icon {
@@ -272,12 +276,12 @@
 .cat-stat-val {
   font-size: 1.25rem;
   font-weight: 800;
-  color: #f8fafc;
+  color: var(--text);
 }
 
 .cat-stat-lbl {
   font-size: 0.76rem;
-  color: #64748b;
+  color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   font-weight: 600;
@@ -305,7 +309,7 @@
 
 .quote-widget-author {
   font-size: 0.8rem;
-  color: #64748b;
+  color: #94a3b8;
   font-weight: 600;
 }
 
@@ -327,14 +331,14 @@
   justify-content: space-between;
   padding: 0.6rem 0.75rem;
   border-radius: 10px;
-  color: #94a3b8;
+  color: var(--text-muted);
   text-decoration: none;
   transition: all 0.15s ease;
 }
 
 .popular-item:hover {
-  background: #171e2e;
-  color: #f1f5f9;
+  background: var(--bg-hover);
+  color: var(--text);
 }
 
 .popular-item-left {
@@ -355,17 +359,17 @@
 
 .popular-count {
   font-size: 0.82rem;
-  color: #64748b;
+  color: var(--text-dim);
   font-weight: 600;
 }
 
 .join-widget {
-  background: radial-gradient(circle at 100% 0%, rgba(37, 99, 235, 0.15) 0%, #111622 70%);
+  background: var(--bg-card);
 }
 
 .join-widget-desc {
   font-size: 0.88rem;
-  color: #8b9bb4;
+  color: var(--text-muted);
   line-height: 1.5;
   margin-bottom: 1.1rem;
 }

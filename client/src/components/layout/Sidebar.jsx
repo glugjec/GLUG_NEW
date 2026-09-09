@@ -50,11 +50,23 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onToggleMobil
     setTheme(nextTheme)
     localStorage.setItem('glug_theme', nextTheme)
     document.documentElement.setAttribute('data-theme', nextTheme)
+    window.dispatchEvent(new CustomEvent('glug-theme-change', { detail: nextTheme }))
   }
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme)
-  }, [theme])
+    const saved = localStorage.getItem('glug_theme') || 'dark'
+    setTheme(saved)
+    document.documentElement.setAttribute('data-theme', saved)
+
+    const handleExternalTheme = (e) => {
+      const t = e.detail || localStorage.getItem('glug_theme') || 'dark'
+      setTheme(t)
+      document.documentElement.setAttribute('data-theme', t)
+    }
+
+    window.addEventListener('glug-theme-change', handleExternalTheme)
+    return () => window.removeEventListener('glug-theme-change', handleExternalTheme)
+  }, [])
 
   const linkClass = ({ isActive }) =>
     `sb-nav-item${isActive ? ' sb-nav-item-active' : ''}`
@@ -182,12 +194,18 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onToggleMobil
           <div className="sb-controls">
             <button
               type="button"
-              className="sb-theme-switch"
+              className={`sb-theme-pill-toggle ${theme === 'dark' ? 'is-dark' : 'is-light'}`}
               onClick={toggleTheme}
-              aria-label="Toggle color theme"
+              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
             >
-              <Sun size={15} className={`theme-icon ${theme === 'light' ? 'is-active' : ''}`} />
-              <Moon size={15} className={`theme-icon ${theme === 'dark' ? 'is-active' : ''}`} />
+              <div className="sb-theme-pill-thumb" />
+              <span className="sb-theme-pill-item sb-theme-pill-sun">
+                <Sun size={14} />
+              </span>
+              <span className="sb-theme-pill-item sb-theme-pill-moon">
+                <Moon size={14} />
+              </span>
             </button>
           </div>
 

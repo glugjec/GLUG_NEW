@@ -20,12 +20,12 @@
   justify-content: space-between;
   align-items: center;
   background: radial-gradient(circle at 75% 40%, #1e1b4b 0%, #0d1222 60%, #080c18 100%);
-  border: 1px solid #1e2638;
+  border: 1px solid var(--border);
   border-radius: 20px;
   padding: 2.25rem 2.75rem;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-card);
 }
 
 .home-hero-content {
@@ -95,7 +95,7 @@
   align-items: center;
   padding: 0.75rem 1.4rem;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   color: #cbd5e1;
   border-radius: 12px;
   font-size: 0.92rem;
@@ -107,7 +107,7 @@
 .hero-btn-secondary:hover {
   background: rgba(255, 255, 255, 0.1);
   color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 .home-hero-art {
@@ -178,7 +178,7 @@
 .home-section-title {
   font-size: 1.35rem;
   font-weight: 700;
-  color: #f8fafc;
+  color: var(--text);
   letter-spacing: -0.02em;
 }
 
@@ -186,7 +186,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  color: #3b82f6;
+  color: var(--accent);
   font-size: 0.88rem;
   font-weight: 600;
   text-decoration: none;
@@ -195,7 +195,7 @@
 
 .home-view-all:hover {
   gap: 0.55rem;
-  color: #60a5fa;
+  color: var(--accent-hover);
 }
 
 .home-discussions-list {
@@ -208,17 +208,18 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #111622;
-  border: 1px solid #1c2436;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: 14px;
   padding: 1rem 1.35rem;
   cursor: pointer;
   transition: all 0.15s ease-out;
+  box-shadow: var(--shadow-card);
 }
 
 .discussion-card-row:hover {
-  background: #151b2a;
-  border-color: #2b3752;
+  background: var(--bg-hover);
+  border-color: var(--border-subtle);
   transform: translateY(-1px);
 }
 
@@ -238,7 +239,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border: 1px solid #28334a;
+  border: 1px solid var(--border);
 }
 
 .home-avatar-letter {
@@ -264,11 +265,11 @@
 .disc-title {
   font-size: 0.96rem;
   font-weight: 600;
-  color: #f1f5f9;
+  color: var(--text);
 }
 
 .discussion-card-row:hover .disc-title {
-  color: #3b82f6;
+  color: var(--accent);
 }
 
 .disc-tags {
@@ -290,16 +291,16 @@
   align-items: center;
   gap: 0.4rem;
   font-size: 0.8rem;
-  color: #64748b;
+  color: var(--text-dim);
 }
 
 .disc-author {
-  color: #94a3b8;
+  color: var(--text-muted);
   font-weight: 500;
 }
 
 .disc-dot {
-  color: #475569;
+  color: var(--text-dim);
 }
 
 .disc-right {
@@ -320,7 +321,7 @@
   align-items: center;
   gap: 0.35rem;
   font-size: 0.8rem;
-  color: #64748b;
+  color: var(--text-dim);
   font-weight: 500;
 }
 
@@ -346,7 +347,7 @@
 
 .disc-last-text {
   font-size: 0.78rem;
-  color: #64748b;
+  color: var(--text-dim);
 }
 
 .home-widgets-col {
@@ -356,22 +357,24 @@
 }
 
 .home-widget-card {
-  background: #111622;
-  border: 1px solid #1c2436;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: 18px;
   padding: 1.35rem;
+  box-shadow: var(--shadow-card);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .widget-card-title {
   font-size: 1.05rem;
   font-weight: 700;
-  color: #f1f5f9;
+  color: var(--text);
   margin-bottom: 0.5rem;
 }
 
 .widget-card-desc {
   font-size: 0.86rem;
-  color: #8b9bb4;
+  color: var(--text-muted);
   line-height: 1.5;
   margin-bottom: 1.25rem;
 }
@@ -407,9 +410,9 @@
   justify-content: center;
   width: 100%;
   padding: 0.65rem 1rem;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid #232c3f;
-  color: #cbd5e1;
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border);
+  color: var(--text);
   border-radius: 10px;
   font-size: 0.9rem;
   font-weight: 600;
@@ -418,8 +421,7 @@
 }
 
 .cta-btn-login:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #ffffff;
+  background: var(--bg-hover);
 }
 
 .home-stats-2x2 {
@@ -429,13 +431,14 @@
 }
 
 .home-stat-tile {
-  background: #151b2a;
-  border: 1px solid #1f293d;
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 0.9rem 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .stat-tile-icon {
@@ -450,12 +453,12 @@
 .stat-tile-number {
   font-size: 1.25rem;
   font-weight: 800;
-  color: #f8fafc;
+  color: var(--text);
 }
 
 .stat-tile-label {
   font-size: 0.76rem;
-  color: #64748b;
+  color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   font-weight: 600;
@@ -473,7 +476,7 @@
   align-items: center;
   gap: 0.25rem;
   font-size: 0.8rem;
-  color: #3b82f6;
+  color: var(--accent);
   font-weight: 600;
   text-decoration: none;
 }
@@ -495,7 +498,7 @@
 }
 
 .event-item:hover {
-  background: #171e2e;
+  background: var(--bg-hover);
 }
 
 .event-icon-box {
@@ -516,14 +519,14 @@
 .event-title {
   font-size: 0.86rem;
   font-weight: 600;
-  color: #f1f5f9;
+  color: var(--text);
   line-height: 1.3;
   margin-bottom: 0.2rem;
 }
 
 .event-sub {
   font-size: 0.74rem;
-  color: #64748b;
+  color: var(--text-dim);
   margin-bottom: 0.15rem;
 }
 
@@ -532,11 +535,11 @@
   align-items: center;
   gap: 0.25rem;
   font-size: 0.72rem;
-  color: #8b9bb4;
+  color: var(--text-muted);
 }
 
 .event-arrow {
-  color: #475569;
+  color: var(--text-dim);
 }
 
 .quote-mountains-card {
@@ -564,7 +567,7 @@
 
 .mountains-author {
   font-size: 0.78rem;
-  color: #64748b;
+  color: #94a3b8;
   font-weight: 600;
 }
 

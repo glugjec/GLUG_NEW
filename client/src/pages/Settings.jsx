@@ -52,6 +52,8 @@ export default function Settings() {
   const handleThemeChange = (val) => {
     setTheme(val)
     localStorage.setItem('glug_theme', val)
+    document.documentElement.setAttribute('data-theme', val)
+    window.dispatchEvent(new CustomEvent('glug-theme-change', { detail: val }))
   }
 
   const handleFontSizeChange = (val) => {
