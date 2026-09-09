@@ -414,34 +414,22 @@ export default function Forum() {
             <p className="forum-hero-desc">
               Ask questions, share knowledge, help others, and be part of the GLUG community.
             </p>
+            <button
+              type="button"
+              className="forum-hero-new-btn"
+              onClick={() => (user ? setShowModal(true) : navigate('/login'))}
+            >
+              <Plus size={18} /> New Post
+            </button>
           </div>
 
-          <div className="forum-hero-art">
-            <div className="forum-art-quote">
-              <span>Good</span>
-              <span>Questions</span>
-              <span>Great People</span>
-            </div>
-            <div className="forum-tux-silhouette">
-              <svg viewBox="0 0 120 100" className="forum-tux-svg">
-                <ellipse cx="60" cy="90" rx="55" ry="15" fill="#090d16" />
-                <ellipse cx="60" cy="55" rx="26" ry="32" fill="#0f172a" />
-                <ellipse cx="60" cy="58" rx="18" ry="24" fill="#f8fafc" />
-                <circle cx="60" cy="22" r="16" fill="#0f172a" />
-                <polygon points="56,24 64,24 60,30" fill="#f59e0b" />
-                <rect x="42" y="60" width="36" height="18" rx="3" fill="#1e293b" />
-                <circle cx="60" cy="68" r="2.5" fill="#60a5fa" />
-              </svg>
-            </div>
+          <div className="forum-hero-banner-bg">
+            <img
+              src="/discussionbanner.png"
+              alt="GLUG Discussions Banner"
+              className="forum-hero-banner-img"
+            />
           </div>
-
-          <button
-            type="button"
-            className="forum-hero-new-btn"
-            onClick={() => (user ? setShowModal(true) : navigate('/login'))}
-          >
-            <Plus size={18} /> New Post
-          </button>
         </div>
 
         <div className="forum-filter-tabs">
