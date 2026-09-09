@@ -41,7 +41,6 @@ const CATEGORIES_DATA = [
     borderColor: 'rgba(16, 185, 129, 0.4)',
     bgGlow: 'rgba(16, 185, 129, 0.1)',
     iconType: 'terminal',
-    hasTerminalBtn: true,
   },
   {
     id: 'programming',
@@ -267,19 +266,6 @@ export default function Categories() {
 
               <p className="cat-card-desc">{item.desc}</p>
 
-              {item.hasTerminalBtn && (
-                <div className="cat-action-box">
-                  <Link
-                    to="/terminal"
-                    className="cat-terminal-btn"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Terminal size={14} />
-                    <span>Launch Terminal</span>
-                    <ArrowRight size={13} />
-                  </Link>
-                </div>
-              )}
 
               <div className="cat-card-footer">
                 <span className="cat-stat">
