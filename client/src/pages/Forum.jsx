@@ -225,6 +225,25 @@ function renderPostIcon(type) {
   return <HelpCircle size={17} />
 }
 
+function formatRelativeTime(dateInput) {
+  if (!dateInput) return 'Recently'
+  if (typeof dateInput === 'string' && (dateInput.includes('ago') || dateInput.includes('Just now'))) {
+    return dateInput
+  }
+  const date = new Date(dateInput)
+  if (isNaN(date.getTime())) return 'Recently'
+  const now = new Date()
+  const diffSec = Math.floor((now - date) / 1000)
+  if (diffSec < 60) return 'Just now'
+  const diffMin = Math.floor(diffSec / 60)
+  if (diffMin < 60) return `${diffMin}m ago`
+  const diffHours = Math.floor(diffMin / 60)
+  if (diffHours < 24) return `${diffHours}h ago`
+  const diffDays = Math.floor(diffHours / 24)
+  if (diffDays < 7) return `${diffDays}d ago`
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
 export default function Forum() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -232,7 +251,8 @@ export default function Forum() {
 
   const [activeTab, setActiveTab] = useState('latest')
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '')
-  const [posts, setPosts] = useState(DEFAULT_POSTS)
+  const [posts, setPosts] = useState([])
+  const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [newCategory, setNewCategory] = useState('linux')
@@ -241,6 +261,7 @@ export default function Forum() {
   const [submitting, setSubmitting] = useState(false)
 
   const loadPosts = useCallback(async () => {
+    setLoading(true)
     try {
       const params = { limit: 20 }
       if (selectedCategory) params.category = selectedCategory
@@ -260,19 +281,21 @@ export default function Forum() {
           commentCount: p.commentCount ?? (p.comments ? p.comments.length : 0),
           views: p.views || Math.floor(Math.random() * 200 + 40),
           author: { username: p.author?.username || 'member' },
-          timeAgo: new Date(p.createdAt).toLocaleDateString(),
+          timeAgo: formatRelativeTime(p.createdAt),
           iconType: ['tux', 'terminal', 'code', 'settings', 'screen'][idx % 5],
           iconBg: ['#422006', '#022c22', '#3b0764', '#1e3a8a', '#1e1b4b'][idx % 5],
           iconColor: ['#facc15', '#34d399', '#c084fc', '#60a5fa', '#818cf8'][idx % 5]
         }))
         setPosts(mapped)
-      } else if (!selectedCategory) {
+      } else if (!selectedCategory && activeTab === 'latest' && (!res?.posts || res.posts.length === 0)) {
         setPosts(DEFAULT_POSTS)
       } else {
         setPosts([])
       }
     } catch {
       setPosts(DEFAULT_POSTS)
+    } finally {
+      setLoading(false)
     }
   }, [selectedCategory, activeTab])
 
@@ -425,63 +448,91 @@ export default function Forum() {
         )}
 
         <div className="forum-posts-stream">
-          {posts.map((post) => (
-            <div
-              key={post.id}
-              className={`forum-post-row ${post.isPinned ? 'is-pinned-row' : ''}`}
-              onClick={() => navigate(`/forum/posts/${post.id}`)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') navigate(`/forum/posts/${post.id}`)
-              }}
-            >
-              <div className="forum-vote-box" onClick={(e) => handleVote(e, post.id)}>
-                <ArrowUp size={16} className="vote-arrow" />
-                <span className="vote-score">{post.voteScore}</span>
-              </div>
-
-              <div
-                className="forum-post-icon"
-                style={{ background: post.iconBg || '#1e293b', color: post.iconColor || '#94a3b8' }}
-              >
-                {renderPostIcon(post.iconType)}
-              </div>
-
-              <div className="forum-post-center">
-                <div className="forum-post-header">
-                  <h3 className="forum-post-title">{post.title}</h3>
-                  <div className="forum-post-tags">
-                    {post.tags?.map((t) => (
-                      <span key={t} className="forum-post-tag">
-                        {t}
-                      </span>
-                    ))}
+          {loading ? (
+            <div className="forum-skeleton-list">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <div key={n} className="forum-post-row forum-post-skeleton">
+                  <div className="skeleton-vote-box" />
+                  <div className="skeleton-icon-box" />
+                  <div className="skeleton-content-box">
+                    <div className="skeleton-line skeleton-title" />
+                    <div className="skeleton-line skeleton-body" />
                   </div>
                 </div>
-                <p className="forum-post-body-preview">{post.body}</p>
-              </div>
-
-              <div className="forum-post-metrics">
-                <span className="metric-item">
-                  <MessageSquare size={14} /> {post.commentCount}
-                </span>
-                <span className="metric-item">
-                  <Eye size={14} /> {post.views}
-                </span>
-              </div>
-
-              <div className="forum-post-author">
-                <div className="author-avatar-circle">
-                  {(post.author?.username || 'U').charAt(0).toUpperCase()}
-                </div>
-                <div className="author-meta">
-                  <span className="author-name">by {post.author?.username}</span>
-                  <span className="author-time">{post.timeAgo}</span>
-                </div>
-              </div>
+              ))}
             </div>
-          ))}
+          ) : posts.length === 0 ? (
+            <div className="forum-empty-card">
+              <MessageSquare size={32} className="forum-empty-icon" />
+              <h3>No discussions found</h3>
+              <p>Be the first to start a conversation in this category!</p>
+              <button
+                type="button"
+                className="btn-hero-post"
+                onClick={() => setShowModal(true)}
+              >
+                <Plus size={16} /> New Post
+              </button>
+            </div>
+          ) : (
+            posts.map((post) => (
+              <div
+                key={post.id}
+                className={`forum-post-row ${post.isPinned ? 'is-pinned-row' : ''}`}
+                onClick={() => navigate(`/forum/posts/${post.id}`)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') navigate(`/forum/posts/${post.id}`)
+                }}
+              >
+                <div className="forum-vote-box" onClick={(e) => handleVote(e, post.id)}>
+                  <ArrowUp size={16} className="vote-arrow" />
+                  <span className="vote-score">{post.voteScore}</span>
+                </div>
+
+                <div
+                  className="forum-post-icon"
+                  style={{ background: post.iconBg || '#1e293b', color: post.iconColor || '#94a3b8' }}
+                >
+                  {renderPostIcon(post.iconType)}
+                </div>
+
+                <div className="forum-post-center">
+                  <div className="forum-post-header">
+                    <h3 className="forum-post-title">{post.title}</h3>
+                    <div className="forum-post-tags">
+                      {post.tags?.map((t) => (
+                        <span key={t} className="forum-post-tag">
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <p className="forum-post-body-preview">{post.body}</p>
+                </div>
+
+                <div className="forum-post-metrics">
+                  <span className="metric-item">
+                    <MessageSquare size={14} /> {post.commentCount}
+                  </span>
+                  <span className="metric-item">
+                    <Eye size={14} /> {post.views}
+                  </span>
+                </div>
+
+                <div className="forum-post-author">
+                  <div className="author-avatar-circle">
+                    {(post.author?.username || 'U').charAt(0).toUpperCase()}
+                  </div>
+                  <div className="author-meta">
+                    <span className="author-name">by {post.author?.username}</span>
+                    <span className="author-time">{post.timeAgo}</span>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 

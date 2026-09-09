@@ -195,7 +195,8 @@ function renderDiscussionAvatar(item) {
 export default function Home() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [discussions, setDiscussions] = useState(DEFAULT_DISCUSSIONS)
+  const [discussions, setDiscussions] = useState([])
+  const [loadingDiscussions, setLoadingDiscussions] = useState(true)
 
   useEffect(() => {
     async function fetchRecent() {
@@ -203,11 +204,14 @@ export default function Home() {
         const data = await postsApi.list({ limit: 5, sort: 'new' })
         if (data?.posts && data.posts.length > 0) {
           const formatted = data.posts.map((post, idx) => {
+            const date = new Date(post.createdAt)
+            const diffSec = Math.floor((Date.now() - date) / 1000)
+            const timeAgo = diffSec < 60 ? 'Just now' : diffSec < 3600 ? `${Math.floor(diffSec/60)}m ago` : `${Math.floor(diffSec/3600)}h ago`
             return {
               id: post._id || post.id,
               title: post.title,
               author: post.author?.username || 'user',
-              timeAgo: new Date(post.createdAt).toLocaleDateString(),
+              timeAgo,
               tags: [
                 { label: post.category || 'General', color: '#3b82f6' },
                 ...(post.tags || []).slice(0, 1).map((t) => ({ label: t, color: '#64748b' }))
@@ -225,9 +229,13 @@ export default function Home() {
             }
           })
           setDiscussions(formatted)
+        } else {
+          setDiscussions(DEFAULT_DISCUSSIONS)
         }
       } catch {
         setDiscussions(DEFAULT_DISCUSSIONS)
+      } finally {
+        setLoadingDiscussions(false)
       }
     }
     fetchRecent()
@@ -302,17 +310,30 @@ export default function Home() {
           </div>
 
           <div className="home-discussions-list">
-            {discussions.map((item) => (
-              <div
-                key={item.id}
-                className="discussion-card-row"
-                onClick={() => navigate('/forum')}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') navigate('/forum')
-                }}
-              >
+            {loadingDiscussions ? (
+              [1, 2, 3].map((n) => (
+                <div key={n} className="discussion-card-row" style={{ opacity: 0.6, pointerEvents: 'none' }}>
+                  <div className="disc-left">
+                    <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--bg-hover)' }} />
+                    <div className="disc-info">
+                      <div style={{ width: 220, height: 16, borderRadius: 4, background: 'var(--bg-hover)', marginBottom: 6 }} />
+                      <div style={{ width: 120, height: 12, borderRadius: 4, background: 'var(--bg-hover)' }} />
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              discussions.map((item) => (
+                <div
+                  key={item.id}
+                  className="discussion-card-row"
+                  onClick={() => navigate(`/forum/posts/${item.id}`)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') navigate(`/forum/posts/${item.id}`)
+                  }}
+                >
                 <div className="disc-left">
                   {renderDiscussionAvatar(item)}
                   <div className="disc-info">
@@ -367,9 +388,10 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        </section>
+            ))
+          )}
+        </div>
+      </section>
       </div>
 
       <aside className="home-widgets-col">
