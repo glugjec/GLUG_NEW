@@ -1,50 +1,482 @@
-import Hero from '../components/home/Hero.jsx'
-import FeatureCard from '../components/home/FeatureCard.jsx'
-import LinuxTerminal from '../components/linux/LinuxTerminal.jsx'
-import CodeBackground from '../components/layout/CodeBackground.jsx'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext.jsx'
+import { postsApi } from '../api.js'
+import {
+  ArrowRight,
+  MessageSquare,
+  Eye,
+  Calendar,
+  MapPin,
+  Users,
+  FileText,
+  BookOpen,
+  ChevronRight,
+  Sparkles,
+  Terminal,
+  Code2
+} from 'lucide-react'
+import './Home.css'
 
-const features = [
+const DEFAULT_DISCUSSIONS = [
   {
-    title: 'What is GLUG?',
-    description:
-      'GLUG (GNU/Linux User Group) is a community hub where students learn about open source, Linux and programming — and discuss everything that matters to them.',
+    id: 'distro-2025',
+    title: 'Best Linux distro for beginners in 2025?',
+    author: 'ananya',
+    timeAgo: '2 hours ago',
+    tags: [
+      { label: 'Linux', color: '#3b82f6' },
+      { label: 'Beginner', color: '#64748b' }
+    ],
+    replies: 12,
+    views: 245,
+    lastReply: {
+      time: '5 min ago',
+      user: 'kevin',
+      avatarColor: '#10b981'
+    },
+    avatarType: 'tux',
+    avatarBg: '#0f172a'
   },
   {
-    title: 'Learn',
-    description:
-      'Head to the Resources page for curated study material on Linux fundamentals, the command line, and system administration.',
+    id: 'dual-boot-win11',
+    title: 'How to dual boot Ubuntu with Windows 11?',
+    author: 'rishabh',
+    timeAgo: '5 hours ago',
+    tags: [
+      { label: 'Installation', color: '#3b82f6' },
+      { label: 'Support', color: '#6366f1' }
+    ],
+    replies: 8,
+    views: 160,
+    lastReply: {
+      time: '1 hour ago',
+      user: 'arjun',
+      avatarColor: '#f59e0b'
+    },
+    avatarType: 'letter',
+    avatarLetter: 'R',
+    avatarBg: '#ea580c'
   },
   {
-    title: 'Discuss',
-    description:
-      'The Forum is the heart of the community. Ask questions, share knowledge, and connect with fellow students.',
+    id: 'useful-terminal-commands',
+    title: 'Useful terminal commands everyone should know',
+    author: 'kaustubh',
+    timeAgo: '1 day ago',
+    tags: [
+      { label: 'Tips & Tricks', color: '#8b5cf6' },
+      { label: 'Command Line', color: '#64748b' }
+    ],
+    replies: 24,
+    views: 398,
+    lastReply: {
+      time: '3 hours ago',
+      user: 'devansh',
+      avatarColor: '#06b6d4'
+    },
+    avatarType: 'icon-terminal',
+    avatarBg: '#059669'
   },
+  {
+    id: 'sys-programming-resources',
+    title: 'Resources to learn system programming',
+    author: 'kaustubh',
+    timeAgo: '1 day ago',
+    tags: [
+      { label: 'Programming', color: '#3b82f6' },
+      { label: 'Resources', color: '#6366f1' }
+    ],
+    replies: 15,
+    views: 312,
+    lastReply: {
+      time: '4 hours ago',
+      user: 'isha',
+      avatarColor: '#ec4899'
+    },
+    avatarType: 'icon-code',
+    avatarBg: '#9333ea'
+  },
+  {
+    id: 'gluginit-planning',
+    title: 'Planning GLUGINIT – Linux Installation Drive',
+    author: 'team-glug',
+    timeAgo: '2 days ago',
+    tags: [
+      { label: 'Events', color: '#3b82f6' },
+      { label: 'GLUG', color: '#64748b' }
+    ],
+    replies: 18,
+    views: 521,
+    lastReply: {
+      time: '6 hours ago',
+      user: 'tarun',
+      avatarColor: '#3b82f6'
+    },
+    avatarType: 'icon-users',
+    avatarBg: '#2563eb'
+  }
 ]
 
-export default function Home() {
-  return (
-    <>
-      <CodeBackground />
-      <section className="page">
-      <Hero
-        title="Welcome to GLUG"
-        subtitle="A community built by students, for students — learn Linux, share ideas, and grow together."
-        primaryAction={{ to: '/resources', label: 'Explore Resources' }}
-        secondaryAction={{ to: '/forum', label: 'Join the Forum' }}
-      >
-        <LinuxTerminal username="student" hostname="glug" height={400} />
-      </Hero>
+const UPCOMING_EVENTS = [
+  {
+    id: 'gluginit',
+    title: 'GLUGINIT Linux Installation Drive',
+    date: 'Sep 19, 2026 · 5:00 PM',
+    location: 'Main Auditorium',
+    type: 'install',
+    iconBg: '#1e3a8a',
+    iconColor: '#60a5fa'
+  },
+  {
+    id: 'workshop-os',
+    title: 'Intro to Open Source Workshop',
+    date: 'Sep 26, 2026 · 4:00 PM',
+    location: 'Online (Meet)',
+    type: 'workshop',
+    iconBg: '#3b0764',
+    iconColor: '#c084fc'
+  },
+  {
+    id: 'hangout',
+    title: 'Community Hangout',
+    date: 'Oct 5, 2026 · 6:00 PM',
+    location: 'Cafeteria',
+    type: 'social',
+    iconBg: '#172554',
+    iconColor: '#38bdf8'
+  }
+]
 
-      <div className="cards">
-        {features.map((feature) => (
-          <FeatureCard
-            key={feature.title}
-            title={feature.title}
-            description={feature.description}
-          />
-        ))}
+function renderDiscussionAvatar(item) {
+  if (item.avatarType === 'tux') {
+    return (
+      <div className="home-avatar" style={{ background: item.avatarBg }}>
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="#fbbf24">
+          <path d="M12 2C9.24 2 7 4.24 7 7v4c0 .35.04.7.1 1.03C5.3 12.67 4 14.67 4 17c0 2.2 1.8 4 4 4h8c2.2 0 4-1.8 4-4 0-2.33-1.3-4.33-3.1-4.97.06-.33.1-.68.1-1.03V7c0-2.76-2.24-5-5-5zm-2 6c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm4 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-2 2.5c1.1 0 2 .45 2 1h-4c0-.55.9-1 2-1z" />
+        </svg>
       </div>
-      </section>
-    </>
+    )
+  }
+  if (item.avatarType === 'letter') {
+    return (
+      <div className="home-avatar home-avatar-letter" style={{ background: item.avatarBg }}>
+        {item.avatarLetter || item.author.charAt(0).toUpperCase()}
+      </div>
+    )
+  }
+  if (item.avatarType === 'icon-terminal') {
+    return (
+      <div className="home-avatar" style={{ background: item.avatarBg }}>
+        <Terminal size={18} color="#ffffff" />
+      </div>
+    )
+  }
+  if (item.avatarType === 'icon-code') {
+    return (
+      <div className="home-avatar" style={{ background: item.avatarBg }}>
+        <Code2 size={18} color="#ffffff" />
+      </div>
+    )
+  }
+  if (item.avatarType === 'icon-users') {
+    return (
+      <div className="home-avatar" style={{ background: item.avatarBg }}>
+        <Users size={18} color="#ffffff" />
+      </div>
+    )
+  }
+  return (
+    <div className="home-avatar" style={{ background: '#334155' }}>
+      {item.author.charAt(0).toUpperCase()}
+    </div>
+  )
+}
+
+export default function Home() {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const [discussions, setDiscussions] = useState(DEFAULT_DISCUSSIONS)
+
+  useEffect(() => {
+    async function fetchRecent() {
+      try {
+        const data = await postsApi.list({ limit: 5, sort: 'new' })
+        if (data?.posts && data.posts.length > 0) {
+          const formatted = data.posts.map((post, idx) => {
+            return {
+              id: post._id || post.id,
+              title: post.title,
+              author: post.author?.username || 'user',
+              timeAgo: new Date(post.createdAt).toLocaleDateString(),
+              tags: [
+                { label: post.category || 'General', color: '#3b82f6' },
+                ...(post.tags || []).slice(0, 1).map((t) => ({ label: t, color: '#64748b' }))
+              ],
+              replies: post.commentCount || (post.comments ? post.comments.length : 0),
+              views: post.views || Math.floor(Math.random() * 200 + 50),
+              lastReply: {
+                time: 'recently',
+                user: post.author?.username || 'member',
+                avatarColor: '#10b981'
+              },
+              avatarType: idx % 2 === 0 ? 'letter' : 'icon-terminal',
+              avatarLetter: (post.author?.username || 'U').charAt(0).toUpperCase(),
+              avatarBg: ['#ea580c', '#059669', '#9333ea', '#2563eb', '#d97706'][idx % 5]
+            }
+          })
+          setDiscussions(formatted)
+        }
+      } catch {
+        setDiscussions(DEFAULT_DISCUSSIONS)
+      }
+    }
+    fetchRecent()
+  }, [])
+
+  return (
+    <div className="home-page-container">
+      <div className="home-main-col">
+        <div className="home-hero-card">
+          <div className="home-hero-content">
+            <span className="home-hero-badge">WELCOME TO GLUG</span>
+            <h1 className="home-hero-title">
+              Learn Linux.<br />
+              Share Ideas.<br />
+              <span className="home-gradient-text">Grow Together.</span>
+            </h1>
+            <p className="home-hero-desc">
+              A student-driven community for open source, Linux and everything tech.
+            </p>
+            <div className="home-hero-actions">
+              <Link to="/forum" className="hero-btn-primary">
+                Start a Discussion <ArrowRight size={16} />
+              </Link>
+              <Link to="/categories" className="hero-btn-secondary">
+                Explore Categories
+              </Link>
+            </div>
+          </div>
+
+          <div className="home-hero-art">
+            <div className="home-hero-quote">
+              <span>Better</span>
+              <span>Systems</span>
+              <span>Brighter</span>
+              <span>People</span>
+            </div>
+
+            <div className="home-hero-stars">
+              <span className="star star-1">✦</span>
+              <span className="star star-2">✦</span>
+              <span className="star star-3">⋆</span>
+              <span className="star star-4">✦</span>
+              <div className="home-moon-glow"></div>
+            </div>
+
+            <div className="home-tux-cliff">
+              <svg viewBox="0 0 160 160" className="home-tux-svg">
+                <ellipse cx="80" cy="155" rx="75" ry="25" fill="#090d16" />
+                <ellipse cx="80" cy="98" rx="34" ry="42" fill="#0f172a" />
+                <ellipse cx="80" cy="102" rx="23" ry="32" fill="#f8fafc" />
+                <circle cx="80" cy="55" r="22" fill="#0f172a" />
+                <ellipse cx="73" cy="51" rx="4" ry="6" fill="#f8fafc" />
+                <circle cx="74" cy="51" r="2.2" fill="#090d16" />
+                <ellipse cx="87" cy="51" rx="4" ry="6" fill="#f8fafc" />
+                <circle cx="86" cy="51" r="2.2" fill="#090d16" />
+                <polygon points="75,58 85,58 80,67" fill="#f59e0b" />
+                <ellipse cx="48" cy="100" rx="8" ry="24" fill="#0f172a" transform="rotate(-15 48 100)" />
+                <ellipse cx="112" cy="100" rx="8" ry="24" fill="#0f172a" transform="rotate(15 112 100)" />
+                <ellipse cx="64" cy="144" rx="14" ry="7" fill="#f59e0b" />
+                <ellipse cx="96" cy="144" rx="14" ry="7" fill="#f59e0b" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <section className="home-discussions-section">
+          <div className="home-section-header">
+            <h2 className="home-section-title">Recent Discussions</h2>
+            <Link to="/forum" className="home-view-all">
+              View all <ArrowRight size={14} />
+            </Link>
+          </div>
+
+          <div className="home-discussions-list">
+            {discussions.map((item) => (
+              <div
+                key={item.id}
+                className="discussion-card-row"
+                onClick={() => navigate('/forum')}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') navigate('/forum')
+                }}
+              >
+                <div className="disc-left">
+                  {renderDiscussionAvatar(item)}
+                  <div className="disc-info">
+                    <div className="disc-title-row">
+                      <span className="disc-title">{item.title}</span>
+                      <div className="disc-tags">
+                        {item.tags.map((tag) => (
+                          <span
+                            key={tag.label}
+                            className="disc-tag"
+                            style={{
+                              backgroundColor: `${tag.color}1f`,
+                              color: tag.color,
+                              borderColor: `${tag.color}35`
+                            }}
+                          >
+                            {tag.label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="disc-meta">
+                      <span className="disc-author">{item.author}</span>
+                      <span className="disc-dot">·</span>
+                      <span className="disc-time">{item.timeAgo}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="disc-right">
+                  <div className="disc-metrics">
+                    <span className="disc-metric">
+                      <MessageSquare size={14} />
+                      {item.replies} replies
+                    </span>
+                    <span className="disc-metric">
+                      <Eye size={14} />
+                      {item.views} views
+                    </span>
+                  </div>
+
+                  <div className="disc-last-activity">
+                    <div
+                      className="disc-mini-avatar"
+                      style={{ background: item.lastReply.avatarColor }}
+                    >
+                      {item.lastReply.user.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="disc-last-text">
+                      {item.lastReply.time} by {item.lastReply.user}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+
+      <aside className="home-widgets-col">
+        {!user ? (
+          <div className="home-widget-card cta-card">
+            <h3 className="widget-card-title">Be Part of the Community</h3>
+            <p className="widget-card-desc">
+              Ask questions, share knowledge, and connect with fellow students.
+            </p>
+            <div className="cta-btn-group">
+              <Link to="/register" className="cta-btn-signup">
+                Sign Up
+              </Link>
+              <Link to="/login" className="cta-btn-login">
+                Log In
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="home-widget-card cta-card">
+            <h3 className="widget-card-title">Welcome back, {user.username}!</h3>
+            <p className="widget-card-desc">
+              Ready to explore open source code or share your technical thoughts today?
+            </p>
+            <div className="cta-btn-group">
+              <Link to="/forum" className="cta-btn-signup">
+                Go to Forum
+              </Link>
+              <Link to="/terminal" className="cta-btn-login">
+                Open Terminal
+              </Link>
+            </div>
+          </div>
+        )}
+
+        <div className="home-widget-card stats-card">
+          <div className="home-stats-2x2">
+            <div className="home-stat-tile">
+              <Users size={18} className="stat-tile-icon icon-blue" />
+              <span className="stat-tile-number">1.2K</span>
+              <span className="stat-tile-label">Members</span>
+            </div>
+            <div className="home-stat-tile">
+              <FileText size={18} className="stat-tile-icon icon-cyan" />
+              <span className="stat-tile-number">450</span>
+              <span className="stat-tile-label">Discussions</span>
+            </div>
+            <div className="home-stat-tile">
+              <Calendar size={18} className="stat-tile-icon icon-indigo" />
+              <span className="stat-tile-number">25</span>
+              <span className="stat-tile-label">Events</span>
+            </div>
+            <div className="home-stat-tile">
+              <BookOpen size={18} className="stat-tile-icon icon-purple" />
+              <span className="stat-tile-number">120</span>
+              <span className="stat-tile-label">Resources</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="home-widget-card events-card">
+          <div className="events-card-header">
+            <h3 className="widget-card-title">Upcoming Events</h3>
+            <Link to="/forum?category=events" className="events-view-all">
+              View all <ArrowRight size={13} />
+            </Link>
+          </div>
+
+          <div className="events-list">
+            {UPCOMING_EVENTS.map((evt) => (
+              <div key={evt.id} className="event-item">
+                <div
+                  className="event-icon-box"
+                  style={{ background: evt.iconBg, color: evt.iconColor }}
+                >
+                  <Calendar size={17} />
+                </div>
+                <div className="event-info">
+                  <h4 className="event-title">{evt.title}</h4>
+                  <div className="event-sub">
+                    <span>{evt.date}</span>
+                  </div>
+                  <div className="event-location">
+                    <MapPin size={11} />
+                    <span>{evt.location}</span>
+                  </div>
+                </div>
+                <ChevronRight size={16} className="event-arrow" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="home-widget-card quote-mountains-card">
+          <div className="mountains-card-text">
+            <p className="mountains-quote">“Same Students. A More Open Tomorrow.”</p>
+            <span className="mountains-author">— GLUG</span>
+          </div>
+          <div className="mountains-silhouette">
+            <svg viewBox="0 0 200 70" preserveAspectRatio="none" className="mountains-svg">
+              <polygon points="0,70 30,35 65,55 105,20 145,50 175,25 200,70" fill="#2e1065" opacity="0.6" />
+              <polygon points="0,70 45,45 80,60 120,32 160,58 200,40 200,70" fill="#1e1b4b" opacity="0.9" />
+              <polygon points="0,70 25,55 70,70 110,48 150,65 185,50 200,70" fill="#0f172a" />
+            </svg>
+          </div>
+        </div>
+      </aside>
+    </div>
   )
 }

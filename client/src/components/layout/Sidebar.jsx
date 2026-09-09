@@ -1,99 +1,77 @@
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { avatarInitials, avatarColor } from '../common/avatar.js'
+import {
+  Home,
+  MessageSquare,
+  Folder,
+  Users,
+  Calendar,
+  FileText,
+  Terminal,
+  Code2,
+  Info,
+  Plus,
+  Sun,
+  Moon,
+  Shield,
+  LogOut,
+  ChevronUp,
+  PanelLeftClose,
+  PanelLeft
+} from 'lucide-react'
 
-const NAV_SECTIONS = [
-  {
-    title: 'Community',
-    items: [
-      { to: '/', label: 'Home', icon: 'home', end: true },
-      { to: '/resources', label: 'Resources', icon: 'book' },
-      { to: '/compiler', label: 'Compiler', icon: 'code' },
-      { to: '/forum', label: 'Forum', icon: 'chat' },
-    ],
-  },
+const NAV_ITEMS = [
+  { to: '/', label: 'Home', icon: Home, end: true },
+  { to: '/forum', label: 'Discussions', icon: MessageSquare },
+  { to: '/categories', label: 'Categories', icon: Folder },
+  { to: '/members', label: 'Members', icon: Users },
+  { to: '/events', label: 'Events', icon: Calendar },
+  { to: '/resources', label: 'Resources', icon: FileText },
+  { to: '/terminal', label: 'Terminal', icon: Terminal },
+  { to: '/compiler', label: 'Compiler', icon: Code2 },
+  { to: '/about', label: 'About', icon: Info },
 ]
-
-const icon = (name) => {
-  switch (name) {
-    case 'home':
-      return (
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-          <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8h5Z" />
-        </svg>
-      )
-    case 'book':
-      return (
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-          <path d="M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2Zm-1 14H7v-2h10v2Zm0-4H7v-2h10v2Z" />
-        </svg>
-      )
-    case 'chat':
-      return (
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-          <path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2Zm-3 9H7V9h10v2Zm0-4H7V5h10v2Z" />
-        </svg>
-      )
-    case 'code':
-      return (
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-          <path d="M8.7 15.9 4.8 12l3.9-3.9a1 1 0 0 0-1.4-1.4L2.4 11.3a1 1 0 0 0 0 1.4l4.9 4.9a1 1 0 0 0 1.4-1.4Zm6.6 0 3.9-3.9-3.9-3.9a1 1 0 1 1 1.4-1.4l4.9 4.9a1 1 0 0 1 0 1.4l-4.9 4.9a1 1 0 0 1-1.4-1.4ZM13 6.3a1 1 0 0 0-1.9-.5l-4 12a1 1 0 1 0 1.9.5l4-12Z" />
-        </svg>
-      )
-    case 'shield':
-      return (
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-          <path d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4Zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8Z" />
-        </svg>
-      )
-    default:
-      return null
-  }
-}
-
-const SectionIcon = ({ name }) => icon(name)
 
 export default function Sidebar({ collapsed, onToggle, mobileOpen, onToggleMobile }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [cardOpen, setCardOpen] = useState(false)
-  const [cardDir, setCardDir] = useState('up')   // 'up' | 'right'
   const [cardPos, setCardPos] = useState({ bottom: 0, left: 0 })
+  const [theme, setTheme] = useState(() => localStorage.getItem('glug_theme') || 'dark')
   const wrapRef = useRef(null)
   const btnRef = useRef(null)
   const cardRef = useRef(null)
 
-  const linkClass = ({ isActive }) =>
-    `sidebar-link${isActive ? ' sidebar-link-active' : ''}`
+  const toggleTheme = () => {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark'
+    setTheme(nextTheme)
+    localStorage.setItem('glug_theme', nextTheme)
+    document.documentElement.setAttribute('data-theme', nextTheme)
+  }
 
-  // Compute fixed position from the trigger button
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+  }, [theme])
+
+  const linkClass = ({ isActive }) =>
+    `sb-nav-item${isActive ? ' sb-nav-item-active' : ''}`
+
   const openCard = () => {
     if (btnRef.current) {
       const r = btnRef.current.getBoundingClientRect()
-      if (collapsed) {
-        // Collapsed: card pops out to the RIGHT of the avatar
-        setCardDir('right')
-        setCardPos({
-          bottom: window.innerHeight - r.bottom,
-          left: r.right + 10,
-        })
-      } else {
-        // Expanded: card pops UP above the profile strip
-        setCardDir('up')
-        setCardPos({
-          bottom: window.innerHeight - r.top + 8,
-          left: r.left,
-        })
-      }
+      setCardPos({
+        bottom: window.innerHeight - r.top + 8,
+        left: collapsed ? r.right + 10 : r.left,
+      })
     }
     setCardOpen(true)
   }
 
-  const toggleCard = () => cardOpen ? setCardOpen(false) : openCard()
+  const toggleCard = () => (cardOpen ? setCardOpen(false) : openCard())
 
-  // Close card on outside click (including clicks inside errors of the card)
   useEffect(() => {
     if (!cardOpen) return
     const handler = (e) => {
@@ -118,69 +96,115 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onToggleMobil
         onClick={onToggleMobile}
         aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
       >
-        {mobileOpen ? (
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-            <path d="M18.3 5.71 12 12l6.3 6.29-1.42 1.42-6.3-6.3-6.29 6.3-1.42-1.42L10.59 12 4.3 5.71l1.41-1.42L12 10.59l6.3-6.3 1.41 1.42Z" />
-          </svg>
-        ) : (
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-            <path d="M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z" />
-          </svg>
-        )}
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+          <path d="M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z" />
+        </svg>
       </button>
 
-      <aside className={`sidebar${collapsed ? ' is-collapsed' : ''}${mobileOpen ? ' is-mobile-open' : ''}`}>
-        <div className="sidebar-top">
+      <aside className={`sidebar-v2${collapsed ? ' is-collapsed' : ''}${mobileOpen ? ' is-mobile-open' : ''}`}>
+        <div className="sb-header">
+          <Link to="/" className="sb-brand">
+            <div className="sb-brand-logo">G</div>
+            <div className="sb-brand-meta">
+              <span className="sb-brand-title">GLUG</span>
+              <span className="sb-brand-sub">Learn · Share · Grow</span>
+            </div>
+          </Link>
           <button
             type="button"
-            className="sidebar-toggle"
+            className="sb-collapse-btn"
             onClick={onToggle}
-            aria-label={collapsed ? 'Expand menu' : 'Collapse menu'}
+            aria-label={collapsed ? 'Expand' : 'Collapse'}
           >
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-              <path d="M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z" />
-            </svg>
+            {collapsed ? <PanelLeft size={17} /> : <PanelLeftClose size={17} />}
           </button>
         </div>
 
-        <nav className="sidebar-nav">
-          {NAV_SECTIONS.map((section) => (
-            <div className="sidebar-section" key={section.title}>
-              <p className="sidebar-section-title">{section.title}</p>
-              {section.items.map((item) => (
-                <NavLink key={item.to} to={item.to} end={item.end} className={linkClass}>
-                  <span className="sidebar-icon">{SectionIcon({ name: item.icon })}</span>
-                  <span className="sidebar-label">{item.label}</span>
-                </NavLink>
-              ))}
-            </div>
-          ))}
+        <nav className="sb-nav-list">
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={linkClass}
+                title={collapsed ? item.label : undefined}
+              >
+                <span className="sb-nav-icon">
+                  <Icon size={19} />
+                </span>
+                <span className="sb-nav-text">{item.label}</span>
+              </NavLink>
+            )
+          })}
 
           {user?.role === 'admin' && (
-            <div className="sidebar-section">
-              <p className="sidebar-section-title">Administration</p>
-              <NavLink to="/admin" className={linkClass}>
-                <span className="sidebar-icon" style={{ color: '#f2c94c' }}>{SectionIcon({ name: 'shield' })}</span>
-                <span className="sidebar-label" style={{ color: '#f2c94c', fontWeight: 600 }}>Admin Panel</span>
-              </NavLink>
-            </div>
+            <NavLink
+              to="/admin"
+              className={linkClass}
+              title={collapsed ? 'Admin Panel' : undefined}
+            >
+              <span className="sb-nav-icon" style={{ color: '#f59e0b' }}>
+                <Shield size={19} />
+              </span>
+              <span className="sb-nav-text" style={{ color: '#f59e0b', fontWeight: 600 }}>
+                Admin Panel
+              </span>
+            </NavLink>
           )}
+
+          <div className="sb-action-wrap">
+            <Link to="/forum" className="sb-new-post-btn" title={collapsed ? 'New Post' : undefined}>
+              <Plus size={18} />
+              <span className="sb-nav-text">New Post</span>
+            </Link>
+          </div>
         </nav>
 
-        {/* ── Profile area at the bottom ── */}
-        <div className="sidebar-bottom">
+        <div className="sb-footer">
+          <div className="sb-quote-card">
+            <p className="sb-quote-text">“Open minds build a better world.”</p>
+            <span className="sb-quote-author">— GLUG</span>
+            <div className="sb-quote-art">
+              <svg viewBox="0 0 100 45" className="sb-tux-mini-svg">
+                <ellipse cx="50" cy="38" rx="45" ry="12" fill="#090d16" />
+                <ellipse cx="50" cy="22" rx="14" ry="16" fill="#0f172a" />
+                <ellipse cx="50" cy="24" rx="9" ry="12" fill="#f8fafc" />
+                <circle cx="50" cy="11" r="8" fill="#0f172a" />
+                <polygon points="48,13 52,13 50,17" fill="#f59e0b" />
+                <ellipse cx="44" cy="35" rx="5" ry="2.5" fill="#f59e0b" />
+                <ellipse cx="56" cy="35" rx="5" ry="2.5" fill="#f59e0b" />
+              </svg>
+            </div>
+          </div>
+
+          <div className="sb-controls">
+            <button
+              type="button"
+              className="sb-theme-switch"
+              onClick={toggleTheme}
+              aria-label="Toggle color theme"
+            >
+              <Sun size={15} className={`theme-icon ${theme === 'light' ? 'is-active' : ''}`} />
+              <Moon size={15} className={`theme-icon ${theme === 'dark' ? 'is-active' : ''}`} />
+            </button>
+          </div>
+
           {user ? (
-            <div className="sb-profile-wrap" ref={wrapRef}>
-              {/* Floating profile card — portaled to <body> so it escapes the
-                  sidebar's overflow/transform and always renders on screen */}
+            <div className="sb-user-box" ref={wrapRef}>
               {createPortal(
                 <div
                   ref={cardRef}
-                  className={`sb-profile-card${cardOpen ? ' sb-profile-card--open' : ''}${cardDir === 'right' ? ' sb-profile-card--right' : ''}`}
+                  className={`sb-profile-card${cardOpen ? ' sb-profile-card--open' : ''}`}
                   style={{ bottom: cardPos.bottom, left: cardPos.left }}
                 >
-                  {/* Card header banner */}
-                  <div className="sb-card-banner" style={{ background: `linear-gradient(135deg, ${avatarColor(user.username)}55, ${avatarColor(user.username)}22)` }} />
+                  <div
+                    className="sb-card-banner"
+                    style={{
+                      background: `linear-gradient(135deg, ${avatarColor(user.username)}66, #1e2638)`
+                    }}
+                  />
                   <div className="sb-card-identity">
                     <div
                       className="sb-card-avatar"
@@ -193,50 +217,55 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onToggleMobil
                       <span className="sb-card-email">{user.email}</span>
                     </div>
                   </div>
-
                   <div className="sb-card-divider" />
-
-                  <button className="sb-card-action" onClick={handleLogout}>
-                    <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor">
-                      <path d="M17 8l-1.41 1.41L17.17 11H9v2h8.17l-1.58 1.58L17 16l4-4-4-4ZM5 5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7v-2H5V5Z" />
-                    </svg>
-                    Log out
+                  <Link
+                    to="/profile"
+                    className="sb-card-action"
+                    onClick={() => setCardOpen(false)}
+                  >
+                    Profile
+                  </Link>
+                  <Link
+                    to="/settings"
+                    className="sb-card-action"
+                    onClick={() => setCardOpen(false)}
+                  >
+                    Settings
+                  </Link>
+                  <div className="sb-card-divider" />
+                  <button className="sb-card-action sb-card-danger" onClick={handleLogout}>
+                    <LogOut size={16} /> Log out
                   </button>
                 </div>,
                 document.body
               )}
 
-              {/* Clickable profile strip */}
               <button
                 ref={btnRef}
-                className={`sb-profile-btn${cardOpen ? ' sb-profile-btn--active' : ''}`}
+                className="sb-user-btn"
                 onClick={toggleCard}
-                aria-label="Open profile menu"
+                aria-label="User account"
               >
                 <div
-                  className="sb-avatar"
+                  className="sb-avatar-pill"
                   style={{ background: avatarColor(user.username) }}
                 >
                   {avatarInitials(user.username)}
                 </div>
-                <div className="sb-info sidebar-label">
-                  <span className="sb-name">{user.username}</span>
-                  <span className="sb-sub">{user.email}</span>
+                <div className="sb-user-meta sb-nav-text">
+                  <span className="sb-user-name">{user.username}</span>
+                  <span className="sb-user-handle">{user.email}</span>
                 </div>
-                <svg className="sb-chevron sidebar-label" viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
-                  <path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14l-6-6Z" />
-                </svg>
+                <ChevronUp size={15} className="sb-user-chev sb-nav-text" />
               </button>
             </div>
           ) : (
-            <NavLink to="/login" className="sb-profile-btn sb-profile-btn--guest">
-              <div className="sb-avatar sb-avatar--guest">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                  <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-5.33 0-8 2.67-8 4v1h16v-1c0-1.33-2.67-4-8-4Z" />
-                </svg>
-              </div>
-              <span className="sidebar-label">Log in</span>
-            </NavLink>
+            <Link to="/login" className="sb-login-link">
+              <span className="sb-nav-icon">
+                <Users size={18} />
+              </span>
+              <span className="sb-nav-text">Sign In</span>
+            </Link>
           )}
         </div>
       </aside>

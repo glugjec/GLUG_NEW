@@ -13,7 +13,6 @@ export default function Layout() {
     setMobileOpen(false)
   }, [location.pathname])
 
-  // Let portaled overlays (e.g. expanded terminal) know about the sidebar width
   useEffect(() => {
     document.body.classList.toggle('glug-collapsed', collapsed)
     return () => document.body.classList.remove('glug-collapsed')
@@ -29,15 +28,15 @@ export default function Layout() {
   }, [])
 
   return (
-    <div className={`app-shell${collapsed ? ' is-collapsed' : ''}${mobileOpen ? ' is-mobile-open' : ''}`}>
-      <TopBar />
-      <div className="app-body">
-        <Sidebar
-          collapsed={collapsed}
-          onToggle={() => setCollapsed(!collapsed)}
-          mobileOpen={mobileOpen}
-          onToggleMobile={() => setMobileOpen(!mobileOpen)}
-        />
+    <div className={`app-shell-v2${collapsed ? ' is-collapsed' : ''}${mobileOpen ? ' is-mobile-open' : ''}`}>
+      <Sidebar
+        collapsed={collapsed}
+        onToggle={() => setCollapsed(!collapsed)}
+        mobileOpen={mobileOpen}
+        onToggleMobile={() => setMobileOpen(!mobileOpen)}
+      />
+      <div className="app-main-viewport">
+        <TopBar />
         <main className="main-content">
           <Outlet />
           <Footer />
