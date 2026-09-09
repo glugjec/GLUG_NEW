@@ -245,6 +245,43 @@ function formatRelativeTime(dateInput) {
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+function UserAvatar({ src, username, size = 30 }) {
+  const [error, setError] = useState(false)
+  if (src && !error) {
+    return (
+      <img
+        src={src}
+        alt={username || 'User'}
+        referrerPolicy="no-referrer"
+        crossOrigin="anonymous"
+        onError={() => setError(true)}
+        className="author-avatar-img"
+        style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+      />
+    )
+  }
+  return (
+    <div
+      className="author-avatar-circle"
+      style={{
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        background: avatarColor(username),
+        color: '#fff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: `${Math.round(size * 0.4)}px`,
+        fontWeight: 700,
+        flexShrink: 0
+      }}
+    >
+      {avatarInitials(username)}
+    </div>
+  )
+}
+
 export default function Forum() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -542,20 +579,11 @@ export default function Forum() {
                 </div>
 
                 <div className="forum-post-author">
-                  {post.author?.avatar ? (
-                    <img
-                      src={post.author.avatar}
-                      alt={post.author.username}
-                      className="author-avatar-img"
-                    />
-                  ) : (
-                    <div
-                      className="author-avatar-circle"
-                      style={{ background: avatarColor(post.author?.username) }}
-                    >
-                      {avatarInitials(post.author?.username)}
-                    </div>
-                  )}
+                  <UserAvatar
+                    src={post.author?.avatar}
+                    username={post.author?.username}
+                    size={30}
+                  />
                   <div className="author-meta">
                     <span className="author-name">by {post.author?.username}</span>
                     <span className="author-time">{post.timeAgo}</span>

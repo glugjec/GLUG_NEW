@@ -58,6 +58,43 @@ function capitalize(str) {
   return str.charAt(0).toUpperCase() + str.slice(1)
 }
 
+function UserAvatar({ src, username, size = 36, className = '' }) {
+  const [error, setError] = useState(false)
+  if (src && !error) {
+    return (
+      <img
+        src={src}
+        alt={username || 'User'}
+        referrerPolicy="no-referrer"
+        crossOrigin="anonymous"
+        onError={() => setError(true)}
+        className={className}
+        style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+      />
+    )
+  }
+  return (
+    <div
+      className={className}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        background: avatarColor(username),
+        color: '#fff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: `${Math.round(size * 0.4)}px`,
+        fontWeight: 700,
+        flexShrink: 0
+      }}
+    >
+      {avatarInitials(username)}
+    </div>
+  )
+}
+
 const DEMO_DISCUSSION = {
   id: 'distro-2025',
   title: 'Best Linux distro for beginners in 2025?',
@@ -375,21 +412,12 @@ export default function PostDetail() {
           <article className="discussion-card">
             <header className="discussion-author-row">
               <div className="author-meta-left">
-                {activePost.author?.avatar ? (
-                  <img
-                    src={activePost.author.avatar}
-                    alt={authorName}
-                    className="author-avatar"
-                    style={{ objectFit: 'cover' }}
-                  />
-                ) : (
-                  <div
-                    className="author-avatar"
-                    style={{ background: avatarColor(authorName) }}
-                  >
-                    {avatarInitials(authorName)}
-                  </div>
-                )}
+                <UserAvatar
+                  src={activePost.author?.avatar}
+                  username={authorName}
+                  size={42}
+                  className="author-avatar"
+                />
                 <div className="author-text-details">
                   <div className="author-name-badge-row">
                     <span className="author-username">{authorName}</span>
@@ -534,21 +562,12 @@ export default function PostDetail() {
                     >
                       <div className="reply-top-header">
                         <div className="reply-user-left">
-                          {reply.author?.avatar ? (
-                            <img
-                              src={reply.author.avatar}
-                              alt={rAuthor}
-                              className="reply-avatar"
-                              style={{ objectFit: 'cover' }}
-                            />
-                          ) : (
-                            <div
-                              className="reply-avatar"
-                              style={{ background: avatarColor(rAuthor) }}
-                            >
-                              {avatarInitials(rAuthor)}
-                            </div>
-                          )}
+                          <UserAvatar
+                            src={reply.author?.avatar}
+                            username={rAuthor}
+                            size={36}
+                            className="reply-avatar"
+                          />
                           <div className="reply-user-info">
                             <span className="reply-username">{rAuthor}</span>
                             <span
@@ -640,21 +659,12 @@ export default function PostDetail() {
 
             <div className="reply-composer-card">
               <div className="composer-input-area">
-                {user?.avatar ? (
-                  <img
-                    src={user.avatar}
-                    alt={user.username || 'User'}
-                    className="composer-avatar"
-                    style={{ objectFit: 'cover' }}
-                  />
-                ) : (
-                  <div
-                    className="composer-avatar"
-                    style={{ background: avatarColor(user ? user.username : 'student') }}
-                  >
-                    {avatarInitials(user ? user.username : 'student')}
-                  </div>
-                )}
+                <UserAvatar
+                  src={user?.avatar}
+                  username={user ? user.username : 'student'}
+                  size={38}
+                  className="composer-avatar"
+                />
                 <textarea
                   ref={textareaRef}
                   className="composer-textarea"
