@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { postsApi } from '../api.js'
+import { avatarInitials, avatarColor } from '../components/common/avatar.js'
 import {
   ArrowRight,
   MessageSquare,
@@ -147,7 +148,54 @@ const UPCOMING_EVENTS = [
   }
 ]
 
+function UserAvatar({ src, username, size = 24, className = '' }) {
+  const [error, setError] = useState(false)
+  if (src && !error) {
+    return (
+      <img
+        src={src}
+        alt={username || 'User'}
+        referrerPolicy="no-referrer"
+        crossOrigin="anonymous"
+        onError={() => setError(true)}
+        className={className}
+        style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+      />
+    )
+  }
+  return (
+    <div
+      className={className}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        background: avatarColor(username),
+        color: '#fff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: `${Math.round(size * 0.42)}px`,
+        fontWeight: 700,
+        flexShrink: 0
+      }}
+    >
+      {avatarInitials(username)}
+    </div>
+  )
+}
+
 function renderDiscussionAvatar(item) {
+  if (item.authorAvatar) {
+    return (
+      <UserAvatar
+        src={item.authorAvatar}
+        username={item.author}
+        size={40}
+        className="home-avatar"
+      />
+    )
+  }
   if (item.avatarType === 'tux') {
     return (
       <div className="home-avatar" style={{ background: item.avatarBg }}>
@@ -159,9 +207,12 @@ function renderDiscussionAvatar(item) {
   }
   if (item.avatarType === 'letter') {
     return (
-      <div className="home-avatar home-avatar-letter" style={{ background: item.avatarBg }}>
-        {item.avatarLetter || item.author.charAt(0).toUpperCase()}
-      </div>
+      <UserAvatar
+        src={item.authorAvatar}
+        username={item.author}
+        size={40}
+        className="home-avatar"
+      />
     )
   }
   if (item.avatarType === 'icon-terminal') {
@@ -186,8 +237,8 @@ function renderDiscussionAvatar(item) {
     )
   }
   return (
-    <div className="home-avatar" style={{ background: '#334155' }}>
-      {item.author.charAt(0).toUpperCase()}
+    <div className="home-avatar" style={{ background: avatarColor(item.author) }}>
+      {avatarInitials(item.author)}
     </div>
   )
 }
@@ -211,21 +262,22 @@ export default function Home() {
               id: post._id || post.id,
               title: post.title,
               author: post.author?.username || 'user',
+              authorAvatar: post.author?.avatar,
               timeAgo,
               tags: [
                 { label: post.category || 'General', color: '#3b82f6' },
                 ...(post.tags || []).slice(0, 1).map((t) => ({ label: t, color: '#64748b' }))
               ],
-              replies: post.commentCount || (post.comments ? post.comments.length : 0),
-              views: post.views || Math.floor(Math.random() * 200 + 50),
+              replies: post.commentCount || 0,
+              views: post.views ?? 0,
               lastReply: {
                 time: 'recently',
                 user: post.author?.username || 'member',
-                avatarColor: '#10b981'
+                avatar: post.author?.avatar
               },
-              avatarType: idx % 2 === 0 ? 'letter' : 'icon-terminal',
-              avatarLetter: (post.author?.username || 'U').charAt(0).toUpperCase(),
-              avatarBg: ['#ea580c', '#059669', '#9333ea', '#2563eb', '#d97706'][idx % 5]
+              avatarType: post.author?.avatar ? 'img' : 'letter',
+              avatarLetter: avatarInitials(post.author?.username || 'U'),
+              avatarBg: avatarColor(post.author?.username)
             }
           })
           setDiscussions(formatted)
@@ -376,12 +428,12 @@ export default function Home() {
                   </div>
 
                   <div className="disc-last-activity">
-                    <div
+                    <UserAvatar
+                      src={item.lastReply.avatar}
+                      username={item.lastReply.user}
+                      size={24}
                       className="disc-mini-avatar"
-                      style={{ background: item.lastReply.avatarColor }}
-                    >
-                      {item.lastReply.user.charAt(0).toUpperCase()}
-                    </div>
+                    />
                     <span className="disc-last-text">
                       {item.lastReply.time} by {item.lastReply.user}
                     </span>

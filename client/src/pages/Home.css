@@ -306,7 +306,7 @@
 .disc-right {
   display: flex;
   align-items: center;
-  gap: 2rem;
+  gap: 1.5rem;
   flex-shrink: 0;
 }
 
@@ -314,6 +314,11 @@
   display: flex;
   align-items: center;
   gap: 1rem;
+  width: 155px;
+  min-width: 155px;
+  max-width: 155px;
+  flex-shrink: 0;
+  justify-content: flex-start;
 }
 
 .disc-metric {
@@ -323,14 +328,19 @@
   font-size: 0.8rem;
   color: var(--text-dim);
   font-weight: 500;
+  min-width: 65px;
+  flex-shrink: 0;
 }
 
 .disc-last-activity {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  min-width: 140px;
-  justify-content: flex-end;
+  gap: 0.6rem;
+  width: 220px;
+  min-width: 220px;
+  max-width: 220px;
+  flex-shrink: 0;
+  justify-content: flex-start;
 }
 
 .disc-mini-avatar {
@@ -343,11 +353,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  object-fit: cover;
 }
 
 .disc-last-text {
   font-size: 0.78rem;
   color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 185px;
 }
 
 .home-widgets-col {
