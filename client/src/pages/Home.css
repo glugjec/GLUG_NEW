@@ -3,9 +3,9 @@
   grid-template-columns: 1fr 340px;
   gap: 1.75rem;
   padding: 1.5rem 2rem 3rem;
-  max-width: 1560px;
-  margin: 0 auto;
+  max-width: 100%;
   width: 100%;
+  box-sizing: border-box;
 }
 
 .home-main-col {

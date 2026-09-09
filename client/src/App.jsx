@@ -37,7 +37,9 @@ export default function App() {
             <Route path="/resources" element={<Resources />} />
             <Route path="/compiler" element={<Compiler />} />
             <Route path="/forum" element={<Forum />} />
+            <Route path="/discussions" element={<Forum />} />
             <Route path="/forum/posts/:id" element={<PostDetail />} />
+            <Route path="/discussions/:id" element={<PostDetail />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/admin" element={<AdminDashboard />} />

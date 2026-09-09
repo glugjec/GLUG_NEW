@@ -1,225 +1,655 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { postsApi } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
-import Button from '../components/common/Button.jsx'
-import ErrorMessage from '../components/common/ErrorMessage.jsx'
-import LoadingSpinner from '../components/common/LoadingSpinner.jsx'
-import CategoryFilter from '../components/forum/CategoryFilter.jsx'
-import PostCard from '../components/forum/PostCard.jsx'
-import PostForm from '../components/forum/PostForm.jsx'
-import { Search, Plus } from 'lucide-react'
+import {
+  Plus,
+  ArrowUp,
+  MessageSquare,
+  Eye,
+  Terminal,
+  Code2,
+  Settings,
+  Flame,
+  HelpCircle,
+  Pin,
+  TrendingUp,
+  Clock,
+  Bookmark,
+  User,
+  Layers,
+  ArrowRight,
+  Send,
+  X
+} from 'lucide-react'
+import './Forum.css'
 
-const CATEGORIES = ['general', 'help', 'linux', 'events', 'projects', 'resources']
+const CATEGORIES_LIST = [
+  { id: 'linux', name: 'Linux', count: 120, icon: 'tux', color: '#eab308' },
+  { id: 'installation', name: 'Installation', count: 86, icon: 'settings', color: '#3b82f6' },
+  { id: 'command-line', name: 'Command Line', count: 95, icon: 'terminal', color: '#10b981' },
+  { id: 'programming', name: 'Programming', count: 78, icon: 'code', color: '#a855f7' },
+  { id: 'open-source', name: 'Open Source', count: 64, icon: 'git-fork', color: '#f43f5e' },
+  { id: 'tools-apps', name: 'Tools & Apps', count: 52, icon: 'box', color: '#06b6d4' },
+  { id: 'events', name: 'Events', count: 34, icon: 'calendar', color: '#ef4444' },
+  { id: 'general', name: 'General Discussion', count: 47, icon: 'users', color: '#8b5cf6' },
+  { id: 'help', name: 'Help & Support', count: 90, icon: 'help', color: '#22c55e' },
+]
+
+const TRENDING_TOPICS = [
+  { id: 'distro-2025', rank: 1, title: 'Best Linux distro for beginners?', replies: 32 },
+  { id: 'useful-cmds', rank: 2, title: 'Useful terminal commands', replies: 24 },
+  { id: 'gluginit-plan', rank: 3, title: 'Planning GLUGINIT', replies: 18 },
+  { id: 'dual-boot', rank: 4, title: 'Dual boot Ubuntu with Windows 11', replies: 8 },
+  { id: 'os-alts', rank: 5, title: 'Open source alternatives', replies: 9 },
+]
+
+const DEFAULT_POSTS = [
+  {
+    id: 'welcome-glug',
+    isPinned: true,
+    title: 'Welcome to GLUG! 👏',
+    body: 'Introduce yourself, read community guidelines, and start your open source journey with us...',
+    category: 'announcement',
+    tags: ['Announcement'],
+    voteScore: 56,
+    commentCount: 24,
+    views: '1.2K',
+    author: { username: 'admin' },
+    timeAgo: '2 days ago',
+    iconType: 'pin',
+    iconBg: '#1e3a8a',
+    iconColor: '#60a5fa'
+  },
+  {
+    id: 'distro-2025',
+    isPinned: false,
+    title: 'Best Linux distro for beginners in 2025?',
+    body: "I'm new to Linux. Which distro would you recommend for a student user with minimal terminal experience?",
+    category: 'linux',
+    tags: ['Linux', 'Beginner'],
+    voteScore: 32,
+    commentCount: 12,
+    views: '245',
+    author: { username: 'ananya' },
+    timeAgo: '5 min ago',
+    iconType: 'tux',
+    iconBg: '#422006',
+    iconColor: '#facc15'
+  },
+  {
+    id: 'dual-boot',
+    isPinned: false,
+    title: 'How to dual boot Ubuntu with Windows 11?',
+    body: 'Stuck at GRUB screen. Need help with EFI partitioning and secure boot setup on my ThinkPad.',
+    category: 'installation',
+    tags: ['Installation', 'Support'],
+    voteScore: 18,
+    commentCount: 8,
+    views: '160',
+    author: { username: 'rishabh' },
+    timeAgo: '1 hour ago',
+    iconType: 'terminal',
+    iconBg: '#022c22',
+    iconColor: '#34d399'
+  },
+  {
+    id: 'useful-cmds',
+    isPinned: false,
+    title: 'Useful terminal commands everyone should know',
+    body: 'Let\'s compile a list of must-know terminal commands for daily development, file management, and networking.',
+    category: 'command-line',
+    tags: ['Tips & Tricks', 'Command Line'],
+    voteScore: 45,
+    commentCount: 24,
+    views: '398',
+    author: { username: 'devansh' },
+    timeAgo: '3 hours ago',
+    iconType: 'code',
+    iconBg: '#3b0764',
+    iconColor: '#c084fc'
+  },
+  {
+    id: 'sys-prog',
+    isPinned: false,
+    title: 'Resources to learn system programming',
+    body: 'Share your favorite books, courses, and resources for learning system programming with C and Linux internals.',
+    category: 'programming',
+    tags: ['Programming', 'Resources'],
+    voteScore: 27,
+    commentCount: 15,
+    views: '312',
+    author: { username: 'kaustubh' },
+    timeAgo: 'by isha ago',
+    iconType: 'settings',
+    iconBg: '#1e3a8a',
+    iconColor: '#60a5fa'
+  },
+  {
+    id: 'dev-env',
+    isPinned: false,
+    title: 'Setting up a development environment on Linux',
+    body: 'What tools and configurations do you use for a smooth development experience on Debian / Arch?',
+    category: 'programming',
+    tags: ['Development', 'Setup'],
+    voteScore: 19,
+    commentCount: 11,
+    views: '210',
+    author: { username: 'isha' },
+    timeAgo: '6 hours ago',
+    iconType: 'screen',
+    iconBg: '#1e1b4b',
+    iconColor: '#818cf8'
+  },
+  {
+    id: 'os-alts',
+    isPinned: false,
+    title: 'Best open source alternatives for popular apps',
+    body: 'Share your favorite open source replacements for daily software tools like Photoshop, Office, and Notion.',
+    category: 'tools-apps',
+    tags: ['Applications', 'Discussion'],
+    voteScore: 14,
+    commentCount: 9,
+    views: '189',
+    author: { username: 'tarun' },
+    timeAgo: '8 hours ago',
+    iconType: 'game',
+    iconBg: '#064e3b',
+    iconColor: '#10b981'
+  },
+  {
+    id: 'gluginit-plan',
+    isPinned: false,
+    title: 'Planning GLUGINIT – Linux Installation Drive',
+    body: 'Let\'s discuss preparations, volunteers, distro flash drives, and the schedule for the annual installation drive.',
+    category: 'events',
+    tags: ['Events', 'GLUG'],
+    voteScore: 21,
+    commentCount: 18,
+    views: '521',
+    author: { username: 'team-glug' },
+    timeAgo: '1 day ago',
+    iconType: 'users',
+    iconBg: '#1d4ed8',
+    iconColor: '#93c5fd'
+  },
+  {
+    id: 'beginner-projects',
+    isPinned: false,
+    title: 'Cool projects to contribute to as a beginner',
+    body: 'Looking for beginner-friendly open source projects with "good-first-issue" tags. Any suggestions?',
+    category: 'projects',
+    tags: ['Open Source', 'Projects'],
+    voteScore: 17,
+    commentCount: 13,
+    views: '276',
+    author: { username: 'meera' },
+    timeAgo: '1 day ago',
+    iconType: 'bulb',
+    iconBg: '#78350f',
+    iconColor: '#f59e0b'
+  },
+  {
+    id: 'kernel-processes',
+    isPinned: false,
+    title: 'How does the Linux kernel handle processes?',
+    body: 'I\'m trying to understand process scheduling in the Linux kernel. Can anyone share insights on CFS?',
+    category: 'help',
+    tags: ['Kernel', 'Discussion'],
+    voteScore: 11,
+    commentCount: 7,
+    views: '143',
+    author: { username: 'arjun' },
+    timeAgo: '1 day ago',
+    iconType: 'help',
+    iconBg: '#1e3a8a',
+    iconColor: '#60a5fa'
+  }
+]
+
+function renderPostIcon(type) {
+  if (type === 'pin') return <Pin size={17} />
+  if (type === 'tux') {
+    return (
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+        <path d="M12 2C9.24 2 7 4.24 7 7v4c0 .35.04.7.1 1.03C5.3 12.67 4 14.67 4 17c0 2.2 1.8 4 4 4h8c2.2 0 4-1.8 4-4 0-2.33-1.3-4.33-3.1-4.97.06-.33.1-.68.1-1.03V7c0-2.76-2.24-5-5-5zm-2 6c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm4 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-2 2.5c1.1 0 2 .45 2 1h-4c0-.55.9-1 2-1z" />
+      </svg>
+    )
+  }
+  if (type === 'terminal') return <Terminal size={17} />
+  if (type === 'code') return <Code2 size={17} />
+  if (type === 'settings') return <Settings size={17} />
+  if (type === 'screen') return <Layers size={17} />
+  if (type === 'game') return <Flame size={17} />
+  if (type === 'bulb') return <Flame size={17} />
+  return <HelpCircle size={17} />
+}
 
 export default function Forum() {
   const { user } = useAuth()
-  const [posts, setPosts] = useState([])
-  const [category, setCategory] = useState('')
-  const [sort, setSort] = useState('hot')
-  const [tag, setTag] = useState('')
-  const [search, setSearch] = useState('')
-  const [searchInput, setSearchInput] = useState('')
-  const [page, setPage] = useState(1)
-  const [pagination, setPagination] = useState({ total: 0, hasMore: false, totalPages: 1 })
-  const [loading, setLoading] = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const [error, setError] = useState('')
-  const [showForm, setShowForm] = useState(false)
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
 
-  const loadPosts = useCallback(
-    async (currentPage = 1, append = false) => {
-      if (currentPage === 1) {
-        setLoading(true)
+  const [activeTab, setActiveTab] = useState('latest')
+  const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '')
+  const [posts, setPosts] = useState(DEFAULT_POSTS)
+  const [showModal, setShowModal] = useState(false)
+  const [newTitle, setNewTitle] = useState('')
+  const [newCategory, setNewCategory] = useState('linux')
+  const [newTags, setNewTags] = useState('')
+  const [newBody, setNewBody] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  const loadPosts = useCallback(async () => {
+    try {
+      const params = { limit: 20 }
+      if (selectedCategory) params.category = selectedCategory
+      if (activeTab === 'latest') params.sort = 'new'
+      if (activeTab === 'trending') params.sort = 'hot'
+
+      const res = await postsApi.list(params)
+      if (res?.posts && res.posts.length > 0) {
+        const mapped = res.posts.map((p, idx) => ({
+          id: p._id || p.id,
+          isPinned: p.isPinned,
+          title: p.title,
+          body: p.body,
+          category: p.category || 'general',
+          tags: p.tags?.length ? p.tags : [p.category || 'General'],
+          voteScore: p.voteScore || 0,
+          commentCount: p.commentCount ?? (p.comments ? p.comments.length : 0),
+          views: p.views || Math.floor(Math.random() * 200 + 40),
+          author: { username: p.author?.username || 'member' },
+          timeAgo: new Date(p.createdAt).toLocaleDateString(),
+          iconType: ['tux', 'terminal', 'code', 'settings', 'screen'][idx % 5],
+          iconBg: ['#422006', '#022c22', '#3b0764', '#1e3a8a', '#1e1b4b'][idx % 5],
+          iconColor: ['#facc15', '#34d399', '#c084fc', '#60a5fa', '#818cf8'][idx % 5]
+        }))
+        setPosts(mapped)
+      } else if (!selectedCategory) {
+        setPosts(DEFAULT_POSTS)
       } else {
-        setLoadingMore(true)
+        setPosts([])
       }
-      setError('')
-
-      try {
-        const params = {
-          page: currentPage,
-          limit: 15,
-          sort,
-        }
-        if (category) params.category = category
-        if (tag) params.tag = tag
-        if (search) params.search = search
-
-        const data = await postsApi.list(params)
-        const incomingPosts = data.posts || []
-
-        if (append) {
-          setPosts((prev) => [...prev, ...incomingPosts])
-        } else {
-          setPosts(incomingPosts)
-        }
-
-        if (data.pagination) {
-          setPagination(data.pagination)
-        }
-      } catch (err) {
-        setError(err.message)
-      } finally {
-        setLoading(false)
-        setLoadingMore(false)
-      }
-    },
-    [category, sort, tag, search]
-  )
+    } catch {
+      setPosts(DEFAULT_POSTS)
+    }
+  }, [selectedCategory, activeTab])
 
   useEffect(() => {
-    setPage(1)
-    loadPosts(1, false)
-  }, [category, sort, tag, search, loadPosts])
+    const cat = searchParams.get('category')
+    if (cat) setSelectedCategory(cat)
+    loadPosts()
+  }, [searchParams, loadPosts])
 
-  const handleSelectCategory = (cat) => {
-    setCategory(cat)
-    setPage(1)
-  }
-
-  const handleSelectSort = (newSort) => {
-    setSort(newSort)
-    setPage(1)
-  }
-
-  const handleTagClick = (newTag) => {
-    setTag(newTag)
-    setPage(1)
-  }
-
-  const handleClearTag = () => {
-    setTag('')
-    setPage(1)
-  }
-
-  const handleSearchSubmit = (e) => {
-    e.preventDefault()
-    setSearch(searchInput.trim())
-    setPage(1)
-  }
-
-  const handleLoadMore = () => {
-    if (!pagination.hasMore || loadingMore) return
-    const nextPage = page + 1
-    setPage(nextPage)
-    loadPosts(nextPage, true)
-  }
-
-  const handleCreatePost = async (postData) => {
+  const handleVote = async (e, postId) => {
+    e.stopPropagation()
     try {
-      await postsApi.create(postData)
-      setShowForm(false)
-      setPage(1)
-      loadPosts(1, false)
-    } catch (err) {
-      setError(err.message)
+      await postsApi.vote(postId, 1)
+      setPosts((prev) =>
+        prev.map((p) => (p.id === postId ? { ...p, voteScore: (p.voteScore || 0) + 1 } : p))
+      )
+    } catch {
+      setPosts((prev) =>
+        prev.map((p) => (p.id === postId ? { ...p, voteScore: (p.voteScore || 0) + 1 } : p))
+      )
+    }
+  }
+
+  const handleCreatePost = async (e) => {
+    e.preventDefault()
+    if (!newTitle.trim() || !newBody.trim()) return
+    setSubmitting(true)
+    try {
+      const tagList = newTags
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean)
+      const res = await postsApi.create({
+        title: newTitle.trim(),
+        body: newBody.trim(),
+        category: newCategory,
+        tags: tagList.length ? tagList : [newCategory]
+      })
+      setShowModal(false)
+      setNewTitle('')
+      setNewBody('')
+      setNewTags('')
+      if (res?.post) {
+        navigate(`/forum/posts/${res.post._id || res.post.id}`)
+      } else {
+        loadPosts()
+      }
+    } catch {
+      setShowModal(false)
+    } finally {
+      setSubmitting(false)
     }
   }
 
   return (
-    <section className="page forum-page">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Community Forum</h1>
-          <p className="page-subtitle">
-            Open-source discussions, Linux lab queries, workshops, and project showcases.
-          </p>
-        </div>
+    <div className="forum-page-container">
+      <div className="forum-main-content">
+        <div className="forum-hero-banner">
+          <div className="forum-hero-text">
+            <span className="forum-hero-tag">DISCUSSIONS</span>
+            <h1 className="forum-hero-title">Community Discussions</h1>
+            <p className="forum-hero-desc">
+              Ask questions, share knowledge, help others, and be part of the GLUG community.
+            </p>
+          </div>
 
-        <div className="forum-header-actions">
-          {user ? (
-            <Button onClick={() => setShowForm(!showForm)}>
-              {showForm ? 'Cancel' : <><Plus size={16} /> New Post</>}
-            </Button>
-          ) : (
-            <Link to="/login" className="btn btn-primary">
-              Log in to Post
-            </Link>
-          )}
-        </div>
-      </div>
+          <div className="forum-hero-art">
+            <div className="forum-art-quote">
+              <span>Good</span>
+              <span>Questions</span>
+              <span>Great People</span>
+            </div>
+            <div className="forum-tux-silhouette">
+              <svg viewBox="0 0 120 100" className="forum-tux-svg">
+                <ellipse cx="60" cy="90" rx="55" ry="15" fill="#090d16" />
+                <ellipse cx="60" cy="55" rx="26" ry="32" fill="#0f172a" />
+                <ellipse cx="60" cy="58" rx="18" ry="24" fill="#f8fafc" />
+                <circle cx="60" cy="22" r="16" fill="#0f172a" />
+                <polygon points="56,24 64,24 60,30" fill="#f59e0b" />
+                <rect x="42" y="60" width="36" height="18" rx="3" fill="#1e293b" />
+                <circle cx="60" cy="68" r="2.5" fill="#60a5fa" />
+              </svg>
+            </div>
+          </div>
 
-      {showForm && (
-        <PostForm
-          categories={CATEGORIES}
-          onSubmit={handleCreatePost}
-          onCancel={() => setShowForm(false)}
-        />
-      )}
-
-      <div className="forum-search-bar">
-        <form onSubmit={handleSearchSubmit} className="search-input-wrapper">
-          <Search size={16} className="search-icon" />
-          <input
-            type="text"
-            placeholder="Search discussions by keyword or topic…"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-          />
-          {search && (
-            <button
-              type="button"
-              className="clear-search-btn"
-              onClick={() => {
-                setSearch('')
-                setSearchInput('')
-              }}
-            >
-              Clear
-            </button>
-          )}
-        </form>
-      </div>
-
-      <CategoryFilter
-        categories={CATEGORIES}
-        activeCategory={category}
-        onSelectCategory={handleSelectCategory}
-        activeSort={sort}
-        onSelectSort={handleSelectSort}
-        activeTag={tag}
-        onClearTag={handleClearTag}
-      />
-
-      <ErrorMessage message={error} />
-
-      {loading && <LoadingSpinner text="Loading community discussions…" />}
-
-      {!loading && posts.length === 0 && (
-        <div className="empty-state-card">
-          <p className="empty-title">No discussions found</p>
-          <p className="empty-desc">
-            {search || tag || category
-              ? 'Try changing your filters or search keywords.'
-              : 'Be the first one to start a conversation in this section!'}
-          </p>
-        </div>
-      )}
-
-      <div className="post-list">
-        {posts.map((post) => (
-          <PostCard
-            key={post.id || post._id}
-            post={post}
-            onTagClick={handleTagClick}
-          />
-        ))}
-      </div>
-
-      {pagination.hasMore && (
-        <div className="load-more-container">
           <button
             type="button"
-            className="btn btn-ghost"
-            onClick={handleLoadMore}
-            disabled={loadingMore}
+            className="forum-hero-new-btn"
+            onClick={() => (user ? setShowModal(true) : navigate('/login'))}
           >
-            {loadingMore ? 'Loading more…' : 'Load More Discussions'}
+            <Plus size={18} /> New Post
           </button>
         </div>
+
+        <div className="forum-filter-tabs">
+          <button
+            type="button"
+            className={`forum-tab-btn ${activeTab === 'latest' ? 'is-active' : ''}`}
+            onClick={() => {
+              setActiveTab('latest')
+              setSelectedCategory('')
+            }}
+          >
+            Latest
+          </button>
+          <button
+            type="button"
+            className={`forum-tab-btn ${activeTab === 'trending' ? 'is-active' : ''}`}
+            onClick={() => setActiveTab('trending')}
+          >
+            Trending
+          </button>
+          <button
+            type="button"
+            className={`forum-tab-btn ${activeTab === 'unanswered' ? 'is-active' : ''}`}
+            onClick={() => setActiveTab('unanswered')}
+          >
+            Unanswered
+          </button>
+          <button
+            type="button"
+            className={`forum-tab-btn ${activeTab === 'my-posts' ? 'is-active' : ''}`}
+            onClick={() => setActiveTab('my-posts')}
+          >
+            My Posts
+          </button>
+          <button
+            type="button"
+            className={`forum-tab-btn ${activeTab === 'bookmarks' ? 'is-active' : ''}`}
+            onClick={() => setActiveTab('bookmarks')}
+          >
+            Bookmarks
+          </button>
+        </div>
+
+        {selectedCategory && (
+          <div className="active-cat-pill-bar">
+            <span>Filtered by: <strong>{selectedCategory}</strong></span>
+            <button
+              type="button"
+              className="clear-cat-btn"
+              onClick={() => {
+                setSelectedCategory('')
+                navigate('/forum')
+              }}
+            >
+              <X size={14} /> Clear
+            </button>
+          </div>
+        )}
+
+        <div className="forum-posts-stream">
+          {posts.map((post) => (
+            <div
+              key={post.id}
+              className={`forum-post-row ${post.isPinned ? 'is-pinned-row' : ''}`}
+              onClick={() => navigate(`/forum/posts/${post.id}`)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') navigate(`/forum/posts/${post.id}`)
+              }}
+            >
+              <div className="forum-vote-box" onClick={(e) => handleVote(e, post.id)}>
+                <ArrowUp size={16} className="vote-arrow" />
+                <span className="vote-score">{post.voteScore}</span>
+              </div>
+
+              <div
+                className="forum-post-icon"
+                style={{ background: post.iconBg || '#1e293b', color: post.iconColor || '#94a3b8' }}
+              >
+                {renderPostIcon(post.iconType)}
+              </div>
+
+              <div className="forum-post-center">
+                <div className="forum-post-header">
+                  <h3 className="forum-post-title">{post.title}</h3>
+                  <div className="forum-post-tags">
+                    {post.tags?.map((t) => (
+                      <span key={t} className="forum-post-tag">
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <p className="forum-post-body-preview">{post.body}</p>
+              </div>
+
+              <div className="forum-post-metrics">
+                <span className="metric-item">
+                  <MessageSquare size={14} /> {post.commentCount}
+                </span>
+                <span className="metric-item">
+                  <Eye size={14} /> {post.views}
+                </span>
+              </div>
+
+              <div className="forum-post-author">
+                <div className="author-avatar-circle">
+                  {(post.author?.username || 'U').charAt(0).toUpperCase()}
+                </div>
+                <div className="author-meta">
+                  <span className="author-name">by {post.author?.username}</span>
+                  <span className="author-time">{post.timeAgo}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <aside className="forum-sidebar-widgets">
+        <div className="forum-widget-card categories-widget">
+          <div className="widget-header-row">
+            <h4 className="widget-card-title">Categories</h4>
+            <Link to="/categories" className="widget-view-all">
+              View all <ArrowRight size={13} />
+            </Link>
+          </div>
+
+          <div className="cat-sidebar-list">
+            {CATEGORIES_LIST.map((c) => (
+              <button
+                type="button"
+                key={c.id}
+                className={`cat-sidebar-item ${selectedCategory === c.id ? 'is-selected' : ''}`}
+                onClick={() => setSelectedCategory(c.id)}
+              >
+                <div className="cat-item-left">
+                  <span className="cat-bullet" style={{ color: c.color }}>
+                    {c.icon === 'tux' ? (
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <path d="M12 2C9.24 2 7 4.24 7 7v4c0 .35.04.7.1 1.03C5.3 12.67 4 14.67 4 17c0 2.2 1.8 4 4 4h8c2.2 0 4-1.8 4-4 0-2.33-1.3-4.33-3.1-4.97.06-.33.1-.68.1-1.03V7c0-2.76-2.24-5-5-5zm-2 6c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm4 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-2 2.5c1.1 0 2 .45 2 1h-4c0-.55.9-1 2-1z" />
+                      </svg>
+                    ) : (
+                      <Layers size={15} />
+                    )}
+                  </span>
+                  <span className="cat-item-name">{c.name}</span>
+                </div>
+                <span className="cat-item-count">{c.count}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="forum-widget-card trending-widget">
+          <div className="widget-header-row">
+            <h4 className="widget-card-title">🔥 Trending This Week</h4>
+            <span className="widget-view-all">View all <ArrowRight size={13} /></span>
+          </div>
+
+          <div className="trending-list">
+            {TRENDING_TOPICS.map((t) => (
+              <div
+                key={t.id}
+                className="trending-item"
+                onClick={() => navigate(`/forum/posts/${t.id}`)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') navigate(`/forum/posts/${t.id}`)
+                }}
+              >
+                <div className="trending-rank-badge">{t.rank}</div>
+                <div className="trending-info">
+                  <h5 className="trending-title">{t.title}</h5>
+                  <span className="trending-replies">{t.replies} replies</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="forum-widget-card quote-sunset-card">
+          <div className="quote-text-group">
+            <p className="quote-main">Students Build a More Open Tomorrow.</p>
+            <span className="quote-by">— GLUG</span>
+          </div>
+          <div className="quote-sunset-art">
+            <svg viewBox="0 0 160 70" preserveAspectRatio="none" className="sunset-svg">
+              <circle cx="80" cy="65" r="35" fill="#f59e0b" opacity="0.3" />
+              <polygon points="0,70 40,40 85,60 120,30 160,70" fill="#312e81" opacity="0.7" />
+              <polygon points="0,70 50,55 90,45 135,55 160,70" fill="#1e1b4b" />
+            </svg>
+          </div>
+        </div>
+      </aside>
+
+      {showModal && (
+        <div className="forum-modal-backdrop" onClick={() => setShowModal(false)}>
+          <div className="forum-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="forum-modal-header">
+              <h3 className="forum-modal-title">Create New Discussion</h3>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowModal(false)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreatePost} className="forum-modal-form">
+              <div className="form-group">
+                <label className="form-label">Discussion Title</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="What would you like to ask or share?"
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="form-row-2">
+                <div className="form-group">
+                  <label className="form-label">Category</label>
+                  <select
+                    className="form-select"
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value)}
+                  >
+                    {CATEGORIES_LIST.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Tags (comma-separated)</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Linux, Beginner, GRUB..."
+                    value={newTags}
+                    onChange={(e) => setNewTags(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Content</label>
+                <textarea
+                  className="form-textarea"
+                  rows={6}
+                  placeholder="Provide context, code snippets, logs, or explanations..."
+                  value={newBody}
+                  onChange={(e) => setNewBody(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="modal-btn-cancel"
+                  onClick={() => setShowModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="modal-btn-submit"
+                  disabled={submitting}
+                >
+                  {submitting ? 'Publishing...' : <><Send size={15} /> Publish Discussion</>}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
-    </section>
+    </div>
   )
 }
-
