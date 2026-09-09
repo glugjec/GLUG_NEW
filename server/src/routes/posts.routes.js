@@ -6,6 +6,7 @@ import { Vote } from '../models/Vote.js';
 import { requireAuth, optionalAuth, requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
+const recentViews = new Map();
 
 // @route   GET /api/posts
 // @desc    Get list of posts with filtering, sorting, pagination, and user vote status
@@ -129,8 +130,23 @@ router.get('/:id', optionalAuth, async (req, res) => {
       if (vote) userVote = vote.value;
     }
 
-    await Post.findByIdAndUpdate(req.params.id, { $inc: { views: 1 } });
-    const currentViews = (post.views || 0) + 1;
+    const viewerKey = `${req.user?.id || req.ip || 'anon'}:${req.params.id}`;
+    const now = Date.now();
+    const lastView = recentViews.get(viewerKey) || 0;
+    let currentViews = post.views || 0;
+
+    if (now - lastView > 30000) {
+      recentViews.set(viewerKey, now);
+      await Post.findByIdAndUpdate(req.params.id, { $inc: { views: 1 } });
+      currentViews += 1;
+
+      if (recentViews.size > 2000) {
+        const cutoff = now - 60000;
+        for (const [k, time] of recentViews.entries()) {
+          if (time < cutoff) recentViews.delete(k);
+        }
+      }
+    }
 
     const formattedPost = {
       id: post._id.toString(),
