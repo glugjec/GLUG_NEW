@@ -390,7 +390,11 @@ export default function Home() {
           </div>
         ) : (
           <div className="home-widget-card cta-card">
-            <h3 className="widget-card-title">Welcome back, {user.username}!</h3>
+            <h3 className="widget-card-title">
+              Welcome back, {user.username
+                ? (user.username.includes('@') ? user.username.split('@')[0] : user.username)
+                : (user.email ? user.email.split('@')[0] : 'Member')}!
+            </h3>
             <p className="widget-card-desc">
               Ready to explore open source code or share your technical thoughts today?
             </p>

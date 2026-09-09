@@ -103,21 +103,26 @@ export default function TopBar() {
           <div className="topbar-user-wrap" ref={menuRef}>
             <button
               type="button"
-              className="topbar-user-pill"
+              className={`topbar-user-pill${menuOpen ? ' is-active' : ''}`}
               onClick={() => setMenuOpen(!menuOpen)}
               aria-haspopup="true"
               aria-expanded={menuOpen}
             >
               <div
                 className="topbar-pill-avatar"
-                style={{ background: avatarColor(user.username) }}
+                style={{ background: avatarColor(user.username || user.email) }}
               >
-                {avatarInitials(user.username)}
+                {avatarInitials(user.username || user.email)}
               </div>
               <span className="topbar-pill-name">
-                {user.email || user.username}
+                {user.username
+                  ? (user.username.includes('@') ? user.username.split('@')[0] : user.username)
+                  : (user.email ? user.email.split('@')[0] : 'Member')}
               </span>
-              <ChevronDown size={14} className="topbar-pill-chevron" />
+              <ChevronDown
+                size={14}
+                className={`topbar-pill-chevron${menuOpen ? ' is-open' : ''}`}
+              />
             </button>
 
             {menuOpen && (
@@ -125,13 +130,19 @@ export default function TopBar() {
                 <div className="topbar-dd-header">
                   <div
                     className="topbar-dd-avatar"
-                    style={{ background: avatarColor(user.username) }}
+                    style={{ background: avatarColor(user.username || user.email) }}
                   >
-                    {avatarInitials(user.username)}
+                    {avatarInitials(user.username || user.email)}
                   </div>
                   <div className="topbar-dd-user-meta">
-                    <span className="topbar-dd-name">{user.username}</span>
-                    <span className="topbar-dd-email">{user.email}</span>
+                    <span className="topbar-dd-name">
+                      {user.username
+                        ? (user.username.includes('@') ? user.username.split('@')[0] : user.username)
+                        : (user.email ? user.email.split('@')[0] : 'Member')}
+                    </span>
+                    <span className="topbar-dd-email" title={user.email}>
+                      {user.email}
+                    </span>
                   </div>
                 </div>
 

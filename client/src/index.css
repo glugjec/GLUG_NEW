@@ -2875,36 +2875,39 @@ input:focus, textarea:focus, select:focus {
   display: flex;
   align-items: center;
   gap: 0.65rem;
-  padding: 0.35rem 0.75rem 0.35rem 0.35rem;
+  padding: 0.35rem 0.85rem 0.35rem 0.35rem;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 999px;
   color: var(--text);
   cursor: pointer;
   transition: all 0.15s ease;
+  user-select: none;
 }
 
-.topbar-user-pill:hover {
+.topbar-user-pill:hover,
+.topbar-user-pill.is-active {
   background: var(--bg-hover);
   border-color: var(--border-subtle);
 }
 
 .topbar-pill-avatar {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   color: #ffffff;
-  font-size: 0.76rem;
+  font-size: 0.78rem;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .topbar-pill-name {
-  font-size: 0.86rem;
+  font-size: 0.88rem;
   font-weight: 600;
-  max-width: 140px;
+  max-width: 160px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2912,49 +2915,70 @@ input:focus, textarea:focus, select:focus {
 
 .topbar-pill-chevron {
   color: var(--text-dim);
+  transition: transform 0.2s ease;
+}
+
+.topbar-pill-chevron.is-open {
+  transform: rotate(180deg);
 }
 
 .topbar-dropdown-menu {
   position: absolute;
-  top: calc(100% + 10px);
+  top: calc(100% + 8px);
   right: 0;
-  width: 220px;
+  min-width: 250px;
+  width: max-content;
+  max-width: 300px;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: var(--shadow-card);
-  padding: 0.5rem;
-  z-index: 50;
+  border-radius: 16px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
+  padding: 0.6rem;
+  z-index: 60;
+  animation: dropdown-fade-in 0.15s ease-out;
+}
+
+@keyframes dropdown-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .topbar-dd-header {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.6rem;
+  padding: 0.6rem 0.5rem 0.75rem;
 }
 
 .topbar-dd-avatar {
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   color: #ffffff;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .topbar-dd-user-meta {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  gap: 0.15rem;
 }
 
 .topbar-dd-name {
-  font-size: 0.88rem;
-  font-weight: 600;
+  font-size: 0.92rem;
+  font-weight: 700;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
@@ -2962,7 +2986,7 @@ input:focus, textarea:focus, select:focus {
 }
 
 .topbar-dd-email {
-  font-size: 0.72rem;
+  font-size: 0.76rem;
   color: var(--text-dim);
   white-space: nowrap;
   overflow: hidden;
@@ -2972,7 +2996,7 @@ input:focus, textarea:focus, select:focus {
 .topbar-dd-divider {
   height: 1px;
   background: var(--border);
-  margin: 0.4rem 0;
+  margin: 0.35rem 0.25rem 0.5rem;
 }
 
 .topbar-dd-item {
