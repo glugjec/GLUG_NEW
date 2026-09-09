@@ -73,8 +73,9 @@ router.get('/', optionalAuth, async (req, res) => {
       body: p.body,
       category: p.category,
       tags: p.tags || [],
-      voteScore: p.voteScore || 0,
+      voteScore: Math.max(0, p.voteScore || 0),
       commentCount: p.commentCount || 0,
+      views: p.views || 0,
       isPinned: !!p.isPinned,
       createdAt: p.createdAt,
       updatedAt: p.updatedAt,
@@ -128,6 +129,9 @@ router.get('/:id', optionalAuth, async (req, res) => {
       if (vote) userVote = vote.value;
     }
 
+    await Post.findByIdAndUpdate(req.params.id, { $inc: { views: 1 } });
+    const currentViews = (post.views || 0) + 1;
+
     const formattedPost = {
       id: post._id.toString(),
       _id: post._id.toString(),
@@ -135,8 +139,9 @@ router.get('/:id', optionalAuth, async (req, res) => {
       body: post.body,
       category: post.category,
       tags: post.tags || [],
-      voteScore: post.voteScore || 0,
+      voteScore: Math.max(0, post.voteScore || 0),
       commentCount: post.commentCount || 0,
+      views: currentViews,
       isPinned: !!post.isPinned,
       isLocked: !!post.isLocked,
       createdAt: post.createdAt,
@@ -317,11 +322,11 @@ router.post('/:id/vote', requireAuth, async (req, res) => {
       newUserVote = numericValue;
     }
 
-    post.voteScore = (post.voteScore || 0) + scoreDelta;
+    post.voteScore = Math.max(0, (post.voteScore || 0) + scoreDelta);
     await post.save();
 
     return res.json({
-      voteScore: post.voteScore,
+      voteScore: Math.max(0, post.voteScore),
       userVote: newUserVote,
     });
   } catch (err) {

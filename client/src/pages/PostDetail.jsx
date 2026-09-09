@@ -190,22 +190,30 @@ export default function PostDetail() {
   const handlePostVote = async (delta) => {
     if (!post) return
     const currentVote = post.userVote || 0
-    let nextVote = currentVote === delta ? 0 : delta
-    let scoreDiff = nextVote - currentVote
-
-    setPost((prev) => ({
-      ...prev,
-      userVote: nextVote,
-      voteScore: (prev.voteScore || 0) + scoreDiff
-    }))
+    const nextVote = currentVote === delta ? 0 : delta
 
     if (post.id && !post.id.startsWith('distro-')) {
       try {
-        await postsApi.vote(post.id || post._id, nextVote)
+        const res = await postsApi.vote(post.id || post._id, nextVote)
+        if (res && typeof res.voteScore === 'number') {
+          setPost((prev) => ({
+            ...prev,
+            userVote: res.userVote,
+            voteScore: Math.max(0, res.voteScore)
+          }))
+          return
+        }
       } catch {
         // silent fail
       }
     }
+
+    const scoreDiff = nextVote - currentVote
+    setPost((prev) => ({
+      ...prev,
+      userVote: nextVote,
+      voteScore: Math.max(0, (prev.voteScore || 0) + scoreDiff)
+    }))
   }
 
   const handleCommentVote = (commentId, delta) => {
@@ -341,7 +349,7 @@ export default function PostDetail() {
     return (a.createdAt || '').localeCompare(b.createdAt || '')
   })
 
-  const viewsCount = activePost.views || '1.2K'
+  const viewsCount = activePost.views ?? 0
   const repliesCount = comments.length
 
   return (
@@ -367,12 +375,21 @@ export default function PostDetail() {
           <article className="discussion-card">
             <header className="discussion-author-row">
               <div className="author-meta-left">
-                <div
-                  className="author-avatar"
-                  style={{ background: avatarColor(authorName) }}
-                >
-                  {avatarInitials(authorName)}
-                </div>
+                {activePost.author?.avatar ? (
+                  <img
+                    src={activePost.author.avatar}
+                    alt={authorName}
+                    className="author-avatar"
+                    style={{ objectFit: 'cover' }}
+                  />
+                ) : (
+                  <div
+                    className="author-avatar"
+                    style={{ background: avatarColor(authorName) }}
+                  >
+                    {avatarInitials(authorName)}
+                  </div>
+                )}
                 <div className="author-text-details">
                   <div className="author-name-badge-row">
                     <span className="author-username">{authorName}</span>
@@ -450,7 +467,7 @@ export default function PostDetail() {
                   >
                     <ChevronUp size={16} />
                   </button>
-                  <span className="vote-score-num">{activePost.voteScore ?? 24}</span>
+                  <span className="vote-score-num">{Math.max(0, activePost.voteScore ?? 0)}</span>
                   <button
                     type="button"
                     className={`vote-capsule-btn ${activePost.userVote === -1 ? 'voted-down' : ''}`}
@@ -517,12 +534,21 @@ export default function PostDetail() {
                     >
                       <div className="reply-top-header">
                         <div className="reply-user-left">
-                          <div
-                            className="reply-avatar"
-                            style={{ background: avatarColor(rAuthor) }}
-                          >
-                            {avatarInitials(rAuthor)}
-                          </div>
+                          {reply.author?.avatar ? (
+                            <img
+                              src={reply.author.avatar}
+                              alt={rAuthor}
+                              className="reply-avatar"
+                              style={{ objectFit: 'cover' }}
+                            />
+                          ) : (
+                            <div
+                              className="reply-avatar"
+                              style={{ background: avatarColor(rAuthor) }}
+                            >
+                              {avatarInitials(rAuthor)}
+                            </div>
+                          )}
                           <div className="reply-user-info">
                             <span className="reply-username">{rAuthor}</span>
                             <span
@@ -614,12 +640,21 @@ export default function PostDetail() {
 
             <div className="reply-composer-card">
               <div className="composer-input-area">
-                <div
-                  className="composer-avatar"
-                  style={{ background: avatarColor(user ? user.username : 'student') }}
-                >
-                  {avatarInitials(user ? user.username : 'student')}
-                </div>
+                {user?.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt={user.username || 'User'}
+                    className="composer-avatar"
+                    style={{ objectFit: 'cover' }}
+                  />
+                ) : (
+                  <div
+                    className="composer-avatar"
+                    style={{ background: avatarColor(user ? user.username : 'student') }}
+                  >
+                    {avatarInitials(user ? user.username : 'student')}
+                  </div>
+                )}
                 <textarea
                   ref={textareaRef}
                   className="composer-textarea"

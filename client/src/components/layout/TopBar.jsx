@@ -108,12 +108,21 @@ export default function TopBar() {
               aria-haspopup="true"
               aria-expanded={menuOpen}
             >
-              <div
-                className="topbar-pill-avatar"
-                style={{ background: avatarColor(user.username || user.email) }}
-              >
-                {avatarInitials(user.username || user.email)}
-              </div>
+              {user.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt={user.username || 'User'}
+                  className="topbar-pill-avatar"
+                  style={{ objectFit: 'cover' }}
+                />
+              ) : (
+                <div
+                  className="topbar-pill-avatar"
+                  style={{ background: avatarColor(user.username || user.email) }}
+                >
+                  {avatarInitials(user.username || user.email)}
+                </div>
+              )}
               <span className="topbar-pill-name">
                 {user.username
                   ? (user.username.includes('@') ? user.username.split('@')[0] : user.username)
@@ -128,12 +137,21 @@ export default function TopBar() {
             {menuOpen && (
               <div className="topbar-dropdown-menu">
                 <div className="topbar-dd-header">
-                  <div
-                    className="topbar-dd-avatar"
-                    style={{ background: avatarColor(user.username || user.email) }}
-                  >
-                    {avatarInitials(user.username || user.email)}
-                  </div>
+                  {user.avatar ? (
+                    <img
+                      src={user.avatar}
+                      alt={user.username || 'User'}
+                      className="topbar-dd-avatar"
+                      style={{ objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <div
+                      className="topbar-dd-avatar"
+                      style={{ background: avatarColor(user.username || user.email) }}
+                    >
+                      {avatarInitials(user.username || user.email)}
+                    </div>
+                  )}
                   <div className="topbar-dd-user-meta">
                     <span className="topbar-dd-name">
                       {user.username

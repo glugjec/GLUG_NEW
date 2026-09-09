@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { postsApi } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
+import { avatarInitials, avatarColor } from '../components/common/avatar.js'
 import {
   Plus,
   ArrowUp,
@@ -277,10 +278,14 @@ export default function Forum() {
           body: p.body,
           category: p.category || 'general',
           tags: p.tags?.length ? p.tags : [p.category || 'General'],
-          voteScore: p.voteScore || 0,
+          voteScore: Math.max(0, p.voteScore || 0),
           commentCount: p.commentCount ?? (p.comments ? p.comments.length : 0),
-          views: p.views || Math.floor(Math.random() * 200 + 40),
-          author: { username: p.author?.username || 'member' },
+          views: p.views ?? 0,
+          author: {
+            username: p.author?.username || 'member',
+            avatar: p.author?.avatar
+          },
+          userVote: p.userVote || 0,
           timeAgo: formatRelativeTime(p.createdAt),
           iconType: ['tux', 'terminal', 'code', 'settings', 'screen'][idx % 5],
           iconBg: ['#422006', '#022c22', '#3b0764', '#1e3a8a', '#1e1b4b'][idx % 5],
@@ -305,16 +310,28 @@ export default function Forum() {
     loadPosts()
   }, [searchParams, loadPosts])
 
-  const handleVote = async (e, postId) => {
+  const handleVote = async (e, post) => {
     e.stopPropagation()
+    const currentVote = post.userVote || 0
+    const nextVote = currentVote === 1 ? 0 : 1
     try {
-      await postsApi.vote(postId, 1)
-      setPosts((prev) =>
-        prev.map((p) => (p.id === postId ? { ...p, voteScore: (p.voteScore || 0) + 1 } : p))
-      )
+      const res = await postsApi.vote(post.id, nextVote)
+      if (res && typeof res.voteScore === 'number') {
+        setPosts((prev) =>
+          prev.map((p) =>
+            p.id === post.id
+              ? { ...p, voteScore: Math.max(0, res.voteScore), userVote: res.userVote }
+              : p
+          )
+        )
+      }
     } catch {
       setPosts((prev) =>
-        prev.map((p) => (p.id === postId ? { ...p, voteScore: (p.voteScore || 0) + 1 } : p))
+        prev.map((p) =>
+          p.id === post.id
+            ? { ...p, voteScore: Math.max(0, (p.voteScore || 0) + (nextVote === 1 ? 1 : -1)), userVote: nextVote }
+            : p
+        )
       )
     }
   }
@@ -486,9 +503,12 @@ export default function Forum() {
                   if (e.key === 'Enter') navigate(`/forum/posts/${post.id}`)
                 }}
               >
-                <div className="forum-vote-box" onClick={(e) => handleVote(e, post.id)}>
+                <div
+                  className={`forum-vote-box ${post.userVote === 1 ? 'voted-up' : ''}`}
+                  onClick={(e) => handleVote(e, post)}
+                >
                   <ArrowUp size={16} className="vote-arrow" />
-                  <span className="vote-score">{post.voteScore}</span>
+                  <span className="vote-score">{Math.max(0, post.voteScore || 0)}</span>
                 </div>
 
                 <div
@@ -514,17 +534,28 @@ export default function Forum() {
 
                 <div className="forum-post-metrics">
                   <span className="metric-item">
-                    <MessageSquare size={14} /> {post.commentCount}
+                    <MessageSquare size={14} /> {post.commentCount || 0}
                   </span>
                   <span className="metric-item">
-                    <Eye size={14} /> {post.views}
+                    <Eye size={14} /> {post.views || 0}
                   </span>
                 </div>
 
                 <div className="forum-post-author">
-                  <div className="author-avatar-circle">
-                    {(post.author?.username || 'U').charAt(0).toUpperCase()}
-                  </div>
+                  {post.author?.avatar ? (
+                    <img
+                      src={post.author.avatar}
+                      alt={post.author.username}
+                      className="author-avatar-img"
+                    />
+                  ) : (
+                    <div
+                      className="author-avatar-circle"
+                      style={{ background: avatarColor(post.author?.username) }}
+                    >
+                      {avatarInitials(post.author?.username)}
+                    </div>
+                  )}
                   <div className="author-meta">
                     <span className="author-name">by {post.author?.username}</span>
                     <span className="author-time">{post.timeAgo}</span>

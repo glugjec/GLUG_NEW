@@ -396,17 +396,30 @@
   min-width: 130px;
 }
 
+.forum-vote-box.voted-up {
+  color: #3b82f6;
+  border-color: rgba(59, 130, 246, 0.4);
+  background: rgba(59, 130, 246, 0.1);
+}
+
 .author-avatar-circle {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #2563eb;
   color: #ffffff;
   font-size: 0.76rem;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+}
+
+.author-avatar-img {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
   flex-shrink: 0;
 }
 
