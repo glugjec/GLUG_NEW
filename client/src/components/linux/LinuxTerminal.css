@@ -18,16 +18,6 @@
     #5865f2
   );
   animation: frame-spin 4s linear infinite;
-  transform: perspective(1000px)
-    rotateX(var(--tiltX, 0deg))
-    rotateY(var(--tiltY, 0deg))
-    scale(var(--hover-scale, 1));
-  transition: transform 0.18s ease-out;
-  will-change: transform;
-}
-
-.terminal-frame:hover {
-  --hover-scale: 1.02;
 }
 
 @keyframes frame-spin {

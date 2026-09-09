@@ -294,25 +294,6 @@ export default function LinuxTerminal({
   const terminalRef = useRef(null);
   const frameRef = useRef(null);
 
-  function handleMouseMove(e) {
-    if (expanded) return;
-    const el = frameRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = (e.clientY - rect.top) / rect.height;
-    el.style.setProperty("--tiltY", `${((x - 0.5) * 8).toFixed(2)}deg`);
-    el.style.setProperty("--tiltX", `${((0.5 - y) * 8).toFixed(2)}deg`);
-  }
-
-  function handleMouseLeave() {
-    if (expanded) return;
-    const el = frameRef.current;
-    if (!el) return;
-    el.style.setProperty("--tiltX", "0deg");
-    el.style.setProperty("--tiltY", "0deg");
-  }
-
   // Persist filesystem to localStorage and sync to MongoDB Atlas with debounce
   useEffect(() => {
     localStorage.setItem(activeStorageKey, JSON.stringify(fs));
@@ -1883,8 +1864,6 @@ export default function LinuxTerminal({
       <div
         className={`terminal-frame${expanded ? " is-expanded" : ""}`}
         ref={frameRef}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
       >
       <div
         className="linux-terminal"
