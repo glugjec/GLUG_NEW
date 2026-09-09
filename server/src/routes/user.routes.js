@@ -75,6 +75,8 @@ router.get('/:id', async (req, res) => {
       bio: user.bio || '',
       skills: user.skills || [],
       avatar: user.avatar || '',
+      socials: user.socials || {},
+      preferences: user.preferences || {},
       createdAt: user.createdAt,
       stats: {
         posts: postCount,

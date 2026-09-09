@@ -4,6 +4,68 @@ import { useAuth } from '../../context/AuthContext.jsx'
 import { avatarInitials, avatarColor } from '../common/avatar.js'
 import { Search, Bell, ChevronDown, LogOut, User, Settings as SettingsIcon } from 'lucide-react'
 
+function TopBarAvatar({ src, username, email, size = 30, className = '' }) {
+  const [error, setError] = useState(false)
+  const name = username || email || 'User'
+
+  if (src && !error && src.startsWith('http')) {
+    return (
+      <img
+        src={src}
+        alt={name}
+        referrerPolicy="no-referrer"
+        crossOrigin="anonymous"
+        onError={() => setError(true)}
+        className={className}
+        style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+      />
+    )
+  }
+
+  if (src === 'tux') {
+    return (
+      <div
+        className={className}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: '50%',
+          background: '#0f172a',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0
+        }}
+      >
+        <svg viewBox="0 0 24 24" width={Math.round(size * 0.55)} height={Math.round(size * 0.55)} fill="#fbbf24">
+          <path d="M12 2C9.24 2 7 4.24 7 7v4c0 .35.04.7.1 1.03C5.3 12.67 4 14.67 4 17c0 2.2 1.8 4 4 4h8c2.2 0 4-1.8 4-4 0-2.33-1.3-4.33-3.1-4.97.06-.33.1-.68.1-1.03V7c0-2.76-2.24-5-5-5zm-2 6c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm4 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-2 2.5c1.1 0 2 .45 2 1h-4c0-.55.9-1 2-1z" />
+        </svg>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className={className}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        background: avatarColor(name),
+        color: '#ffffff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: `${Math.round(size * 0.42)}px`,
+        fontWeight: 700,
+        flexShrink: 0
+      }}
+    >
+      {avatarInitials(name)}
+    </div>
+  )
+}
+
 export default function TopBar() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
@@ -108,21 +170,13 @@ export default function TopBar() {
               aria-haspopup="true"
               aria-expanded={menuOpen}
             >
-              {user.avatar ? (
-                <img
-                  src={user.avatar}
-                  alt={user.username || 'User'}
-                  className="topbar-pill-avatar"
-                  style={{ objectFit: 'cover' }}
-                />
-              ) : (
-                <div
-                  className="topbar-pill-avatar"
-                  style={{ background: avatarColor(user.username || user.email) }}
-                >
-                  {avatarInitials(user.username || user.email)}
-                </div>
-              )}
+              <TopBarAvatar
+                src={user.avatar}
+                username={user.username}
+                email={user.email}
+                size={30}
+                className="topbar-pill-avatar"
+              />
               <span className="topbar-pill-name">
                 {user.username
                   ? (user.username.includes('@') ? user.username.split('@')[0] : user.username)
@@ -137,21 +191,13 @@ export default function TopBar() {
             {menuOpen && (
               <div className="topbar-dropdown-menu">
                 <div className="topbar-dd-header">
-                  {user.avatar ? (
-                    <img
-                      src={user.avatar}
-                      alt={user.username || 'User'}
-                      className="topbar-dd-avatar"
-                      style={{ objectFit: 'cover' }}
-                    />
-                  ) : (
-                    <div
-                      className="topbar-dd-avatar"
-                      style={{ background: avatarColor(user.username || user.email) }}
-                    >
-                      {avatarInitials(user.username || user.email)}
-                    </div>
-                  )}
+                  <TopBarAvatar
+                    src={user.avatar}
+                    username={user.username}
+                    email={user.email}
+                    size={38}
+                    className="topbar-dd-avatar"
+                  />
                   <div className="topbar-dd-user-meta">
                     <span className="topbar-dd-name">
                       {user.username

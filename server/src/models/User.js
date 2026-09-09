@@ -47,6 +47,18 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    socials: {
+      github: { type: String, default: '' },
+      linkedin: { type: String, default: '' },
+      website: { type: String, default: '' },
+      twitter: { type: String, default: '' },
+    },
+    preferences: {
+      emailNotifs: { type: Boolean, default: true },
+      replyNotifs: { type: Boolean, default: true },
+      eventNotifs: { type: Boolean, default: true },
+      theme: { type: String, default: 'dark' },
+    },
     terminalState: {
       fs: {
         type: mongoose.Schema.Types.Mixed,

@@ -205,9 +205,8 @@ router.get('/me', requireAuth, async (req, res) => {
 });
 
 // @route   PUT /api/auth/me
-// @desc    Update current user profile (bio, skills, avatar, password)
 router.put('/me', requireAuth, async (req, res) => {
-  const { bio, skills, avatar, currentPassword, newPassword } = req.body;
+  const { username, bio, skills, avatar, socials, preferences, currentPassword, newPassword } = req.body;
 
   try {
     const user = await User.findById(req.user.id);
@@ -215,9 +214,39 @@ router.put('/me', requireAuth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    if (typeof username === 'string' && username.trim() && username.trim() !== user.username) {
+      const cleanUsername = username.trim();
+      if (!/^[a-zA-Z0-9_]{3,30}$/.test(cleanUsername)) {
+        return res.status(400).json({ error: 'Username must be 3-30 characters (letters, numbers, underscore)' });
+      }
+      const existing = await User.findOne({ username: cleanUsername, _id: { $ne: user._id } });
+      if (existing) {
+        return res.status(409).json({ error: 'Username already taken' });
+      }
+      user.username = cleanUsername;
+    }
+
     if (typeof bio === 'string') user.bio = bio;
     if (Array.isArray(skills)) user.skills = skills.map((s) => String(s).trim()).filter(Boolean);
     if (typeof avatar === 'string') user.avatar = avatar;
+
+    if (socials && typeof socials === 'object') {
+      user.socials = {
+        github: typeof socials.github === 'string' ? socials.github.trim() : (user.socials?.github || ''),
+        linkedin: typeof socials.linkedin === 'string' ? socials.linkedin.trim() : (user.socials?.linkedin || ''),
+        website: typeof socials.website === 'string' ? socials.website.trim() : (user.socials?.website || ''),
+        twitter: typeof socials.twitter === 'string' ? socials.twitter.trim() : (user.socials?.twitter || ''),
+      };
+    }
+
+    if (preferences && typeof preferences === 'object') {
+      user.preferences = {
+        emailNotifs: preferences.emailNotifs !== undefined ? !!preferences.emailNotifs : (user.preferences?.emailNotifs ?? true),
+        replyNotifs: preferences.replyNotifs !== undefined ? !!preferences.replyNotifs : (user.preferences?.replyNotifs ?? true),
+        eventNotifs: preferences.eventNotifs !== undefined ? !!preferences.eventNotifs : (user.preferences?.eventNotifs ?? true),
+        theme: typeof preferences.theme === 'string' ? preferences.theme : (user.preferences?.theme || 'dark'),
+      };
+    }
 
     if (newPassword) {
       if (user.passwordHash) {

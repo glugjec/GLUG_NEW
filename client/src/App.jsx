@@ -41,6 +41,7 @@ export default function App() {
             <Route path="/forum/posts/:id" element={<PostDetail />} />
             <Route path="/discussions/:id" element={<PostDetail />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/profile/:id" element={<Profile />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route
