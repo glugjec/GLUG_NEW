@@ -52,7 +52,8 @@ router.put('/me/terminal', requireAuth, async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const isObjectId = /^[0-9a-fA-F]{24}$/.test(req.params.id);
-    const query = isObjectId ? { _id: req.params.id } : { username: req.params.id };
+    const escaped = String(req.params.id).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const query = isObjectId ? { _id: req.params.id } : { username: { $regex: new RegExp(`^${escaped}$`, 'i') } };
 
     const user = await User.findOne(query).select('-passwordHash').lean();
     if (!user) {
@@ -98,7 +99,8 @@ router.get('/:id/posts', async (req, res) => {
     let userId = req.params.id;
 
     if (!isObjectId) {
-      const u = await User.findOne({ username: req.params.id }).select('_id');
+      const escaped = String(req.params.id).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const u = await User.findOne({ username: { $regex: new RegExp(`^${escaped}$`, 'i') } }).select('_id');
       if (!u) return res.status(404).json({ error: 'User not found' });
       userId = u._id;
     }

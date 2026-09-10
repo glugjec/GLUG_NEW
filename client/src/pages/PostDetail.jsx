@@ -420,7 +420,9 @@ export default function PostDetail() {
                 />
                 <div className="author-text-details">
                   <div className="author-name-badge-row">
-                    <span className="author-username">{authorName}</span>
+                    <Link to={`/profile/${encodeURIComponent(authorName)}`} className="author-username">
+                      {authorName}
+                    </Link>
                     <span className="op-badge">Original Poster</span>
                   </div>
                   <span className="author-time">{formattedCreatedTime}</span>
@@ -569,7 +571,9 @@ export default function PostDetail() {
                             className="reply-avatar"
                           />
                           <div className="reply-user-info">
-                            <span className="reply-username">{rAuthor}</span>
+                            <Link to={`/profile/${encodeURIComponent(rAuthor)}`} className="reply-username">
+                              {rAuthor}
+                            </Link>
                             <span
                               className={`role-badge ${
                                 rRole.toLowerCase().includes('moderator')

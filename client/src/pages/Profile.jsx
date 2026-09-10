@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { usersApi, authApi } from '../api.js'
 import { avatarInitials, avatarColor } from '../components/common/avatar.js'
@@ -105,7 +105,8 @@ function UserAvatar({ src, username, size = 96, className = '' }) {
 
 export default function Profile() {
   const { id } = useParams()
-  const { user, updateUser } = useAuth()
+  const navigate = useNavigate()
+  const { user, updateUser, authLoading } = useAuth()
   const [profile, setProfile] = useState(null)
   const [userPosts, setUserPosts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -128,8 +129,21 @@ export default function Profile() {
   const [uploadError, setUploadError] = useState('')
   const uploadTimerRef = useRef(null)
 
-  const isOwnProfile = !id || (user && (id === user.id || id === user._id || id === user.username))
+  const isOwnProfile = Boolean(
+    !id ||
+    (user && (
+      (user.id && String(id).toLowerCase() === String(user.id).toLowerCase()) ||
+      (user._id && String(id).toLowerCase() === String(user._id).toLowerCase()) ||
+      (user.username && String(id).toLowerCase() === String(user.username).toLowerCase())
+    ))
+  )
   const currentUserId = user?.id || user?._id
+
+  useEffect(() => {
+    if (id && user && isOwnProfile) {
+      navigate('/profile', { replace: true })
+    }
+  }, [id, user, isOwnProfile, navigate])
 
   useEffect(() => {
     return () => {
@@ -214,7 +228,7 @@ export default function Profile() {
       setLoading(true)
       setError('')
       try {
-        const targetId = isOwnProfile ? (user?.id || user?._id) : id
+        const targetId = isOwnProfile ? (user?.id || user?._id || user?.username) : id
         if (!targetId) {
           setLoading(false)
           return
@@ -272,11 +286,31 @@ export default function Profile() {
     }
 
     loadData()
-  }, [id, currentUserId])
+  }, [id, currentUserId, isOwnProfile])
 
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(window.location.href)
-    showToast('Profile link copied to clipboard!')
+  const handleCopyLink = async () => {
+    const shareUsername = profile?.username || (isOwnProfile ? user?.username : id)
+    const shareId = profile?.id || profile?._id || (isOwnProfile ? (user?.id || user?._id) : id)
+    const targetIdentifier = shareUsername || shareId
+
+    const publicUrl = targetIdentifier
+      ? `${window.location.origin}/profile/${encodeURIComponent(targetIdentifier)}`
+      : window.location.href
+
+    try {
+      await navigator.clipboard.writeText(publicUrl)
+      showToast('Profile link copied to clipboard!')
+    } catch {
+      const textArea = document.createElement('textarea')
+      textArea.value = publicUrl
+      textArea.style.position = 'fixed'
+      textArea.style.opacity = '0'
+      document.body.appendChild(textArea)
+      textArea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textArea)
+      showToast('Profile link copied to clipboard!')
+    }
   }
 
   const handleAddSkill = (e) => {
@@ -327,6 +361,14 @@ export default function Profile() {
     } finally {
       setSavingProfile(false)
     }
+  }
+
+  if (authLoading) {
+    return (
+      <div className="profile-page-container">
+        <LoadingSpinner text="Loading profile…" />
+      </div>
+    )
   }
 
   if (!user && isOwnProfile) {

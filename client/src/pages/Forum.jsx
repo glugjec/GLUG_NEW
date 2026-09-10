@@ -566,7 +566,16 @@ export default function Forum() {
                   </span>
                 </div>
 
-                <div className="forum-post-author">
+                <div
+                  className="forum-post-author"
+                  onClick={(e) => {
+                    if (post.author?.username) {
+                      e.stopPropagation()
+                      navigate(`/profile/${encodeURIComponent(post.author.username)}`)
+                    }
+                  }}
+                  title={post.author?.username ? `View ${post.author.username}'s profile` : ''}
+                >
                   <UserAvatar
                     src={post.author?.avatar}
                     username={post.author?.username}
