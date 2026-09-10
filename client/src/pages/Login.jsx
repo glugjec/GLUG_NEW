@@ -33,7 +33,7 @@ export default function Login() {
       <div className="auth-card">
         <div className="auth-card-glow" />
         <div className="auth-brand">
-          <div className="auth-logo">G</div>
+          <img src="/logo.png" alt="GLUG" className="auth-logo" />
           <h1 className="auth-title">Welcome back!</h1>
           <p className="auth-subtitle">We're so excited to see you again!</p>
         </div>

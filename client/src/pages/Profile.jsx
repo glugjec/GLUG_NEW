@@ -28,7 +28,8 @@ import {
   Upload,
   Loader2,
   Camera,
-  Trash2
+  Trash2,
+  AlertCircle
 } from 'lucide-react'
 import { uploadApi } from '../api.js'
 import { compressImage } from '../utils/imageCompressor.js'
@@ -127,7 +128,8 @@ export default function Profile() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [uploadProgressText, setUploadProgressText] = useState('')
   const [uploadError, setUploadError] = useState('')
-  const [modalError, setModalError] = useState('')
+  const [usernameError, setUsernameError] = useState('')
+  const [globalModalError, setGlobalModalError] = useState('')
   const uploadTimerRef = useRef(null)
 
   const isOwnProfile = Boolean(
@@ -161,7 +163,8 @@ export default function Profile() {
     if (uploadTimerRef.current) clearTimeout(uploadTimerRef.current)
     setUploadProgressText('')
     setUploadError('')
-    setModalError('')
+    setUsernameError('')
+    setGlobalModalError('')
     setEditModalOpen(true)
   }
 
@@ -169,7 +172,8 @@ export default function Profile() {
     if (uploadTimerRef.current) clearTimeout(uploadTimerRef.current)
     setUploadProgressText('')
     setUploadError('')
-    setModalError('')
+    setUsernameError('')
+    setGlobalModalError('')
     setEditModalOpen(false)
   }
 
@@ -339,7 +343,8 @@ export default function Profile() {
     if (uploadTimerRef.current) clearTimeout(uploadTimerRef.current)
     setUploadProgressText('')
     setUploadError('')
-    setModalError('')
+    setUsernameError('')
+    setGlobalModalError('')
     setSavingProfile(true)
     setError('')
     try {
@@ -361,7 +366,12 @@ export default function Profile() {
         closeEditModal()
       }
     } catch (err) {
-      setModalError(err.message)
+      const msg = err.message || 'Failed to update profile'
+      if (/username/i.test(msg)) {
+        setUsernameError(msg)
+      } else {
+        setGlobalModalError(msg)
+      }
     } finally {
       setSavingProfile(false)
     }
@@ -753,7 +763,12 @@ export default function Profile() {
 
             <form onSubmit={handleSaveProfile}>
               <div className="modal-body">
-                <ErrorMessage message={modalError} />
+                {globalModalError && (
+                  <div className="modal-global-error" role="alert">
+                    <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                    <span>{globalModalError}</span>
+                  </div>
+                )}
                 <div className="modal-field">
                   <label className="modal-label">Profile Picture</label>
                   <div className="avatar-uploader-card">
@@ -823,13 +838,20 @@ export default function Profile() {
                   <label className="modal-label">Username</label>
                   <input
                     type="text"
-                    className="modal-input"
+                    className={`modal-input ${usernameError ? 'has-error' : ''}`}
                     value={editForm.username}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      setUsernameError('')
+                      setGlobalModalError('')
                       setEditForm((prev) => ({ ...prev, username: e.target.value }))
-                    }
+                    }}
                     required
                   />
+                  {usernameError && (
+                    <span className="modal-field-error">
+                      <AlertCircle size={13} /> {usernameError}
+                    </span>
+                  )}
                 </div>
 
                 <div className="modal-field">

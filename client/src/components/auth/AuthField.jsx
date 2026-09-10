@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-export default function AuthField({ label, hint, type = 'text', ...props }) {
+export default function AuthField({ label, hint, error, type = 'text', ...props }) {
   const [visible, setVisible] = useState(false)
   const isPassword = type === 'password'
 
@@ -12,7 +12,7 @@ export default function AuthField({ label, hint, type = 'text', ...props }) {
       <div className="auth-input-wrap">
         <input
           type={isPassword && visible ? 'text' : type}
-          className="auth-input"
+          className={`auth-input ${error ? 'has-error' : ''}`}
           {...props}
         />
         {isPassword && (
@@ -35,7 +35,8 @@ export default function AuthField({ label, hint, type = 'text', ...props }) {
           </button>
         )}
       </div>
-      {hint && <p className="auth-hint">{hint}</p>}
+      {error && <p className="auth-field-error-text">{error}</p>}
+      {hint && !error && <p className="auth-hint">{hint}</p>}
     </div>
   )
 }

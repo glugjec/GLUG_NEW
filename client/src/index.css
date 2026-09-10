@@ -1167,6 +1167,29 @@ input:focus, textarea:focus, select:focus {
 
 .error { color: var(--danger); margin: 0.5rem 0; }
 
+.global-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  margin-bottom: 1.25rem;
+}
+
+.global-error-icon {
+  flex-shrink: 0;
+  color: #ef4444;
+}
+
+.global-error-text {
+  line-height: 1.45;
+}
+
 .auth-alt { color: var(--text-muted); font-size: 0.9rem; }
 .auth-alt a, .back-link { color: var(--accent); text-decoration: none; }
 
@@ -1340,18 +1363,14 @@ input:focus, textarea:focus, select:focus {
 }
 
 .auth-logo {
-  width: 56px;
-  height: 56px;
+  width: 68px;
+  height: 68px;
   margin: 0 auto 0.9rem;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #5865f2, #8b5cf6);
-  color: #fff;
-  font-size: 1.6rem;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 8px 24px rgba(88, 101, 242, 0.45);
+  border-radius: 18px;
+  object-fit: cover;
+  display: block;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .auth-title {
@@ -1417,6 +1436,21 @@ input:focus, textarea:focus, select:focus {
   outline: none;
   border-color: #5865f2;
   box-shadow: 0 0 0 1px #5865f2, 0 0 0 3px rgba(88, 101, 242, 0.35);
+}
+
+.auth-input.has-error {
+  border-color: #f23f43 !important;
+  box-shadow: 0 0 0 1px #f23f43, 0 0 0 3px rgba(242, 63, 67, 0.25) !important;
+}
+
+.auth-field-error-text {
+  color: #fa777c;
+  font-size: 0.78rem;
+  margin-top: 0.35rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 .auth-eye {
@@ -2370,18 +2404,13 @@ input:focus, textarea:focus, select:focus {
 }
 
 .sb-brand-logo {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #3b82f6 100%);
-  color: #ffffff;
-  font-weight: 800;
-  font-size: 1.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  object-fit: cover;
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .sb-brand-meta {

@@ -9,6 +9,7 @@ import {
   Palette,
   Bell,
   AlertTriangle,
+  AlertCircle,
   Check,
   CheckCircle2,
   Lock,
@@ -30,7 +31,15 @@ export default function Settings() {
 
   const [activeTab, setActiveTab] = useState('account')
   const [toastMessage, setToastMessage] = useState('')
-  const [error, setError] = useState('')
+  const [globalError, setGlobalError] = useState('')
+  const [usernameError, setUsernameError] = useState('')
+  const [passwordError, setPasswordError] = useState('')
+
+  const clearErrors = () => {
+    setGlobalError('')
+    setUsernameError('')
+    setPasswordError('')
+  }
 
   // Account State
   const [username, setUsername] = useState(user?.username || '')
@@ -78,7 +87,7 @@ export default function Settings() {
 
   const handleUpdateUsername = async (e) => {
     e.preventDefault()
-    setError('')
+    clearErrors()
     if (!username.trim() || username.trim() === user?.username) return
 
     setSavingAccount(true)
@@ -89,7 +98,12 @@ export default function Settings() {
         showToast('Username updated successfully!')
       }
     } catch (err) {
-      setError(err.message)
+      const msg = err.message || 'Failed to update username'
+      if (/username/i.test(msg)) {
+        setUsernameError(msg)
+      } else {
+        setGlobalError(msg)
+      }
     } finally {
       setSavingAccount(false)
     }
@@ -97,18 +111,18 @@ export default function Settings() {
 
   const handleUpdatePassword = async (e) => {
     e.preventDefault()
-    setError('')
+    clearErrors()
 
     if (!newPassword) {
-      setError('Please enter a new password.')
+      setPasswordError('Please enter a new password.')
       return
     }
     if (newPassword.length < 6) {
-      setError('New password must be at least 6 characters.')
+      setPasswordError('New password must be at least 6 characters.')
       return
     }
     if (newPassword !== confirmPassword) {
-      setError('New passwords do not match.')
+      setPasswordError('New passwords do not match.')
       return
     }
 
@@ -120,7 +134,12 @@ export default function Settings() {
       setConfirmPassword('')
       showToast('Password changed successfully!')
     } catch (err) {
-      setError(err.message)
+      const msg = err.message || 'Failed to update password'
+      if (/password/i.test(msg)) {
+        setPasswordError(msg)
+      } else {
+        setGlobalError(msg)
+      }
     } finally {
       setSavingPassword(false)
     }
@@ -203,14 +222,14 @@ export default function Settings() {
         </Link>
       </div>
 
-      <ErrorMessage message={error} />
+      <ErrorMessage message={globalError} />
 
       <div className="settings-layout-grid">
         <aside className="settings-sidebar-nav">
           <button
             type="button"
             className={`settings-nav-item ${activeTab === 'account' ? 'is-active' : ''}`}
-            onClick={() => { setActiveTab('account'); setError(''); }}
+            onClick={() => { setActiveTab('account'); clearErrors(); }}
           >
             <User size={16} />
             <span>Account</span>
@@ -219,7 +238,7 @@ export default function Settings() {
           <button
             type="button"
             className={`settings-nav-item ${activeTab === 'security' ? 'is-active' : ''}`}
-            onClick={() => { setActiveTab('security'); setError(''); }}
+            onClick={() => { setActiveTab('security'); clearErrors(); }}
           >
             <Shield size={16} />
             <span>Security &amp; Password</span>
@@ -228,7 +247,7 @@ export default function Settings() {
           <button
             type="button"
             className={`settings-nav-item ${activeTab === 'appearance' ? 'is-active' : ''}`}
-            onClick={() => { setActiveTab('appearance'); setError(''); }}
+            onClick={() => { setActiveTab('appearance'); clearErrors(); }}
           >
             <Palette size={16} />
             <span>Theme &amp; Editor</span>
@@ -237,7 +256,7 @@ export default function Settings() {
           <button
             type="button"
             className={`settings-nav-item ${activeTab === 'notifications' ? 'is-active' : ''}`}
-            onClick={() => { setActiveTab('notifications'); setError(''); }}
+            onClick={() => { setActiveTab('notifications'); clearErrors(); }}
           >
             <Bell size={16} />
             <span>Notifications</span>
@@ -246,7 +265,7 @@ export default function Settings() {
           <button
             type="button"
             className={`settings-nav-item ${activeTab === 'danger' ? 'is-active' : ''}`}
-            onClick={() => { setActiveTab('danger'); setError(''); }}
+            onClick={() => { setActiveTab('danger'); clearErrors(); }}
           >
             <AlertTriangle size={16} color="#ef4444" />
             <span style={{ color: '#ef4444' }}>Danger Zone</span>
@@ -271,14 +290,23 @@ export default function Settings() {
                     <label className="settings-input-label">Username</label>
                     <input
                       type="text"
-                      className="settings-input-control"
+                      className={`settings-input-control ${usernameError ? 'has-error' : ''}`}
                       value={username}
-                      onChange={(e) => setUsername(e.target.value)}
+                      onChange={(e) => {
+                        setUsername(e.target.value)
+                        if (usernameError) setUsernameError('')
+                      }}
                       required
                     />
-                    <span className="settings-field-hint">
-                      Visible on all your forum discussions and comments.
-                    </span>
+                    {usernameError ? (
+                      <span className="settings-field-error">
+                        <AlertCircle size={13} /> {usernameError}
+                      </span>
+                    ) : (
+                      <span className="settings-field-hint">
+                        Visible on all your forum discussions and comments.
+                      </span>
+                    )}
                   </div>
 
                   <div className="settings-field-group">
@@ -351,6 +379,12 @@ export default function Settings() {
               )}
 
               <form onSubmit={handleUpdatePassword}>
+                {passwordError && (
+                  <div className="settings-field-error-banner" role="alert">
+                    <AlertCircle size={15} style={{ flexShrink: 0 }} />
+                    <span>{passwordError}</span>
+                  </div>
+                )}
                 <div className="settings-form-grid">
                   <div className="settings-field-group settings-field-full">
                     <label className="settings-input-label">Current Password</label>
@@ -359,7 +393,10 @@ export default function Settings() {
                       className="settings-input-control"
                       placeholder="Enter your current password"
                       value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      onChange={(e) => {
+                        setCurrentPassword(e.target.value)
+                        if (passwordError) setPasswordError('')
+                      }}
                     />
                     <span className="settings-field-hint">
                       Required if you already have an existing password.
@@ -370,10 +407,13 @@ export default function Settings() {
                     <label className="settings-input-label">New Password</label>
                     <input
                       type="password"
-                      className="settings-input-control"
+                      className={`settings-input-control ${passwordError ? 'has-error' : ''}`}
                       placeholder="At least 6 characters"
                       value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
+                      onChange={(e) => {
+                        setNewPassword(e.target.value)
+                        if (passwordError) setPasswordError('')
+                      }}
                       required
                     />
                   </div>
@@ -382,10 +422,13 @@ export default function Settings() {
                     <label className="settings-input-label">Confirm New Password</label>
                     <input
                       type="password"
-                      className="settings-input-control"
+                      className={`settings-input-control ${passwordError ? 'has-error' : ''}`}
                       placeholder="Repeat new password"
                       value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      onChange={(e) => {
+                        setConfirmPassword(e.target.value)
+                        if (passwordError) setPasswordError('')
+                      }}
                       required
                     />
                   </div>
