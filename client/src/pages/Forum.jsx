@@ -349,6 +349,10 @@ export default function Forum() {
 
   const handleVote = async (e, post) => {
     e.stopPropagation()
+    if (!user) {
+      navigate('/login')
+      return
+    }
     const currentVote = post.userVote || 0
     const nextVote = currentVote === 1 ? 0 : 1
     try {
@@ -363,13 +367,7 @@ export default function Forum() {
         )
       }
     } catch {
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id === post.id
-            ? { ...p, voteScore: Math.max(0, (p.voteScore || 0) + (nextVote === 1 ? 1 : -1)), userVote: nextVote }
-            : p
-        )
-      )
+      // ignore
     }
   }
 
