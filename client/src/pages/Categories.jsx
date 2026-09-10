@@ -202,38 +202,12 @@ export default function Categories() {
             </p>
           </div>
 
-          <div className="cat-hero-artwork">
-            <div className="cat-signpost">
-              <span className="signpost-plate signpost-blue">ASK</span>
-              <span className="signpost-plate signpost-gold">LEARN</span>
-              <span className="signpost-plate signpost-green">SHARE</span>
-              <span className="signpost-plate signpost-purple">GROW</span>
-              <div className="signpost-pole"></div>
-            </div>
-
-            <div className="cat-tux-explorer">
-              <svg viewBox="0 0 100 110" className="cat-tux-svg">
-                <ellipse cx="50" cy="65" rx="28" ry="34" fill="#0f172a" />
-                <ellipse cx="50" cy="68" rx="19" ry="26" fill="#f8fafc" />
-                <circle cx="50" cy="32" r="18" fill="#0f172a" />
-                <ellipse cx="44" cy="29" rx="3.5" ry="5" fill="#f8fafc" />
-                <circle cx="45" cy="29" r="2" fill="#090d16" />
-                <ellipse cx="56" cy="29" rx="3.5" ry="5" fill="#f8fafc" />
-                <circle cx="55" cy="29" r="2" fill="#090d16" />
-                <polygon points="46,34 54,34 50,42" fill="#f59e0b" />
-                <ellipse cx="25" cy="65" rx="6" ry="18" fill="#0f172a" transform="rotate(-15 25 65)" />
-                <ellipse cx="75" cy="65" rx="6" ry="18" fill="#0f172a" transform="rotate(15 75 65)" />
-                <ellipse cx="38" cy="100" rx="10" ry="5" fill="#f59e0b" />
-                <ellipse cx="62" cy="100" rx="10" ry="5" fill="#f59e0b" />
-                <rect x="22" y="48" width="10" height="24" rx="4" fill="#059669" />
-              </svg>
-            </div>
-
-            <div className="cat-banner-quote">
-              <span>Open Minds</span>
-              <span>Build Brighter</span>
-              <span>Futures</span>
-            </div>
+          <div className="cat-hero-banner-bg">
+            <img
+              src="/categbanner.png"
+              alt="GLUG Categories Banner"
+              className="cat-hero-banner-img"
+            />
           </div>
         </div>
 
