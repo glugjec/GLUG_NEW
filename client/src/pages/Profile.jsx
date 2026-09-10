@@ -127,6 +127,7 @@ export default function Profile() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [uploadProgressText, setUploadProgressText] = useState('')
   const [uploadError, setUploadError] = useState('')
+  const [modalError, setModalError] = useState('')
   const uploadTimerRef = useRef(null)
 
   const isOwnProfile = Boolean(
@@ -160,6 +161,7 @@ export default function Profile() {
     if (uploadTimerRef.current) clearTimeout(uploadTimerRef.current)
     setUploadProgressText('')
     setUploadError('')
+    setModalError('')
     setEditModalOpen(true)
   }
 
@@ -167,6 +169,7 @@ export default function Profile() {
     if (uploadTimerRef.current) clearTimeout(uploadTimerRef.current)
     setUploadProgressText('')
     setUploadError('')
+    setModalError('')
     setEditModalOpen(false)
   }
 
@@ -336,6 +339,7 @@ export default function Profile() {
     if (uploadTimerRef.current) clearTimeout(uploadTimerRef.current)
     setUploadProgressText('')
     setUploadError('')
+    setModalError('')
     setSavingProfile(true)
     setError('')
     try {
@@ -357,7 +361,7 @@ export default function Profile() {
         closeEditModal()
       }
     } catch (err) {
-      setError(err.message)
+      setModalError(err.message)
     } finally {
       setSavingProfile(false)
     }
@@ -749,6 +753,7 @@ export default function Profile() {
 
             <form onSubmit={handleSaveProfile}>
               <div className="modal-body">
+                <ErrorMessage message={modalError} />
                 <div className="modal-field">
                   <label className="modal-label">Profile Picture</label>
                   <div className="avatar-uploader-card">

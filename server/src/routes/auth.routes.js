@@ -38,8 +38,13 @@ router.post(
     const cleanEmail = email.toLowerCase().trim();
 
     try {
+      const cleanUsername = username.trim();
+      const escapedUsername = cleanUsername.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const existing = await User.findOne({
-        $or: [{ email: cleanEmail }, { username: username.trim() }],
+        $or: [
+          { email: cleanEmail },
+          { username: { $regex: new RegExp(`^${escapedUsername}$`, 'i') } },
+        ],
       });
 
       if (existing) {
@@ -214,12 +219,16 @@ router.put('/me', requireAuth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    if (typeof username === 'string' && username.trim() && username.trim() !== user.username) {
+    if (typeof username === 'string' && username.trim() && username.trim().toLowerCase() !== user.username.toLowerCase()) {
       const cleanUsername = username.trim();
       if (!/^[a-zA-Z0-9_]{3,30}$/.test(cleanUsername)) {
         return res.status(400).json({ error: 'Username must be 3-30 characters (letters, numbers, underscore)' });
       }
-      const existing = await User.findOne({ username: cleanUsername, _id: { $ne: user._id } });
+      const escapedUsername = cleanUsername.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const existing = await User.findOne({
+        username: { $regex: new RegExp(`^${escapedUsername}$`, 'i') },
+        _id: { $ne: user._id },
+      });
       if (existing) {
         return res.status(409).json({ error: 'Username already taken' });
       }
