@@ -8,13 +8,16 @@ function TopBarAvatar({ src, username, email, size = 30, className = '' }) {
   const [error, setError] = useState(false)
   const name = username || email || 'User'
 
-  if (src && !error && src.startsWith('http')) {
+  useEffect(() => {
+    setError(false)
+  }, [src])
+
+  if (src && !error && (src.startsWith('http') || src.startsWith('/') || src.startsWith('data:'))) {
     return (
       <img
         src={src}
         alt={name}
         referrerPolicy="no-referrer"
-        crossOrigin="anonymous"
         onError={() => setError(true)}
         className={className}
         style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}

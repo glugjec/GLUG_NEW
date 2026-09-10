@@ -11,6 +11,7 @@ import userRoutes from './routes/user.routes.js';
 import resourceRoutes from './routes/resource.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import compileRoutes from './routes/compile.routes.js';
+import uploadRoutes from './routes/upload.routes.js';
 
 const app = express();
 
@@ -70,6 +71,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/resources', resourceRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api', compileRoutes);
+app.use('/api/upload', uploadRoutes);
 
 app.use('/api/*', (req, res) => {
   res.status(404).json({ error: 'Endpoint not found' });

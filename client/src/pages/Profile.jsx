@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { usersApi, authApi } from '../api.js'
@@ -24,8 +24,14 @@ import {
   Plus,
   X,
   Check,
-  CheckCircle2
+  CheckCircle2,
+  Upload,
+  Loader2,
+  Camera,
+  Trash2
 } from 'lucide-react'
+import { uploadApi } from '../api.js'
+import { compressImage } from '../utils/imageCompressor.js'
 import './Profile.css'
 
 function GithubIcon({ size = 16, style = {} }) {
@@ -56,13 +62,19 @@ function TwitterIcon({ size = 16, style = {} }) {
 
 function UserAvatar({ src, username, size = 96, className = '' }) {
   const [error, setError] = useState(false)
-  if (src && !error) {
+
+  useEffect(() => {
+    setError(false)
+  }, [src])
+
+  const isValidUrl = src && typeof src === 'string' && (src.startsWith('http') || src.startsWith('/') || src.startsWith('data:'))
+
+  if (isValidUrl && !error) {
     return (
       <img
         src={src}
         alt={username || 'User'}
         referrerPolicy="no-referrer"
-        crossOrigin="anonymous"
         onError={() => setError(true)}
         className={className}
         style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
@@ -91,28 +103,6 @@ function UserAvatar({ src, username, size = 96, className = '' }) {
   )
 }
 
-const PRESET_AVATARS = [
-  { id: 'tux', label: 'Tux', color: '#f59e0b', bg: '#0f172a', icon: 'tux' },
-  { id: 'terminal', label: 'Terminal', color: '#10b981', bg: '#064e3b', icon: 'terminal' },
-  { id: 'code', label: 'Hacker', color: '#38bdf8', bg: '#0c4a6e', icon: 'code' },
-  { id: 'security', label: 'Cyber', color: '#a855f7', bg: '#3b0764', icon: 'security' },
-  { id: 'star', label: 'Astral', color: '#ec4899', bg: '#500724', icon: 'star' },
-  { id: 'flame', label: 'Kernel', color: '#ef4444', bg: '#450a0a', icon: 'flame' }
-]
-
-function renderPresetIcon(type, color) {
-  if (type === 'terminal') return <Terminal size={22} color={color} />
-  if (type === 'code') return <Code2 size={22} color={color} />
-  if (type === 'security') return <Shield size={22} color={color} />
-  if (type === 'star') return <Sparkles size={22} color={color} />
-  if (type === 'flame') return <Award size={22} color={color} />
-  return (
-    <svg viewBox="0 0 24 24" width="22" height="22" fill={color}>
-      <path d="M12 2C9.24 2 7 4.24 7 7v4c0 .35.04.7.1 1.03C5.3 12.67 4 14.67 4 17c0 2.2 1.8 4 4 4h8c2.2 0 4-1.8 4-4 0-2.33-1.3-4.33-3.1-4.97.06-.33.1-.68.1-1.03V7c0-2.76-2.24-5-5-5zm-2 6c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm4 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-2 2.5c1.1 0 2 .45 2 1h-4c0-.55.9-1 2-1z" />
-    </svg>
-  )
-}
-
 export default function Profile() {
   const { id } = useParams()
   const { user, updateUser } = useAuth()
@@ -133,12 +123,90 @@ export default function Profile() {
   })
   const [newSkillInput, setNewSkillInput] = useState('')
   const [savingProfile, setSavingProfile] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [uploadProgressText, setUploadProgressText] = useState('')
+  const [uploadError, setUploadError] = useState('')
+  const uploadTimerRef = useRef(null)
 
   const isOwnProfile = !id || (user && (id === user.id || id === user._id || id === user.username))
+  const currentUserId = user?.id || user?._id
+
+  useEffect(() => {
+    return () => {
+      if (uploadTimerRef.current) clearTimeout(uploadTimerRef.current)
+    }
+  }, [])
 
   const showToast = (msg) => {
     setToastMessage(msg)
     setTimeout(() => setToastMessage(''), 2500)
+  }
+
+  const openEditModal = () => {
+    if (uploadTimerRef.current) clearTimeout(uploadTimerRef.current)
+    setUploadProgressText('')
+    setUploadError('')
+    setEditModalOpen(true)
+  }
+
+  const closeEditModal = () => {
+    if (uploadTimerRef.current) clearTimeout(uploadTimerRef.current)
+    setUploadProgressText('')
+    setUploadError('')
+    setEditModalOpen(false)
+  }
+
+  useEffect(() => {
+    if (!editModalOpen) return
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') closeEditModal()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [editModalOpen])
+
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (uploadTimerRef.current) clearTimeout(uploadTimerRef.current)
+    setUploadError('')
+    setUploadingAvatar(true)
+    try {
+      setUploadProgressText('Compressing...')
+      const { file: compressedFile, compressedSize } = await compressImage(file, 500 * 1024, 800, 800)
+      const compKb = Math.round(compressedSize / 1024)
+      setUploadProgressText(`Uploading (${compKb} KB)...`)
+
+      const res = await uploadApi.uploadAvatar(compressedFile)
+      if (res?.url) {
+        setEditForm((prev) => ({ ...prev, avatar: res.url }))
+        setProfile((prev) => ({ ...prev, avatar: res.url }))
+        updateUser({ avatar: res.url })
+        await authApi.updateProfile({ avatar: res.url })
+        setUploadProgressText(`Uploaded! (${compKb} KB)`)
+        showToast('Profile picture updated successfully!')
+        if (uploadTimerRef.current) clearTimeout(uploadTimerRef.current)
+        uploadTimerRef.current = setTimeout(() => {
+          setUploadProgressText('')
+        }, 3000)
+      }
+    } catch (err) {
+      setUploadError(err.message || 'Failed to upload avatar')
+    } finally {
+      setUploadingAvatar(false)
+      if (e.target) e.target.value = ''
+    }
+  }
+
+  const handleRemoveAvatar = async () => {
+    if (uploadTimerRef.current) clearTimeout(uploadTimerRef.current)
+    setEditForm((prev) => ({ ...prev, avatar: '' }))
+    setProfile((prev) => ({ ...prev, avatar: '' }))
+    updateUser({ avatar: '' })
+    await authApi.updateProfile({ avatar: '' }).catch(() => {})
+    setUploadProgressText('')
+    setUploadError('')
+    showToast('Profile picture removed')
   }
 
   useEffect(() => {
@@ -204,7 +272,7 @@ export default function Profile() {
     }
 
     loadData()
-  }, [id, user, isOwnProfile])
+  }, [id, currentUserId])
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href)
@@ -231,6 +299,9 @@ export default function Profile() {
 
   const handleSaveProfile = async (e) => {
     e.preventDefault()
+    if (uploadTimerRef.current) clearTimeout(uploadTimerRef.current)
+    setUploadProgressText('')
+    setUploadError('')
     setSavingProfile(true)
     setError('')
     try {
@@ -249,7 +320,7 @@ export default function Profile() {
           ...res.user
         }))
         showToast('Profile updated successfully!')
-        setEditModalOpen(false)
+        closeEditModal()
       }
     } catch (err) {
       setError(err.message)
@@ -333,7 +404,7 @@ export default function Profile() {
                   <button
                     type="button"
                     className="profile-btn-primary"
-                    onClick={() => setEditModalOpen(true)}
+                    onClick={openEditModal}
                   >
                     <Edit3 size={15} /> Edit Profile
                   </button>
@@ -621,14 +692,14 @@ export default function Profile() {
       )}
 
       {editModalOpen && (
-        <div className="modal-backdrop" onClick={() => setEditModalOpen(false)}>
+        <div className="modal-backdrop" onClick={closeEditModal}>
           <div className="profile-edit-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3 className="modal-title">Edit Profile</h3>
               <button
                 type="button"
                 className="modal-close-btn"
-                onClick={() => setEditModalOpen(false)}
+                onClick={closeEditModal}
               >
                 <X size={18} />
               </button>
@@ -637,36 +708,68 @@ export default function Profile() {
             <form onSubmit={handleSaveProfile}>
               <div className="modal-body">
                 <div className="modal-field">
-                  <label className="modal-label">Choose Avatar Preset</label>
-                  <div className="preset-avatars-grid">
-                    {PRESET_AVATARS.map((preset) => (
-                      <button
-                        key={preset.id}
-                        type="button"
-                        className={`preset-avatar-btn ${
-                          editForm.avatar === preset.id ? 'is-selected' : ''
-                        }`}
-                        style={{ background: preset.bg }}
-                        onClick={() => setEditForm((prev) => ({ ...prev, avatar: preset.id }))}
-                        title={preset.label}
-                      >
-                        {renderPresetIcon(preset.icon, preset.color)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                  <label className="modal-label">Profile Picture</label>
+                  <div className="avatar-uploader-card">
+                    <div className="avatar-uploader-preview-wrap">
+                      <UserAvatar
+                        src={editForm.avatar}
+                        username={editForm.username}
+                        size={84}
+                        className="avatar-uploader-preview"
+                      />
+                      {uploadingAvatar && (
+                        <div className="avatar-uploader-overlay">
+                          <Loader2 size={24} className="spin-icon" />
+                        </div>
+                      )}
+                    </div>
 
-                <div className="modal-field">
-                  <label className="modal-label">Or Custom Avatar Image URL</label>
-                  <input
-                    type="text"
-                    className="modal-input"
-                    placeholder="https://example.com/avatar.jpg"
-                    value={editForm.avatar.startsWith('http') ? editForm.avatar : ''}
-                    onChange={(e) =>
-                      setEditForm((prev) => ({ ...prev, avatar: e.target.value }))
-                    }
-                  />
+                    <div className="avatar-uploader-content">
+                      <div className="avatar-uploader-actions">
+                        <input
+                          type="file"
+                          id="avatar-photo-input"
+                          accept="image/png, image/jpeg, image/webp"
+                          className="avatar-hidden-file-input"
+                          onChange={handleAvatarUpload}
+                          disabled={uploadingAvatar}
+                        />
+                        <label
+                          htmlFor="avatar-photo-input"
+                          className={`btn-upload-avatar ${uploadingAvatar ? 'is-disabled' : ''}`}
+                        >
+                          <Camera size={15} />
+                          {uploadingAvatar ? 'Uploading...' : 'Upload Photo'}
+                        </label>
+
+                        {editForm.avatar && (
+                          <button
+                            type="button"
+                            className="btn-remove-avatar"
+                            onClick={handleRemoveAvatar}
+                            disabled={uploadingAvatar}
+                          >
+                            <Trash2 size={14} /> Remove
+                          </button>
+                        )}
+                      </div>
+
+                      <p className="avatar-uploader-subtext">
+                        Square photo recommended. JPG, PNG or WebP.
+                      </p>
+
+                      {uploadProgressText && !uploadError && (
+                        <div className="upload-status-badge is-success">
+                          <Check size={13} /> {uploadProgressText}
+                        </div>
+                      )}
+                      {uploadError && (
+                        <div className="upload-status-badge is-error">
+                          <X size={13} /> {uploadError}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="modal-field">
@@ -792,7 +895,7 @@ export default function Profile() {
                 <button
                   type="button"
                   className="profile-btn-secondary"
-                  onClick={() => setEditModalOpen(false)}
+                  onClick={closeEditModal}
                 >
                   Cancel
                 </button>

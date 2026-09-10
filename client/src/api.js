@@ -13,6 +13,9 @@ client.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+    }
     return config;
   },
   (error) => Promise.reject(error)
@@ -83,5 +86,19 @@ export const adminApi = {
   deleteComment: (id) => client.delete(`/admin/comments/${id}`),
 };
 
+export const uploadApi = {
+  uploadAvatar: (file) => {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    return client.post('/upload/avatar', formData);
+  },
+  uploadImage: (file) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    return client.post('/upload', formData);
+  },
+};
+
 export default api;
+
 
