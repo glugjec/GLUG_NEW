@@ -43,7 +43,11 @@ export const api = {
 export const authApi = {
   register: (data) => client.post('/auth/register', data),
   login: (data) => client.post('/auth/login', data),
+  sendOtp: (data) => client.post('/auth/send-otp', data),
+  verifyOtp: (data) => client.post('/auth/verify-otp', data),
+  checkUsername: (username) => client.get('/auth/check-username', { params: { username } }),
   googleLogin: (credential) => client.post('/auth/google', { credential }),
+  completeGoogleAuth: (data) => client.post('/auth/google/complete', data),
   getMe: () => client.get('/auth/me'),
   updateProfile: (data) => client.put('/auth/me', data),
 };

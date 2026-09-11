@@ -24,6 +24,10 @@ const userSchema = new mongoose.Schema(
       required: false,
       default: '',
     },
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
     googleId: {
       type: String,
       sparse: true,
