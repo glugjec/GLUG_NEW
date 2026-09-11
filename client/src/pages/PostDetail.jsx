@@ -178,21 +178,29 @@ function CommentThreadItem({
 
       {isReplying && (
         <div className="inline-nested-reply">
-          <div className="composer-input-area">
-            <input
-              type="text"
-              placeholder={`Reply to @${rAuthor}…`}
-              value={subReplyText}
-              onChange={(e) => setSubReplyText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !submitting && subReplyText.trim()) {
+          <div className="inline-reply-header">
+            <span className="inline-reply-target">
+              <CornerDownRight size={13} />
+              <span>Replying to <strong>@{rAuthor}</strong></span>
+            </span>
+          </div>
+          <textarea
+            placeholder={`Write a reply to @${rAuthor}...`}
+            value={subReplyText}
+            onChange={(e) => setSubReplyText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                if (!submitting && subReplyText.trim()) {
                   handleAddComment(subReplyText, commentId)
                 }
-              }}
-              className="composer-textarea"
-              style={{ minHeight: '38px' }}
-              autoFocus
-            />
+              }
+            }}
+            className="inline-reply-textarea"
+            rows={2}
+            autoFocus
+          />
+          <div className="inline-reply-footer">
             <div className="inline-reply-btn-group">
               <button
                 type="button"
@@ -206,7 +214,7 @@ function CommentThreadItem({
               </button>
               <button
                 type="button"
-                className="btn-post-reply"
+                className="btn-submit-inline-reply"
                 disabled={submitting || !subReplyText.trim()}
                 onClick={() => handleAddComment(subReplyText, commentId)}
               >
@@ -310,21 +318,29 @@ function CommentThreadItem({
 
                     {isRepReplying && (
                       <div className="inline-nested-reply">
-                        <div className="composer-input-area">
-                          <input
-                            type="text"
-                            placeholder={`Reply to @${repAuthor}…`}
-                            value={subReplyText}
-                            onChange={(e) => setSubReplyText(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' && !submitting && subReplyText.trim()) {
+                        <div className="inline-reply-header">
+                          <span className="inline-reply-target">
+                            <CornerDownRight size={13} />
+                            <span>Replying to <strong>@{repAuthor}</strong></span>
+                          </span>
+                        </div>
+                        <textarea
+                          placeholder={`Write a reply to @${repAuthor}...`}
+                          value={subReplyText}
+                          onChange={(e) => setSubReplyText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault()
+                              if (!submitting && subReplyText.trim()) {
                                 handleAddComment(subReplyText, repId)
                               }
-                            }}
-                            className="composer-textarea"
-                            style={{ minHeight: '38px' }}
-                            autoFocus
-                          />
+                            }
+                          }}
+                          className="inline-reply-textarea"
+                          rows={2}
+                          autoFocus
+                        />
+                        <div className="inline-reply-footer">
                           <div className="inline-reply-btn-group">
                             <button
                               type="button"
@@ -338,7 +354,7 @@ function CommentThreadItem({
                             </button>
                             <button
                               type="button"
-                              className="btn-post-reply"
+                              className="btn-submit-inline-reply"
                               disabled={submitting || !subReplyText.trim()}
                               onClick={() => handleAddComment(subReplyText, repId)}
                             >
@@ -479,6 +495,7 @@ export default function PostDetail() {
   const [sortBy, setSortBy] = useState('best')
   const [visibleRootCount, setVisibleRootCount] = useState(5)
   const [submitting, setSubmitting] = useState(false)
+  const [imageUploading, setImageUploading] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -692,6 +709,7 @@ export default function PostDetail() {
       navigate('/login')
       return
     }
+    if (!parentId && imageUploading) return
     const hasContent = text.replace(/<[^>]*>/g, '').trim().length > 0 || text.includes('<img')
     if (!hasContent) return
     setSubmitting(true)
@@ -1036,16 +1054,18 @@ export default function PostDetail() {
                     <RichTextEditor
                       content={replyText}
                       onChange={setReplyText}
-                      placeholder="Write a reply... (format with bold, headings, code, and paste or drop screenshots directly)"
+                      placeholder="Write a reply..."
                       minHeight="100px"
                       onError={showToast}
                       toolbarPosition="bottom"
+                      onUploadingChange={setImageUploading}
                       actions={
                         <button
                           type="button"
                           className="btn-post-reply"
                           disabled={
                             submitting ||
+                            imageUploading ||
                             (!replyText.replace(/<[^>]*>/g, '').trim() && !replyText.includes('<img'))
                           }
                           onClick={() => handleAddComment(replyText)}

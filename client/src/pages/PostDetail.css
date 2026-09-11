@@ -598,35 +598,141 @@
 }
 
 .inline-nested-reply {
-  margin-top: 0.9rem;
-  padding: 0.85rem;
-  background: var(--bg-card-subtle);
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  margin-top: 0.85rem;
+  margin-bottom: 0.5rem;
+  padding: 0.85rem 1rem;
+  background: #090d16;
+  border: 1px solid var(--border, #1e293b);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  animation: inlineReplyFade 0.15s ease-out;
+}
+
+@keyframes inlineReplyFade {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.inline-nested-reply:focus-within {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2), 0 4px 20px rgba(0, 0, 0, 0.35);
+}
+
+.inline-reply-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.inline-reply-target {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--text-muted, #94a3b8);
+}
+
+.inline-reply-target svg {
+  color: #3b82f6;
+}
+
+.inline-reply-target strong {
+  color: #60a5fa;
+  font-weight: 600;
+}
+
+.inline-reply-textarea {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: var(--text, #f8fafc);
+  font-family: inherit;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  padding: 8px 12px;
+  resize: vertical;
+  min-height: 58px;
+  max-height: 180px;
+  width: 100%;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.inline-reply-textarea:focus {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
+.inline-reply-textarea::placeholder {
+  color: #64748b;
+}
+
+.inline-reply-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 
 .inline-reply-btn-group {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  flex-shrink: 0;
 }
 
 .btn-cancel-inline-reply {
   background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-muted);
+  border: none;
+  color: var(--text-muted, #94a3b8);
   font-size: 0.82rem;
   font-weight: 500;
-  padding: 0.4rem 0.8rem;
-  border-radius: 8px;
+  padding: 0.4rem 0.85rem;
+  border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .btn-cancel-inline-reply:hover {
-  background: var(--bg-hover);
-  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text, #f8fafc);
+}
+
+.btn-submit-inline-reply {
+  background: #3b82f6;
+  border: none;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.42rem 1.1rem;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-submit-inline-reply:hover:not(:disabled) {
+  background: #2563eb;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+}
+
+.btn-submit-inline-reply:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: #1e3a8a;
+  color: #94a3b8;
 }
 
 .yt-thread-container {

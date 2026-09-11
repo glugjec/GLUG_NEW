@@ -355,6 +355,7 @@ export default function Forum() {
   const [newBody, setNewBody] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [uploadError, setUploadError] = useState('')
+  const [imageUploading, setImageUploading] = useState(false)
 
   const loadPosts = useCallback(async () => {
     setLoading(true)
@@ -447,6 +448,7 @@ export default function Forum() {
 
   const handleCreatePost = async (e) => {
     e.preventDefault()
+    if (submitting || imageUploading) return
     const hasContent = newBody.replace(/<[^>]*>/g, '').trim().length > 0 || newBody.includes('<img')
     if (!newTitle.trim() || !hasContent) {
       setUploadError('Please provide a title and discussion content.')
@@ -844,9 +846,10 @@ export default function Forum() {
                 <RichTextEditor
                   content={newBody}
                   onChange={setNewBody}
-                  placeholder="Write your discussion content... Format with headings, bold, code, and paste or drop screenshots directly!"
+                  placeholder="Write your discussion content..."
                   minHeight="210px"
                   onError={(err) => setUploadError(err)}
+                  onUploadingChange={setImageUploading}
                 />
 
                 {uploadError && (
@@ -864,6 +867,7 @@ export default function Forum() {
                   onClick={() => {
                     setShowModal(false)
                     setUploadError('')
+                    setImageUploading(false)
                   }}
                 >
                   Cancel
@@ -871,7 +875,12 @@ export default function Forum() {
                 <button
                   type="submit"
                   className="modal-btn-submit"
-                  disabled={submitting || !newTitle.trim() || (!newBody.replace(/<[^>]*>/g, '').trim() && !newBody.includes('<img'))}
+                  disabled={
+                    submitting ||
+                    imageUploading ||
+                    !newTitle.trim() ||
+                    (!newBody.replace(/<[^>]*>/g, '').trim() && !newBody.includes('<img'))
+                  }
                 >
                   {submitting ? (
                     <>
