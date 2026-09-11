@@ -5,6 +5,7 @@ import { Comment } from '../models/Comment.js';
 import { Vote } from '../models/Vote.js';
 import { Bookmark } from '../models/Bookmark.js';
 import { requireAuth, optionalAuth, requireAdmin } from '../middleware/auth.js';
+import { calculateNextVoteScore } from '../utils/voteCalculator.js';
 
 const router = Router();
 const recentViews = new Map();
@@ -370,8 +371,6 @@ router.post('/:id/bookmark', requireAuth, async (req, res) => {
   }
 });
 
-// @route   POST /api/posts/:id/vote
-// @desc    Upvote / downvote a post (toggle off if same value clicked)
 router.post('/:id/vote', requireAuth, async (req, res) => {
   const { value } = req.body;
   const numericValue = Number(value);
@@ -391,22 +390,18 @@ router.post('/:id/vote', requireAuth, async (req, res) => {
       post: post._id,
     });
 
-    let scoreDelta = 0;
     let newUserVote = 0;
 
     if (numericValue === 0 || (existingVote && existingVote.value === numericValue)) {
       if (existingVote) {
-        scoreDelta = -existingVote.value;
-        await Vote.findByIdAndDelete(existingVote._id);
+        await Vote.deleteOne({ _id: existingVote._id });
       }
       newUserVote = 0;
     } else if (existingVote) {
-      scoreDelta = numericValue - existingVote.value;
       existingVote.value = numericValue;
       await existingVote.save();
       newUserVote = numericValue;
     } else {
-      scoreDelta = numericValue;
       await Vote.create({
         user: req.user.id,
         post: post._id,
@@ -415,11 +410,16 @@ router.post('/:id/vote', requireAuth, async (req, res) => {
       newUserVote = numericValue;
     }
 
-    post.voteScore = Math.max(0, (post.voteScore || 0) + scoreDelta);
+    const votes = await Vote.find({ post: post._id });
+    const upvotes = votes.filter((v) => v.value === 1).length;
+    const downvotes = votes.filter((v) => v.value === -1).length;
+    const trueScore = Math.max(0, upvotes - downvotes);
+
+    post.voteScore = trueScore;
     await post.save();
 
     return res.json({
-      voteScore: Math.max(0, post.voteScore),
+      voteScore: trueScore,
       userVote: newUserVote,
     });
   } catch (err) {
@@ -563,30 +563,30 @@ const handleVoteComment = async (req, res) => {
     const voteIdx = comment.votes.findIndex((v) => v.user.toString() === req.user.id);
     const existingVote = voteIdx !== -1 ? comment.votes[voteIdx] : null;
 
-    let delta = 0;
     let newUserVote = 0;
 
     if (numericValue === 0 || (existingVote && existingVote.value === numericValue)) {
       if (existingVote) {
-        delta = -existingVote.value;
         comment.votes.splice(voteIdx, 1);
       }
       newUserVote = 0;
     } else if (existingVote) {
-      delta = numericValue - existingVote.value;
       existingVote.value = numericValue;
       newUserVote = numericValue;
     } else {
-      delta = numericValue;
       comment.votes.push({ user: req.user.id, value: numericValue });
       newUserVote = numericValue;
     }
 
-    comment.voteScore = Math.max(0, (comment.voteScore || 0) + delta);
+    const upvotes = comment.votes.filter((v) => v.value === 1).length;
+    const downvotes = comment.votes.filter((v) => v.value === -1).length;
+    const trueScore = Math.max(0, upvotes - downvotes);
+
+    comment.voteScore = trueScore;
     await comment.save();
 
     return res.json({
-      voteScore: comment.voteScore,
+      voteScore: trueScore,
       userVote: newUserVote,
     });
   } catch (err) {

@@ -4,6 +4,7 @@ import { postsApi } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { avatarInitials, avatarColor } from '../components/common/avatar.js'
 import { formatRelativeTime } from '../utils/timeAgo.js'
+import { calculateNextVoteScore } from '../utils/voteCalculator.js'
 import MarkdownRenderer from '../components/common/MarkdownRenderer.jsx'
 import RichTextEditor from '../components/common/RichTextEditor.jsx'
 import {
@@ -364,6 +365,7 @@ export default function Forum() {
   const [submitting, setSubmitting] = useState(false)
   const [uploadError, setUploadError] = useState('')
   const [imageUploading, setImageUploading] = useState(false)
+  const votingPostsRef = useRef(new Set())
 
   const loadPosts = useCallback(
     async (catToFetch) => {
@@ -472,14 +474,20 @@ export default function Forum() {
       navigate('/login')
       return
     }
+    if (votingPostsRef.current.has(post.id)) {
+      return
+    }
+    votingPostsRef.current.add(post.id)
+
     const currentVote = post.userVote || 0
     const nextVote = currentVote === 1 ? 0 : 1
-    const diff = nextVote - currentVote
+    const currentScore = Math.max(0, post.voteScore || 0)
+    const nextScore = calculateNextVoteScore(currentScore, currentVote, nextVote)
 
     setPosts((prev) =>
       prev.map((p) =>
         p.id === post.id
-          ? { ...p, voteScore: Math.max(0, (p.voteScore || 0) + diff), userVote: nextVote }
+          ? { ...p, voteScore: nextScore, userVote: nextVote }
           : p
       )
     )
@@ -499,10 +507,12 @@ export default function Forum() {
       setPosts((prev) =>
         prev.map((p) =>
           p.id === post.id
-            ? { ...p, voteScore: Math.max(0, (p.voteScore || 0) - diff), userVote: currentVote }
+            ? { ...p, voteScore: currentScore, userVote: currentVote }
             : p
         )
       )
+    } finally {
+      votingPostsRef.current.delete(post.id)
     }
   }
 

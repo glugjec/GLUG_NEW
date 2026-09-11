@@ -1,9 +1,10 @@
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { postsApi } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { avatarInitials, avatarColor } from '../components/common/avatar.js'
 import { formatRelativeTime } from '../utils/timeAgo.js'
+import { calculateNextVoteScore } from '../utils/voteCalculator.js'
 import MarkdownRenderer from '../components/common/MarkdownRenderer.jsx'
 import RichTextEditor from '../components/common/RichTextEditor.jsx'
 import {
@@ -496,6 +497,10 @@ export default function PostDetail() {
   const [visibleRootCount, setVisibleRootCount] = useState(5)
   const [submitting, setSubmitting] = useState(false)
   const [imageUploading, setImageUploading] = useState(false)
+  const pendingPostVoteRef = useRef(null)
+  const isPostVotingRef = useRef(false)
+  const pendingCommentVotesRef = useRef(new Map())
+  const activeCommentVotesRef = useRef(new Set())
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -608,32 +613,42 @@ export default function PostDetail() {
       return
     }
     if (!post) return
+
     const currentVote = post.userVote || 0
     const nextVote = currentVote === delta ? 0 : delta
+    const currentScore = Math.max(0, post.voteScore || 0)
+    const nextScore = calculateNextVoteScore(currentScore, currentVote, nextVote)
 
-    if (post.id && !post.id.startsWith('distro-')) {
-      try {
-        const res = await postsApi.vote(post.id || post._id, nextVote)
-        if (res && typeof res.voteScore === 'number') {
+    setPost((prev) => ({
+      ...prev,
+      userVote: nextVote,
+      voteScore: nextScore
+    }))
+
+    if (!post.id || post.id.startsWith('distro-')) return
+
+    pendingPostVoteRef.current = nextVote
+    if (isPostVotingRef.current) return
+    isPostVotingRef.current = true
+
+    try {
+      while (pendingPostVoteRef.current !== null) {
+        const targetVote = pendingPostVoteRef.current
+        pendingPostVoteRef.current = null
+        const res = await postsApi.vote(post.id || post._id, targetVote)
+        if (pendingPostVoteRef.current === null && res && typeof res.voteScore === 'number') {
           setPost((prev) => ({
             ...prev,
             userVote: res.userVote,
             voteScore: Math.max(0, res.voteScore)
           }))
-          return
         }
-      } catch (err) {
-        showToast(err.message || 'Failed to register vote')
-        return
       }
+    } catch (err) {
+      showToast(err.message || 'Failed to register vote')
+    } finally {
+      isPostVotingRef.current = false
     }
-
-    const scoreDiff = nextVote - currentVote
-    setPost((prev) => ({
-      ...prev,
-      userVote: nextVote,
-      voteScore: Math.max(0, (prev.voteScore || 0) + scoreDiff)
-    }))
   }
 
   const handleCommentVote = async (commentId, delta) => {
@@ -646,7 +661,8 @@ export default function PostDetail() {
     const currentComment = comments.find((c) => (c.id === commentId || c._id === commentId))
     const cur = currentComment?.userVote || 0
     const nxt = cur === delta ? 0 : delta
-    const diff = nxt - cur
+    const curScore = Math.max(0, currentComment?.voteScore || 0)
+    const nxtScore = calculateNextVoteScore(curScore, cur, nxt)
 
     setComments((prev) =>
       prev.map((c) => {
@@ -654,44 +670,42 @@ export default function PostDetail() {
           return {
             ...c,
             userVote: nxt,
-            voteScore: Math.max(0, (c.voteScore || 0) + diff)
+            voteScore: nxtScore
           }
         }
         return c
       })
     )
 
+    pendingCommentVotesRef.current.set(commentId, nxt)
+    if (activeCommentVotesRef.current.has(commentId)) return
+    activeCommentVotesRef.current.add(commentId)
+
+    const postId = post?.id || post?._id || id
     try {
-      const postId = post?.id || post?._id || id
-      const res = await postsApi.voteComment(postId, commentId, nxt)
-      if (res && typeof res.voteScore === 'number') {
-        setComments((prev) =>
-          prev.map((c) => {
-            if (c.id === commentId || c._id === commentId) {
-              return {
-                ...c,
-                userVote: res.userVote ?? nxt,
-                voteScore: Math.max(0, res.voteScore)
+      while (pendingCommentVotesRef.current.has(commentId)) {
+        const targetVote = pendingCommentVotesRef.current.get(commentId)
+        pendingCommentVotesRef.current.delete(commentId)
+        const res = await postsApi.voteComment(postId, commentId, targetVote)
+        if (!pendingCommentVotesRef.current.has(commentId) && res && typeof res.voteScore === 'number') {
+          setComments((prev) =>
+            prev.map((c) => {
+              if (c.id === commentId || c._id === commentId) {
+                return {
+                  ...c,
+                  userVote: res.userVote ?? targetVote,
+                  voteScore: Math.max(0, res.voteScore)
+                }
               }
-            }
-            return c
-          })
-        )
+              return c
+            })
+          )
+        }
       }
     } catch (err) {
-      setComments((prev) =>
-        prev.map((c) => {
-          if (c.id === commentId || c._id === commentId) {
-            return {
-              ...c,
-              userVote: cur,
-              voteScore: Math.max(0, (c.voteScore || 0) - diff)
-            }
-          }
-          return c
-        })
-      )
       showToast(err.message || 'Failed to register vote')
+    } finally {
+      activeCommentVotesRef.current.delete(commentId)
     }
   }
 

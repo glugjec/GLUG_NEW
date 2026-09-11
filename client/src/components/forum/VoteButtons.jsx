@@ -3,6 +3,7 @@ import { ArrowBigUp, ArrowBigDown } from 'lucide-react'
 import { postsApi } from '../../api.js'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useNavigate } from 'react-router-dom'
+import { calculateNextVoteScore } from '../../utils/voteCalculator.js'
 
 export default function VoteButtons({ postId, initialScore = 0, initialVote = 0, orientation = 'vertical' }) {
   const { user } = useAuth()
@@ -22,35 +23,22 @@ export default function VoteButtons({ postId, initialScore = 0, initialVote = 0,
 
     if (loading) return
 
-    // Calculate optimistic new state
-    const previousScore = score
-    const previousVote = userVote
+    const previousScore = Math.max(0, score || 0)
+    const previousVote = userVote || 0
+    const newVote = previousVote === value ? 0 : value
+    const newScore = calculateNextVoteScore(previousScore, previousVote, newVote)
 
-    let newVote = value
-    let delta = 0
-
-    if (userVote === value) {
-      // Toggle off
-      newVote = 0
-      delta = -value
-    } else if (userVote !== 0) {
-      // Swapping vote from +1 to -1 or vice versa
-      delta = value - userVote
-    } else {
-      // New vote
-      delta = value
-    }
-
-    setScore(previousScore + delta)
+    setScore(newScore)
     setUserVote(newVote)
     setLoading(true)
 
     try {
       const res = await postsApi.vote(postId, newVote)
-      setScore(res.voteScore)
-      setUserVote(res.userVote)
+      if (res && typeof res.voteScore === 'number') {
+        setScore(Math.max(0, res.voteScore))
+        setUserVote(res.userVote)
+      }
     } catch (err) {
-      // Revert on error
       console.error('Vote failed:', err.message)
       setScore(previousScore)
       setUserVote(previousVote)
