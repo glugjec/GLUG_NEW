@@ -345,6 +345,12 @@
   background: transparent;
 }
 
+.vote-capsule-btn:disabled,
+.vote-capsule-btn.disabled-downvote {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 .vote-score-num {
   font-size: 0.88rem;
   font-weight: 700;

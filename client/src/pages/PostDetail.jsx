@@ -663,8 +663,18 @@ export default function PostDetail() {
     if (!post) return
 
     const currentVote = post.userVote || 0
-    const nextVote = currentVote === delta ? 0 : delta
     const currentScore = Math.max(0, post.voteScore || 0)
+
+    if (delta === -1 && currentVote === 0 && currentScore <= 0) {
+      showToast('Cannot downvote when score is 0')
+      return
+    }
+
+    let nextVote = currentVote === delta ? 0 : delta
+    if (delta === -1 && currentVote === 1 && currentScore <= 1) {
+      nextVote = 0
+    }
+
     const nextScore = calculateNextVoteScore(currentScore, currentVote, nextVote)
 
     setPost((prev) => ({
@@ -1085,9 +1095,20 @@ export default function PostDetail() {
                   <span className="vote-score-num">{Math.max(0, activePost.voteScore ?? 0)}</span>
                   <button
                     type="button"
-                    className={`vote-capsule-btn ${activePost.userVote === -1 ? 'voted-down' : ''}`}
+                    className={`vote-capsule-btn ${activePost.userVote === -1 ? 'voted-down' : ''} ${
+                      (activePost.voteScore ?? 0) <= 0 && !activePost.userVote ? 'disabled-downvote' : ''
+                    }`}
                     onClick={() => handlePostVote(-1)}
-                    title={activePost.userVote === -1 ? 'Downvoted (click to undo)' : 'Downvote'}
+                    disabled={(activePost.voteScore ?? 0) <= 0 && !activePost.userVote}
+                    title={
+                      activePost.userVote === -1
+                        ? 'Downvoted (click to undo)'
+                        : activePost.userVote === 1
+                        ? ((activePost.voteScore ?? 0) <= 1 ? 'Undo upvote' : 'Downvote')
+                        : (activePost.voteScore ?? 0) <= 0
+                        ? 'Cannot downvote when score is 0'
+                        : 'Downvote'
+                    }
                     aria-pressed={activePost.userVote === -1}
                   >
                     <ChevronDown size={16} strokeWidth={activePost.userVote === -1 ? 2.8 : 2} />

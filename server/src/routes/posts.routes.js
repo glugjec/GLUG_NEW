@@ -390,30 +390,56 @@ router.post('/:id/vote', requireAuth, async (req, res) => {
       post: post._id,
     });
 
-    let newUserVote = 0;
-
+    let targetVote = numericValue;
     if (numericValue === 0 || (existingVote && existingVote.value === numericValue)) {
-      if (existingVote) {
-        await Vote.deleteOne({ _id: existingVote._id });
-      }
-      newUserVote = 0;
-    } else if (existingVote) {
-      existingVote.value = numericValue;
-      await existingVote.save();
-      newUserVote = numericValue;
-    } else {
-      await Vote.create({
-        user: req.user.id,
-        post: post._id,
-        value: numericValue,
-      });
-      newUserVote = numericValue;
+      targetVote = 0;
     }
 
     const votes = await Vote.find({ post: post._id });
     const upvotes = votes.filter((v) => v.value === 1).length;
     const downvotes = votes.filter((v) => v.value === -1).length;
-    const trueScore = Math.max(0, upvotes - downvotes);
+    const curScore = Math.max(0, upvotes - downvotes);
+
+    if (targetVote === -1) {
+      if (!existingVote || existingVote.value === 0) {
+        if (curScore <= 0) {
+          return res.status(400).json({
+            error: 'Cannot downvote when score is 0',
+            voteScore: 0,
+            userVote: 0,
+          });
+        }
+      } else if (existingVote.value === 1) {
+        if (curScore <= 1) {
+          targetVote = 0;
+        }
+      }
+    }
+
+    let newUserVote = 0;
+
+    if (targetVote === 0) {
+      if (existingVote) {
+        await Vote.deleteOne({ _id: existingVote._id });
+      }
+      newUserVote = 0;
+    } else if (existingVote) {
+      existingVote.value = targetVote;
+      await existingVote.save();
+      newUserVote = targetVote;
+    } else {
+      await Vote.create({
+        user: req.user.id,
+        post: post._id,
+        value: targetVote,
+      });
+      newUserVote = targetVote;
+    }
+
+    const updatedVotes = await Vote.find({ post: post._id });
+    const newUp = updatedVotes.filter((v) => v.value === 1).length;
+    const newDown = updatedVotes.filter((v) => v.value === -1).length;
+    const trueScore = Math.max(0, newUp - newDown);
 
     post.voteScore = trueScore;
     await post.save();
@@ -583,24 +609,49 @@ const handleVoteComment = async (req, res) => {
     const voteIdx = comment.votes.findIndex((v) => v.user.toString() === req.user.id);
     const existingVote = voteIdx !== -1 ? comment.votes[voteIdx] : null;
 
+    let targetVote = numericValue;
+    if (numericValue === 0 || (existingVote && existingVote.value === numericValue)) {
+      targetVote = 0;
+    }
+
+    const upvotes = comment.votes.filter((v) => v.value === 1).length;
+    const downvotes = comment.votes.filter((v) => v.value === -1).length;
+    const curScore = Math.max(0, upvotes - downvotes);
+
+    if (targetVote === -1) {
+      if (!existingVote || existingVote.value === 0) {
+        if (curScore <= 0) {
+          return res.status(400).json({
+            error: 'Cannot downvote when score is 0',
+            voteScore: 0,
+            userVote: 0,
+          });
+        }
+      } else if (existingVote.value === 1) {
+        if (curScore <= 1) {
+          targetVote = 0;
+        }
+      }
+    }
+
     let newUserVote = 0;
 
-    if (numericValue === 0 || (existingVote && existingVote.value === numericValue)) {
+    if (targetVote === 0) {
       if (existingVote) {
         comment.votes.splice(voteIdx, 1);
       }
       newUserVote = 0;
     } else if (existingVote) {
-      existingVote.value = numericValue;
-      newUserVote = numericValue;
+      existingVote.value = targetVote;
+      newUserVote = targetVote;
     } else {
-      comment.votes.push({ user: req.user.id, value: numericValue });
-      newUserVote = numericValue;
+      comment.votes.push({ user: req.user.id, value: targetVote });
+      newUserVote = targetVote;
     }
 
-    const upvotes = comment.votes.filter((v) => v.value === 1).length;
-    const downvotes = comment.votes.filter((v) => v.value === -1).length;
-    const trueScore = Math.max(0, upvotes - downvotes);
+    const newUp = comment.votes.filter((v) => v.value === 1).length;
+    const newDown = comment.votes.filter((v) => v.value === -1).length;
+    const trueScore = Math.max(0, newUp - newDown);
 
     comment.voteScore = trueScore;
     await comment.save();
