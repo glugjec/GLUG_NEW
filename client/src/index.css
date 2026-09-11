@@ -1641,6 +1641,27 @@ input:focus, textarea:focus, select:focus {
   border: 1px solid var(--border);
   border-radius: 999px;
   padding: 0.2rem 0.6rem;
+  transition: all 0.15s ease;
+}
+
+.vote-horizontal.is-upvoted {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+.vote-horizontal.is-downvoted {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.vote-vertical.is-upvoted {
+  border-color: rgba(59, 130, 246, 0.4);
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.vote-vertical.is-downvoted {
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.08);
 }
 
 .vote-btn {
@@ -1662,16 +1683,21 @@ input:focus, textarea:focus, select:focus {
   transform: translateY(-1px);
 }
 
+.vote-btn.vote-up:hover {
+  color: #3b82f6;
+}
+
 .vote-btn.vote-down:hover {
+  color: #ef4444;
   transform: translateY(1px);
 }
 
 .vote-btn.vote-up.active {
-  color: #ff5722;
+  color: #3b82f6;
 }
 
 .vote-btn.vote-down.active {
-  color: #5c7cfa;
+  color: #ef4444;
 }
 
 .fill-current {
@@ -1685,14 +1711,15 @@ input:focus, textarea:focus, select:focus {
   margin: 2px 0;
   min-width: 24px;
   text-align: center;
+  transition: color 0.15s ease;
 }
 
 .vote-score.score-up {
-  color: #ff5722;
+  color: #3b82f6;
 }
 
 .vote-score.score-down {
-  color: #5c7cfa;
+  color: #ef4444;
 }
 
 /* Post Card Layout */

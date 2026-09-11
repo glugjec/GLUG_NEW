@@ -52,7 +52,7 @@ export default function VoteButtons({ postId, initialScore = 0, initialVote = 0,
 
   return (
     <div
-      className={`vote-container ${orientation === 'horizontal' ? 'vote-horizontal' : 'vote-vertical'}`}
+      className={`vote-container ${orientation === 'horizontal' ? 'vote-horizontal' : 'vote-vertical'} ${isUpvoted ? 'is-upvoted' : ''} ${isDownvoted ? 'is-downvoted' : ''}`}
       onClick={(e) => e.stopPropagation()}
     >
       <button

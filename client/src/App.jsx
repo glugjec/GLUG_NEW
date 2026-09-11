@@ -8,6 +8,7 @@ import Resources from './pages/Resources.jsx'
 import Forum from './pages/Forum.jsx'
 import Compiler from './pages/compiler/Compiler.jsx'
 import PostDetail from './pages/PostDetail.jsx'
+import ForYou from './pages/ForYou.jsx'
 import Profile from './pages/Profile.jsx'
 import Settings from './pages/Settings.jsx'
 import AdminDashboard from './pages/AdminDashboard.jsx'
@@ -39,6 +40,8 @@ export default function App() {
         <Routes>
           <Route element={<Layout />}>
             <Route path="/" element={<Home />} />
+            <Route path="/for-you" element={<ForYou />} />
+            <Route path="/feed" element={<ForYou />} />
             <Route path="/categories" element={<Categories />} />
             <Route path="/terminal" element={<TerminalPage />} />
             <Route path="/resources" element={<Resources />} />

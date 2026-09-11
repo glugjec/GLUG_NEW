@@ -11,6 +11,7 @@ import {
   Terminal,
   Code2,
   Info,
+  Sparkles,
   Sun,
   Moon,
   Shield,
@@ -22,6 +23,7 @@ import {
 
 const NAV_ITEMS = [
   { to: '/', label: 'Home', icon: Home, end: true },
+  { to: '/for-you', label: 'For You', icon: Sparkles },
   { to: '/forum', label: 'Discussions', icon: MessageSquare },
   { to: '/categories', label: 'Categories', icon: Folder },
   { to: '/members', label: 'Members', icon: Users },
