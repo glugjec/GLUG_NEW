@@ -346,8 +346,53 @@ export default function PostDetail() {
 
   if (loading) {
     return (
-      <section className="page post-detail-page">
-        <LoadingSpinner text="Loading discussion…" />
+      <section className="page post-detail-page post-detail-skeleton-wrap">
+        <div className="post-breadcrumb-skeleton">
+          <div className="post-skel-crumb glug-skeleton-shimmer" />
+        </div>
+
+        <div className="post-main-thread" style={{ padding: '1.75rem' }}>
+          <div className="post-skel-tags-row">
+            <div className="post-skel-tag glug-skeleton-shimmer" />
+            <div className="post-skel-tag glug-skeleton-shimmer" />
+          </div>
+          <div className="post-skel-line post-skel-title-1 glug-skeleton-shimmer" />
+          <div className="post-skel-line post-skel-title-2 glug-skeleton-shimmer" />
+
+          <div className="post-author-skeleton">
+            <div className="post-skel-avatar glug-skeleton-shimmer" />
+            <div className="post-skel-author-col">
+              <div className="post-skel-line post-skel-author-name glug-skeleton-shimmer" />
+              <div className="post-skel-line post-skel-author-time glug-skeleton-shimmer" />
+            </div>
+          </div>
+
+          <div className="post-body-skeleton">
+            <div className="post-skel-line post-skel-body-line glug-skeleton-shimmer" style={{ width: '100%' }} />
+            <div className="post-skel-line post-skel-body-line glug-skeleton-shimmer" style={{ width: '92%' }} />
+            <div className="post-skel-line post-skel-body-line glug-skeleton-shimmer" style={{ width: '84%' }} />
+            <div className="post-skel-code-block glug-skeleton-shimmer" />
+            <div className="post-skel-line post-skel-body-line glug-skeleton-shimmer" style={{ width: '88%' }} />
+          </div>
+
+          <div className="post-skel-actions-bar glug-skeleton-shimmer" />
+        </div>
+
+        <div className="post-detail-loader-center">
+          <LoadingSpinner text="Loading discussion…" size="md" />
+        </div>
+
+        <div className="comments-skeleton-stream">
+          {[1, 2].map((n) => (
+            <div key={n} className="comment-skeleton-row">
+              <div className="post-skel-mini-avatar glug-skeleton-shimmer" />
+              <div className="comment-skel-content">
+                <div className="post-skel-line comment-skel-header glug-skeleton-shimmer" />
+                <div className="post-skel-line comment-skel-body glug-skeleton-shimmer" />
+              </div>
+            </div>
+          ))}
+        </div>
       </section>
     )
   }

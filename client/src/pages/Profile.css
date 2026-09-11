@@ -867,3 +867,111 @@
     grid-template-columns: repeat(4, 1fr);
   }
 }
+
+/* ── Profile Skeleton & Loading Animation ───────────────────────────── */
+.profile-skeleton-wrap {
+  pointer-events: none;
+  opacity: 0.95;
+}
+
+.profile-cover-skeleton {
+  height: 180px;
+  position: relative;
+}
+
+.profile-avatar-skeleton {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: 4px solid var(--bg-card);
+  box-shadow: 0 0 24px rgba(37, 99, 235, 0.25);
+  flex-shrink: 0;
+}
+
+.profile-skel-line {
+  border-radius: 6px;
+}
+
+.profile-skel-title {
+  width: 170px;
+  height: 24px;
+}
+
+.profile-skel-badge {
+  width: 84px;
+  height: 22px;
+  border-radius: 999px;
+}
+
+.profile-skel-sub {
+  width: 130px;
+  height: 14px;
+  margin-top: 0.45rem;
+}
+
+.profile-stat-cell.is-skeleton {
+  min-height: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border-radius: 12px;
+}
+
+.profile-skel-stat-num {
+  width: 44px;
+  height: 22px;
+  border-radius: 6px;
+}
+
+.profile-skel-stat-label {
+  width: 65px;
+  height: 12px;
+  border-radius: 4px;
+}
+
+.profile-tabs-skeleton {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.profile-skel-tab {
+  width: 110px;
+  height: 38px;
+  border-radius: 10px;
+}
+
+.profile-card-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.profile-skel-card-title {
+  width: 120px;
+  height: 18px;
+}
+
+.profile-skel-body-1 {
+  width: 90%;
+  height: 14px;
+}
+
+.profile-skel-body-2 {
+  width: 75%;
+  height: 14px;
+}
+
+.profile-skel-chips-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.profile-skel-chip {
+  width: 70px;
+  height: 26px;
+  border-radius: 8px;
+}

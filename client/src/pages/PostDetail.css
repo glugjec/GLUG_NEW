@@ -999,3 +999,150 @@
   }
 }
 
+/* ── Discussion Skeleton & Loading Animation ────────────────────────── */
+.post-detail-skeleton-wrap {
+  pointer-events: none;
+  opacity: 0.95;
+}
+
+.post-breadcrumb-skeleton {
+  margin-bottom: 1.25rem;
+}
+
+.post-skel-crumb {
+  width: 220px;
+  height: 18px;
+  border-radius: 6px;
+}
+
+.post-skel-tags-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.post-skel-tag {
+  width: 70px;
+  height: 22px;
+  border-radius: 6px;
+}
+
+.post-skel-line {
+  border-radius: 6px;
+}
+
+.post-skel-title-1 {
+  width: 78%;
+  height: 26px;
+  margin-bottom: 0.6rem;
+}
+
+.post-skel-title-2 {
+  width: 45%;
+  height: 22px;
+  margin-bottom: 1.25rem;
+}
+
+.post-author-skeleton {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.5rem;
+}
+
+.post-skel-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.post-skel-author-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+}
+
+.post-skel-author-name {
+  width: 110px;
+  height: 14px;
+}
+
+.post-skel-author-time {
+  width: 75px;
+  height: 12px;
+}
+
+.post-body-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-bottom: 1.75rem;
+}
+
+.post-skel-body-line {
+  height: 15px;
+}
+
+.post-skel-code-block {
+  width: 100%;
+  height: 110px;
+  border-radius: 10px;
+  margin: 0.5rem 0;
+}
+
+.post-skel-actions-bar {
+  width: 100%;
+  height: 42px;
+  border-radius: 10px;
+}
+
+.post-detail-loader-center {
+  padding: 1rem 0;
+}
+
+.comments-skeleton-stream {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.comment-skeleton-row {
+  display: flex;
+  gap: 0.85rem;
+  padding: 1.25rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.post-skel-mini-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.comment-skel-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.comment-skel-header {
+  width: 140px;
+  height: 14px;
+}
+
+.comment-skel-body {
+  width: 85%;
+  height: 14px;
+}
+
