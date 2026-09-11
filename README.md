@@ -1,129 +1,182 @@
-# GLUG_NEW
-# GLUG — Student Community & Open-Source Platform
+# GLUG — Student Technical Community & Open-Source Platform
 
-Community forum for students (like Reddit/Twitter but focused on Linux + community).
-An all-in-one open-source community platform for college students (especially 1st-year friendly), built for the **GNU/Linux User Group (GLUG)**.
+An all-in-one open-source community platform for college students and developers, built for the **GNU/Linux User Group (GLUG)**. Designed to be beginner-friendly while offering powerful tools for technical collaboration, coding, and Linux mastery.
 
-## Structure
-Featuring:
-- **Interactive In-Browser Linux Terminal**: Virtual file system with 30+ bash commands and `nano` text editor.
-- **Online IDE & Compiler**: Zero-setup multi-language sandbox supporting Python (Pyodide WASM), C, C++, Java, and C# (Judge0 CE).
-- **Reddit-Style Discussion Forum**: Categorized boards, tag filters, upvoting/downvoting, threaded comment replies, search, and pagination.
-- **Open-Source Resources**: Curated learning paths, command line cheatsheets, and distro recommendations for beginners.
-- **Student Profiles & Reputation**: Upvotes received, contributions timeline, editable bio, and skill tags.
-
-- `client/` — React (Vite) frontend
-- `server/` — Express.js + PostgreSQL backend
 ---
 
-## Pages
+## Key Features
+
+- **Interactive In-Browser Linux Terminal**: Virtual file system with 30+ core Unix/Linux commands (`ls`, `cd`, `grep`, `mkdir`, `cat`, `curl`, etc.), shell command history, tab auto-completion, keyboard shortcuts, and a built-in `nano` terminal editor.
+- **Online IDE & Multi-Language Compiler**: Zero-setup Monaco-powered code editor with syntax highlighting, custom input (stdin), execution timing, supporting Python (in-browser Pyodide WASM sandbox) and C, C++, Java, C#, and JavaScript (Judge0 CE cloud execution).
+- **Technical Discussion Forum**: Categorized boards (Linux, Programming, Web Dev, DevOps, Security, Events, Projects, Hardware, Help & Support), tag filtering, bookmarking, and search.
+- **Protected Voting Rules & Scoring**: Upvote/downvote system with vote protection (scores cannot drop below 0, smooth downvote undo toggling, real-time score calculation, and request debouncing).
+- **Threaded Comments & Rich Text Editing**: Nested conversation replies, sanitized preview rendering, image embedding (Cloudinary & Unsplash support), TipTap editor, and cascading delete warnings with custom confirmation modals.
+- **Admin Moderation Dashboard**: Role-based access control (Student vs Admin), user management, role promotion, post pinning, and content moderation.
+- **Curated Open-Source Resources**: Structured learning roadmaps, Linux distro recommendations, terminal command cheatsheets, and open-source tool alternatives.
+- **Student Profiles & Reputation**: Upvotes received, contributions activity, customizable bios, and technical skill badges.
+
+---
+
 ## Tech Stack
 
-- **Home** — overview of the website
-- **Resources** — Linux study material for students
-- **Forum** — community discussions (posts + comments)
-- **Login/Register** — account system (JWT auth)
-- **Frontend**: React 19, Vite 8, React Router 7, Monaco Editor, Lucide Icons, Axios
-- **Backend**: Node.js (ESM), Express.js 4, Mongoose 8 (MongoDB)
-- **Security & Validation**: JWT authentication, bcryptjs, Helmet, Express Rate Limit, Express Validator
-- **Execution Engines**: Pyodide (in-browser WASM) + Judge0 CE Cloud Sandbox
-
-## Setup
----
+### Frontend
+- **Framework**: React 19, Vite 8, React Router 7
+- **Editor & IDE**: Monaco Editor (`@monaco-editor/react`), TipTap Rich Text Editor
+- **Styling & UI**: Vanilla CSS Design System (dark-first aesthetic), Lucide Icons
+- **Security & Utilities**: DOMPurify, Marked, Axios with interceptors
 
 ### Backend
+- **Runtime & Framework**: Node.js (ESM), Express.js 4
+- **Database & ODM**: MongoDB, Mongoose 8 (with automated `mongodb-memory-server` fallback for zero-config local development)
+- **Authentication**: JWT (JSON Web Tokens), bcryptjs, Google OAuth 2.0 (`google-auth-library`)
+- **Security**: Helmet, Express Rate Limit (DDoS & brute-force mitigation), Express Validator
+- **Media & Cloud Storage**: Cloudinary SDK, Multer
+
+---
+
 ## Directory Structure
 
 ```
-.
-├── client/             # React 19 + Vite 8 frontend
+GLUG_NEW/
+├── client/                     # Frontend Application (React 19 + Vite 8)
+│   ├── public/                 # Static assets, banners, brand logos
 │   ├── src/
-│   │   ├── api.js      # Axios client with JWT interceptor
-│   │   ├── context/    # AuthContext with auto session recovery
-│   │   ├── components/ # Common, forum, layout, linux terminal, auth
-│   │   └── pages/      # Home, Forum, PostDetail, Resources, Compiler, Profile, Settings, Login, Register
-├── server/             # Express.js + Mongoose backend
+│   │   ├── api.js              # Centralized Axios client & API endpoints
+│   │   ├── components/
+│   │   │   ├── auth/           # Login, Register, ProtectedRoute
+│   │   │   ├── common/         # Avatars, Cards, Modals, MarkdownRenderer, RichTextEditor
+│   │   │   ├── forum/          # Post cards, Voting, Comments, Badges
+│   │   │   ├── layout/         # Navigation, Sidebar, Topbar
+│   │   │   └── terminal/       # In-browser Linux Terminal emulator & filesystem
+│   │   ├── context/            # AuthContext with session persistence
+│   │   ├── pages/              # Home, Forum, PostDetail, Resources, Compiler, Profile, AdminDashboard
+│   │   └── utils/              # Time utilities, vote calculators, sanitizers
+│   └── package.json
+├── server/                     # Backend API Service (Express.js + Mongoose)
 │   ├── src/
-│   │   ├── config/     # MongoDB connection (with automatic dev in-memory fallback)
-│   │   ├── models/     # User, Post, Comment, Vote schemas
-│   │   ├── middleware/ # JWT auth, optionalAuth, requireAdmin
-│   │   ├── routes/     # Auth, Posts, Users, Compile routes
-│   │   └── scripts/    # Database seed script
-└── Compiler/           # Standalone compiler repository (integrated inside client)
+│   │   ├── config/             # MongoDB connection & in-memory dev fallback
+│   │   ├── middleware/         # authMiddleware, optionalAuth, requireAdmin, upload
+│   │   ├── models/             # User, Post, Comment, Vote, Bookmark
+│   │   ├── routes/             # Auth, Posts, Users, Resources, Admin, Compile, Upload
+│   │   └── scripts/            # Database seed script
+│   └── package.json
+└── README.md
 ```
 
 ---
 
 ## Getting Started
 
+### Prerequisites
+- **Node.js**: v18.0.0 or higher
+- **npm**: v9.0.0 or higher
+- **MongoDB**: Local MongoDB instance or MongoDB Atlas connection URI (optional: in-memory MongoDB will auto-start if no URI is provided in development)
+
+---
+
 ### 1. Backend Setup
 
 ```bash
 cd server
 npm install
-cp .env.example .env   # edit DATABASE_URL, JWT_SECRET
-createdb glug          # or equivalent
-npm run db:init        # creates tables
-npm run dev            # http://localhost:5000
 
-# Configure environment variables (optional: defaults to local MongoDB or in-memory fallback)
+# Configure environment variables (optional: defaults work out-of-the-box in dev)
 cp .env.example .env
 
-# Seed initial community discussions and demo accounts (admin, students)
+# Seed the database with categories, rich discussions, and demo content
 npm run seed
 
-# Start server with watch mode
+# Start the API server in development watch mode
 npm run dev
-# Server listens on http://localhost:5000
 ```
 
-### Frontend
-> **Default demo accounts after seeding**:
-> - Admin: `admin@glug.dev` / `glug1234`
-> - Student: `alex@glug.dev` / `glug1234`
-> - Student: `priya@glug.dev` / `glug1234`
+The server will start on `http://localhost:5000` (or the port defined in `.env`).
+
+---
 
 ### 2. Frontend Setup
 
 ```bash
 cd client
 npm install
-npm run dev            # http://localhost:5173
+
+# Start the Vite development server
 npm run dev
-# Open in browser: http://localhost:5173
 ```
+
+Open `http://localhost:5173` in your browser.
+
+---
+
+### 3. Production Build
+
+```bash
+cd client
+npm run build
+```
+
+The production assets will be built to the `client/dist/` directory.
 
 ---
 
 ## API Reference
 
-### Auth (`/api/auth`)
-| Method | Endpoint | Description | Auth |
+### Authentication (`/api/auth`)
+| Method | Endpoint | Description | Access |
 |---|---|---|---|
-| `POST` | `/api/auth/register` | Register student account | No |
-| `POST` | `/api/auth/login` | Login with email & password | No |
-| `GET` | `/api/auth/me` | Fetch authenticated user data | Yes |
-| `PUT` | `/api/auth/me` | Update bio, skills, password | Yes |
+| `POST` | `/api/auth/register` | Register a new student account | Public |
+| `POST` | `/api/auth/login` | Login with username/email & password | Public |
+| `POST` | `/api/auth/google` | Authenticate using Google OAuth token | Public |
+| `GET` | `/api/auth/me` | Retrieve authenticated user profile | Private |
+| `PUT` | `/api/auth/me` | Update bio, avatar, skills, and password | Private |
 
-### Forum Posts (`/api/posts`)
-| Method | Endpoint | Description | Auth |
+### Forum & Discussions (`/api/posts`)
+| Method | Endpoint | Description | Access |
 |---|---|---|---|
-| `GET` | `/api/posts` | List posts (`?category=...&tag=...&sort=hot|new|top&search=...&page=...`) | Optional |
-| `GET` | `/api/posts/:id` | Get post with threaded comments & user vote | Optional |
-| `POST` | `/api/posts` | Create new post | Yes |
-| `PUT` | `/api/posts/:id` | Edit post | Author/Admin |
-| `DELETE` | `/api/posts/:id` | Delete post & comments | Author/Admin |
-| `POST` | `/api/posts/:id/vote` | Upvote/downvote (`{ value: 1 \| -1 \| 0 }`) | Yes |
-| `PUT` | `/api/posts/:id/pin` | Pin/unpin post | Admin only |
+| `GET` | `/api/posts` | List posts (`?category=...&tag=...&tab=latest\|trending\|unanswered\|my-posts\|bookmarks`) | Public |
+| `GET` | `/api/posts/:id` | Get post details with nested comments & user vote | Public |
+| `POST` | `/api/posts` | Create a new discussion post | Private |
+| `PUT` | `/api/posts/:id` | Update discussion post | Author / Admin |
+| `DELETE` | `/api/posts/:id` | Cascading delete of post, comments, and votes | Author / Admin |
+| `POST` | `/api/posts/:id/vote` | Cast or toggle vote (`{ value: 1 \| -1 \| 0 }`) | Private |
+| `POST` | `/api/posts/:id/bookmark` | Bookmark or unbookmark discussion | Private |
+| `PUT` | `/api/posts/:id/pin` | Pin or unpin post to top of category | Admin |
 
 ### Comments (`/api/posts/:id/comments`)
-| Method | Endpoint | Description | Auth |
+| Method | Endpoint | Description | Access |
 |---|---|---|---|
-| `POST` | `/api/posts/:id/comments` | Add comment or threaded reply (`{ body, parentComment }`) | Yes |
-| `DELETE` | `/api/posts/:id/comments/:commentId` | Delete comment & child replies | Author/Admin |
+| `POST` | `/api/posts/:id/comments` | Post a comment or threaded reply (`{ body, parentComment }`) | Private |
+| `DELETE` | `/api/posts/:id/comments/:commentId` | Cascading delete of comment and its reply tree | Author / Admin |
 
-### Users (`/api/users`)
-| Method | Endpoint | Description | Auth |
+### Admin & Moderation (`/api/admin`)
+| Method | Endpoint | Description | Access |
 |---|---|---|---|
-| `GET` | `/api/users/:id` | Public profile with statistics & reputation | No |
-| `GET` | `/api/users/:id/posts` | List discussions created by user | No |
+| `GET` | `/api/admin/metrics` | Fetch club statistics, user count, and activity | Admin |
+| `GET` | `/api/admin/users` | List registered members with roles | Admin |
+| `PUT` | `/api/admin/users/:id/role` | Change member role (`student` / `admin`) | Admin |
+
+### Execution & Compilation (`/api/compile`)
+| Method | Endpoint | Description | Access |
+|---|---|---|---|
+| `POST` | `/api/compile` | Compile and execute source code via Judge0 CE Cloud | Public |
+
+### Media Upload (`/api/upload`)
+| Method | Endpoint | Description | Access |
+|---|---|---|---|
+| `POST` | `/api/upload` | Upload image for post/comment embed (Cloudinary) | Private |
+
+---
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'feat: Add AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+---
+
+## License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
