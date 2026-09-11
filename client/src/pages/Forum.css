@@ -295,27 +295,47 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-width: 40px;
-  padding: 0.35rem 0.25rem;
+  min-width: 42px;
+  padding: 0.4rem 0.3rem;
   background: var(--bg-card-subtle);
   border: 1px solid var(--border);
   border-radius: 10px;
-  color: var(--text-dim);
-  transition: all 0.15s ease;
+  color: var(--text-muted);
+  cursor: pointer;
+  outline: none;
+  font-family: inherit;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
 }
 
-.forum-post-row:hover .forum-vote-box {
-  color: var(--accent);
+.forum-vote-box:hover:not(.voted-up) {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+  color: var(--text);
+  transform: translateY(-1px);
+}
+
+.forum-post-row:hover .forum-vote-box:not(.voted-up) {
   border-color: var(--border-subtle);
 }
 
 .vote-arrow {
-  margin-bottom: 0.15rem;
+  margin-bottom: 0.18rem;
+  transition: transform 0.15s ease;
+}
+
+.forum-vote-box:hover .vote-arrow {
+  transform: translateY(-1px);
 }
 
 .vote-score {
   font-size: 0.85rem;
   font-weight: 700;
+  color: var(--text-muted);
+  transition: color 0.15s ease;
+}
+
+.forum-vote-box:hover:not(.voted-up) .vote-score {
   color: var(--text);
 }
 
@@ -410,8 +430,25 @@
 
 .forum-vote-box.voted-up {
   color: #3b82f6;
-  border-color: rgba(59, 130, 246, 0.4);
-  background: rgba(59, 130, 246, 0.1);
+  background: rgba(59, 130, 246, 0.16);
+  border: 1.5px solid #3b82f6;
+  box-shadow: 0 0 14px rgba(59, 130, 246, 0.32), inset 0 0 8px rgba(59, 130, 246, 0.15);
+}
+
+.forum-vote-box.voted-up .vote-arrow {
+  color: #3b82f6;
+  filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.5));
+}
+
+.forum-vote-box.voted-up .vote-score {
+  color: #3b82f6;
+  font-weight: 800;
+}
+
+.forum-vote-box.voted-up:hover {
+  background: rgba(59, 130, 246, 0.24);
+  border-color: #60a5fa;
+  box-shadow: 0 0 18px rgba(59, 130, 246, 0.45);
 }
 
 .author-avatar-circle {

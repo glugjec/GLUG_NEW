@@ -174,21 +174,30 @@ router.get('/:id', optionalAuth, async (req, res) => {
       userVote,
     };
 
-    const formattedComments = comments.map((c) => ({
-      id: c._id.toString(),
-      _id: c._id.toString(),
-      body: c.body,
-      parentComment: c.parentComment ? c.parentComment.toString() : null,
-      createdAt: c.createdAt,
-      author: c.author
-        ? {
-            id: c.author._id.toString(),
-            username: c.author.username,
-            role: c.author.role,
-            avatar: c.author.avatar,
-          }
-        : { username: 'deleted', role: 'student' },
-    }));
+    const formattedComments = comments.map((c) => {
+      let commentUserVote = 0;
+      if (req.user && Array.isArray(c.votes) && c.votes.length > 0) {
+        const found = c.votes.find((v) => v.user?.toString() === req.user.id);
+        if (found) commentUserVote = found.value;
+      }
+      return {
+        id: c._id.toString(),
+        _id: c._id.toString(),
+        body: c.body,
+        parentComment: c.parentComment ? c.parentComment.toString() : null,
+        createdAt: c.createdAt,
+        voteScore: Math.max(0, c.voteScore || 0),
+        userVote: commentUserVote,
+        author: c.author
+          ? {
+              id: c.author._id.toString(),
+              username: c.author.username,
+              role: c.author.role,
+              avatar: c.author.avatar,
+            }
+          : { username: 'deleted', role: 'student' },
+      };
+    });
 
     return res.json({
       post: formattedPost,
@@ -464,6 +473,62 @@ router.put('/:id/pin', requireAuth, requireAdmin, async (req, res) => {
     return res.status(500).json({ error: 'Failed to update pin status' });
   }
 });
+
+const handleVoteComment = async (req, res) => {
+  const { value } = req.body;
+  const numericValue = Number(value);
+
+  if (![1, -1, 0].includes(numericValue)) {
+    return res.status(400).json({ error: 'Vote value must be 1, -1, or 0' });
+  }
+
+  try {
+    const comment = await Comment.findById(req.params.commentId);
+    if (!comment) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+
+    if (!Array.isArray(comment.votes)) {
+      comment.votes = [];
+    }
+
+    const voteIdx = comment.votes.findIndex((v) => v.user.toString() === req.user.id);
+    const existingVote = voteIdx !== -1 ? comment.votes[voteIdx] : null;
+
+    let delta = 0;
+    let newUserVote = 0;
+
+    if (numericValue === 0 || (existingVote && existingVote.value === numericValue)) {
+      if (existingVote) {
+        delta = -existingVote.value;
+        comment.votes.splice(voteIdx, 1);
+      }
+      newUserVote = 0;
+    } else if (existingVote) {
+      delta = numericValue - existingVote.value;
+      existingVote.value = numericValue;
+      newUserVote = numericValue;
+    } else {
+      delta = numericValue;
+      comment.votes.push({ user: req.user.id, value: numericValue });
+      newUserVote = numericValue;
+    }
+
+    comment.voteScore = Math.max(0, (comment.voteScore || 0) + delta);
+    await comment.save();
+
+    return res.json({
+      voteScore: comment.voteScore,
+      userVote: newUserVote,
+    });
+  } catch (err) {
+    console.error('[Vote Comment Error]', err);
+    return res.status(500).json({ error: 'Failed to register comment vote' });
+  }
+};
+
+router.post('/:id/comments/:commentId/vote', requireAuth, handleVoteComment);
+router.post('/comments/:commentId/vote', requireAuth, handleVoteComment);
 
 export default router;
 

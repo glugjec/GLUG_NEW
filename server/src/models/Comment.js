@@ -24,6 +24,24 @@ const commentSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
+    voteScore: {
+      type: Number,
+      default: 0,
+    },
+    votes: [
+      {
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+          required: true,
+        },
+        value: {
+          type: Number,
+          required: true,
+          enum: [1, -1],
+        },
+      },
+    ],
   },
   {
     timestamps: true,

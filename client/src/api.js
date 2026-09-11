@@ -64,6 +64,7 @@ export const postsApi = {
   pin: (id) => client.put(`/posts/${id}/pin`),
   addComment: (id, data) => client.post(`/posts/${id}/comments`, data),
   deleteComment: (postId, commentId) => client.delete(`/posts/${postId}/comments/${commentId}`),
+  voteComment: (postId, commentId, value) => client.post(`/posts/${postId}/comments/${commentId}/vote`, { value }),
 };
 
 export const usersApi = {

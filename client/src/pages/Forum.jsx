@@ -321,7 +321,7 @@ export default function Forum() {
     } finally {
       setLoading(false)
     }
-  }, [selectedCategory, activeTab])
+  }, [selectedCategory, activeTab, user?.id])
 
   useEffect(() => {
     const cat = searchParams.get('category')
@@ -337,6 +337,16 @@ export default function Forum() {
     }
     const currentVote = post.userVote || 0
     const nextVote = currentVote === 1 ? 0 : 1
+    const diff = nextVote - currentVote
+
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === post.id
+          ? { ...p, voteScore: Math.max(0, (p.voteScore || 0) + diff), userVote: nextVote }
+          : p
+      )
+    )
+
     try {
       const res = await postsApi.vote(post.id, nextVote)
       if (res && typeof res.voteScore === 'number') {
@@ -349,7 +359,13 @@ export default function Forum() {
         )
       }
     } catch {
-      // ignore
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === post.id
+            ? { ...p, voteScore: Math.max(0, (p.voteScore || 0) - diff), userVote: currentVote }
+            : p
+        )
+      )
     }
   }
 
@@ -508,13 +524,16 @@ export default function Forum() {
                   if (e.key === 'Enter') navigate(`/forum/posts/${post.id}`)
                 }}
               >
-                <div
+                <button
+                  type="button"
                   className={`forum-vote-box ${post.userVote === 1 ? 'voted-up' : ''}`}
                   onClick={(e) => handleVote(e, post)}
+                  title={post.userVote === 1 ? 'Upvoted (click to remove)' : 'Upvote'}
+                  aria-pressed={post.userVote === 1}
                 >
-                  <ArrowUp size={16} className="vote-arrow" />
+                  <ArrowUp size={16} className="vote-arrow" strokeWidth={post.userVote === 1 ? 2.8 : 2} />
                   <span className="vote-score">{Math.max(0, post.voteScore || 0)}</span>
-                </div>
+                </button>
 
                 <div
                   className="forum-post-icon"

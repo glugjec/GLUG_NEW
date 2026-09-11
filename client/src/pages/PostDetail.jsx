@@ -195,7 +195,7 @@ export default function PostDetail() {
     } finally {
       setLoading(false)
     }
-  }, [id])
+  }, [id, user?.id])
 
   useEffect(() => {
     load()
@@ -241,26 +241,63 @@ export default function PostDetail() {
     }))
   }
 
-  const handleCommentVote = (commentId, delta) => {
+  const handleCommentVote = async (commentId, delta) => {
     if (!user) {
       showToast('Please log in to vote')
       navigate('/login')
       return
     }
+
+    const currentComment = comments.find((c) => (c.id === commentId || c._id === commentId))
+    const cur = currentComment?.userVote || 0
+    const nxt = cur === delta ? 0 : delta
+    const diff = nxt - cur
+
     setComments((prev) =>
       prev.map((c) => {
         if (c.id === commentId || c._id === commentId) {
-          const cur = c.userVote || 0
-          const nxt = cur === delta ? 0 : delta
           return {
             ...c,
             userVote: nxt,
-            voteScore: (c.voteScore || 0) + (nxt - cur)
+            voteScore: Math.max(0, (c.voteScore || 0) + diff)
           }
         }
         return c
       })
     )
+
+    try {
+      const postId = post?.id || post?._id || id
+      const res = await postsApi.voteComment(postId, commentId, nxt)
+      if (res && typeof res.voteScore === 'number') {
+        setComments((prev) =>
+          prev.map((c) => {
+            if (c.id === commentId || c._id === commentId) {
+              return {
+                ...c,
+                userVote: res.userVote ?? nxt,
+                voteScore: Math.max(0, res.voteScore)
+              }
+            }
+            return c
+          })
+        )
+      }
+    } catch (err) {
+      setComments((prev) =>
+        prev.map((c) => {
+          if (c.id === commentId || c._id === commentId) {
+            return {
+              ...c,
+              userVote: cur,
+              voteScore: Math.max(0, (c.voteScore || 0) - diff)
+            }
+          }
+          return c
+        })
+      )
+      showToast(err.message || 'Failed to register vote')
+    }
   }
 
   const handleShare = async () => {
@@ -531,23 +568,25 @@ export default function PostDetail() {
 
             <footer className="discussion-bottom-bar">
               <div className="discussion-bottom-left">
-                <div className="vote-capsule">
+                <div className={`vote-capsule ${activePost.userVote === 1 ? 'voted-up' : activePost.userVote === -1 ? 'voted-down' : ''}`}>
                   <button
                     type="button"
                     className={`vote-capsule-btn ${activePost.userVote === 1 ? 'voted-up' : ''}`}
                     onClick={() => handlePostVote(1)}
-                    title="Upvote"
+                    title={activePost.userVote === 1 ? 'Upvoted (click to undo)' : 'Upvote'}
+                    aria-pressed={activePost.userVote === 1}
                   >
-                    <ChevronUp size={16} />
+                    <ChevronUp size={16} strokeWidth={activePost.userVote === 1 ? 2.8 : 2} />
                   </button>
                   <span className="vote-score-num">{Math.max(0, activePost.voteScore ?? 0)}</span>
                   <button
                     type="button"
                     className={`vote-capsule-btn ${activePost.userVote === -1 ? 'voted-down' : ''}`}
                     onClick={() => handlePostVote(-1)}
-                    title="Downvote"
+                    title={activePost.userVote === -1 ? 'Downvoted (click to undo)' : 'Downvote'}
+                    aria-pressed={activePost.userVote === -1}
                   >
-                    <ChevronDown size={16} />
+                    <ChevronDown size={16} strokeWidth={activePost.userVote === -1 ? 2.8 : 2} />
                   </button>
                 </div>
 
@@ -645,13 +684,15 @@ export default function PostDetail() {
                       </div>
 
                       <div className="reply-footer-actions">
-                        <div className="vote-capsule">
+                        <div className={`vote-capsule ${reply.userVote === 1 ? 'voted-up' : reply.userVote === -1 ? 'voted-down' : ''}`}>
                           <button
                             type="button"
                             className={`vote-capsule-btn ${reply.userVote === 1 ? 'voted-up' : ''}`}
                             onClick={() => handleCommentVote(reply.id || reply._id, 1)}
+                            title={reply.userVote === 1 ? 'Upvoted (click to undo)' : 'Upvote'}
+                            aria-pressed={reply.userVote === 1}
                           >
-                            <ChevronUp size={15} />
+                            <ChevronUp size={15} strokeWidth={reply.userVote === 1 ? 2.8 : 2} />
                           </button>
                           <span className="vote-score-num">{reply.voteScore || 0}</span>
                         </div>
