@@ -14,6 +14,7 @@ import compileRoutes from './routes/compile.routes.js';
 import uploadRoutes from './routes/upload.routes.js';
 
 const app = express();
+app.set('trust proxy', 1);
 
 app.use(
   helmet({
@@ -43,13 +44,15 @@ app.use(async (req, res, next) => {
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 30,
-  message: { error: 'Too many authentication attempts, please try again after 15 minutes' },
+  max: process.env.NODE_ENV === 'production' ? 50 : 500,
+  skip: (req) => req.method === 'GET',
+  skipSuccessfulRequests: true,
+  message: { error: 'Too many failed attempts, please try again after 15 minutes' },
 });
 
 const apiLimiter = rateLimit({
   windowMs: 5 * 60 * 1000,
-  max: 300,
+  max: process.env.NODE_ENV === 'production' ? 600 : 3000,
   message: { error: 'Too many requests, please slow down' },
 });
 

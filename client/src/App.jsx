@@ -1,5 +1,6 @@
 import { Routes, Route, useLocation } from 'react-router-dom'
 import Layout from './components/layout/Layout.jsx'
+import ScrollToTop from './components/common/ScrollToTop.jsx'
 import Home from './pages/Home.jsx'
 import Categories from './pages/Categories.jsx'
 import TerminalPage from './pages/TerminalPage.jsx'
@@ -25,6 +26,7 @@ export default function App() {
 
   return (
     <div className="app-container">
+      <ScrollToTop />
       {isAuthPage ? (
         <main className="main-content-flush">
           <Routes>

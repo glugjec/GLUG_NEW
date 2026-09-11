@@ -244,11 +244,15 @@ export default function Categories() {
               <div className="cat-card-footer">
                 <span className="cat-stat">
                   <MessageSquare size={13} />
-                  {item.discussions} discussions
+                  <span>
+                    <strong className="cat-stat-num">{item.discussions}</strong> discussions
+                  </span>
                 </span>
                 <span className="cat-stat">
                   <Users size={13} />
-                  {item.members} members
+                  <span>
+                    <strong className="cat-stat-num">{item.members}</strong> members
+                  </span>
                 </span>
               </div>
             </div>

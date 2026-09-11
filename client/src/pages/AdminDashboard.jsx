@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { adminApi, resourcesApi } from "../api.js";
+import ConfirmDeleteModal from "../components/common/ConfirmDeleteModal.jsx";
 import "./AdminDashboard.css";
 
 export default function AdminDashboard() {
@@ -243,15 +244,19 @@ export default function AdminDashboard() {
     }
   }
 
-  async function handleDeletePost(post) {
-    if (!window.confirm(`Delete post "${post.title}"? This cannot be undone.`)) return;
+  async function confirmDeletePost() {
+    if (!postToDelete) return;
+    setIsDeletingAdminPost(true);
     try {
-      await adminApi.deletePost(post.id);
-      setPosts((prev) => prev.filter((p) => p.id !== post.id));
+      await adminApi.deletePost(postToDelete.id);
+      setPosts((prev) => prev.filter((p) => p.id !== postToDelete.id));
       showToast("Post and comments deleted");
       setStats((prev) => ({ ...prev, totalPosts: Math.max(0, prev.totalPosts - 1) }));
+      setPostToDelete(null);
     } catch (err) {
       showToast(err.message, "error");
+    } finally {
+      setIsDeletingAdminPost(false);
     }
   }
 
@@ -622,7 +627,7 @@ export default function AdminDashboard() {
                           </button>
                           <button
                             className="admin-action-btn danger"
-                            onClick={() => handleDeletePost(p)}
+                            onClick={() => setPostToDelete(p)}
                             title="Delete discussion"
                           >
                             Delete
@@ -712,6 +717,20 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(postToDelete)}
+        onClose={() => {
+          if (!isDeletingAdminPost) setPostToDelete(null);
+        }}
+        onConfirm={confirmDeletePost}
+        title="Delete Discussion"
+        description="Are you sure you want to delete this discussion?"
+        itemTitle={postToDelete?.title}
+        warningNote="This action cannot be undone. All comments, replies, upvotes, and bookmarks associated with this discussion will be permanently removed."
+        confirmText="Delete Discussion"
+        isDeleting={isDeletingAdminPost}
+      />
     </section>
   );
 }

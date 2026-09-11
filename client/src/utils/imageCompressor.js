@@ -80,3 +80,14 @@ export async function compressImage(file, maxSizeBytes = 500 * 1024, maxWidth = 
     reader.readAsDataURL(file);
   });
 }
+
+export async function compressPostImage(file, maxSizeBytes = 800 * 1024, maxWidth = 1600, maxHeight = 1600) {
+  if (!file || !file.type.startsWith('image/')) {
+    throw new Error('Please select a valid image file');
+  }
+  if (file.type === 'image/gif' || file.type === 'image/svg+xml') {
+    return file;
+  }
+  const result = await compressImage(file, maxSizeBytes, maxWidth, maxHeight);
+  return result.file;
+}

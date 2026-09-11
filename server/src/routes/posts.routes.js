@@ -3,7 +3,9 @@ import mongoose from 'mongoose';
 import { Post } from '../models/Post.js';
 import { Comment } from '../models/Comment.js';
 import { Vote } from '../models/Vote.js';
+import { Bookmark } from '../models/Bookmark.js';
 import { requireAuth, optionalAuth, requireAdmin } from '../middleware/auth.js';
+import { calculateNextVoteScore } from '../utils/voteCalculator.js';
 
 const router = Router();
 const recentViews = new Map();
@@ -16,7 +18,7 @@ router.get('/', optionalAuth, async (req, res) => {
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 15));
     const skip = (page - 1) * limit;
 
-    const { category, tag, sort = 'hot', search } = req.query;
+    const { category, tag, sort = 'hot', search, tab } = req.query;
 
     const filter = {};
     if (category && category !== 'All' && category !== 'all') {
@@ -32,6 +34,28 @@ router.get('/', optionalAuth, async (req, res) => {
       ];
     }
 
+    if (tab === 'unanswered') {
+      filter.commentCount = { $lte: 0 };
+    } else if (tab === 'my-posts') {
+      if (!req.user) {
+        return res.json({
+          posts: [],
+          pagination: { total: 0, page, limit, totalPages: 1, hasMore: false },
+        });
+      }
+      filter.author = req.user.id;
+    } else if (tab === 'bookmarks') {
+      if (!req.user) {
+        return res.json({
+          posts: [],
+          pagination: { total: 0, page, limit, totalPages: 1, hasMore: false },
+        });
+      }
+      const bookmarks = await Bookmark.find({ user: req.user.id }).select('post').lean();
+      const bookmarkedPostIds = bookmarks.map((b) => b.post);
+      filter._id = { $in: bookmarkedPostIds };
+    }
+
     let sortCriteria = { isPinned: -1 };
     if (sort === 'new') {
       sortCriteria.createdAt = -1;
@@ -39,7 +63,6 @@ router.get('/', optionalAuth, async (req, res) => {
       sortCriteria.voteScore = -1;
       sortCriteria.createdAt = -1;
     } else {
-      // 'hot' default
       sortCriteria.voteScore = -1;
       sortCriteria.createdAt = -1;
     }
@@ -55,15 +78,25 @@ router.get('/', optionalAuth, async (req, res) => {
     ]);
 
     let userVoteMap = new Map();
+    let userBookmarkSet = new Set();
     if (req.user && posts.length > 0) {
       const postIds = posts.map((p) => p._id);
-      const userVotes = await Vote.find({
-        user: req.user.id,
-        post: { $in: postIds },
-      }).lean();
+      const [userVotes, userBookmarks] = await Promise.all([
+        Vote.find({
+          user: req.user.id,
+          post: { $in: postIds },
+        }).lean(),
+        Bookmark.find({
+          user: req.user.id,
+          post: { $in: postIds },
+        }).lean(),
+      ]);
 
       userVotes.forEach((v) => {
         userVoteMap.set(v.post.toString(), v.value);
+      });
+      userBookmarks.forEach((b) => {
+        userBookmarkSet.add(b.post.toString());
       });
     }
 
@@ -89,6 +122,7 @@ router.get('/', optionalAuth, async (req, res) => {
           }
         : { username: 'deleted', role: 'student' },
       userVote: userVoteMap.get(p._id.toString()) || 0,
+      isBookmarked: userBookmarkSet.has(p._id.toString()),
     }));
 
     return res.json({
@@ -125,9 +159,14 @@ router.get('/:id', optionalAuth, async (req, res) => {
       .lean();
 
     let userVote = 0;
+    let isBookmarked = false;
     if (req.user) {
-      const vote = await Vote.findOne({ user: req.user.id, post: post._id });
+      const [vote, bookmark] = await Promise.all([
+        Vote.findOne({ user: req.user.id, post: post._id }).lean(),
+        Bookmark.findOne({ user: req.user.id, post: post._id }).lean(),
+      ]);
       if (vote) userVote = vote.value;
+      if (bookmark) isBookmarked = true;
     }
 
     const viewerKey = `${req.user?.id || req.ip || 'anon'}:${req.params.id}`;
@@ -172,23 +211,33 @@ router.get('/:id', optionalAuth, async (req, res) => {
           }
         : { username: 'deleted', role: 'student' },
       userVote,
+      isBookmarked,
     };
 
-    const formattedComments = comments.map((c) => ({
-      id: c._id.toString(),
-      _id: c._id.toString(),
-      body: c.body,
-      parentComment: c.parentComment ? c.parentComment.toString() : null,
-      createdAt: c.createdAt,
-      author: c.author
-        ? {
-            id: c.author._id.toString(),
-            username: c.author.username,
-            role: c.author.role,
-            avatar: c.author.avatar,
-          }
-        : { username: 'deleted', role: 'student' },
-    }));
+    const formattedComments = comments.map((c) => {
+      let commentUserVote = 0;
+      if (req.user && Array.isArray(c.votes) && c.votes.length > 0) {
+        const found = c.votes.find((v) => v.user?.toString() === req.user.id);
+        if (found) commentUserVote = found.value;
+      }
+      return {
+        id: c._id.toString(),
+        _id: c._id.toString(),
+        body: c.body,
+        parentComment: c.parentComment ? c.parentComment.toString() : null,
+        createdAt: c.createdAt,
+        voteScore: Math.max(0, c.voteScore || 0),
+        userVote: commentUserVote,
+        author: c.author
+          ? {
+              id: c.author._id.toString(),
+              username: c.author.username,
+              role: c.author.role,
+              avatar: c.author.avatar,
+            }
+          : { username: 'deleted', role: 'student' },
+      };
+    });
 
     return res.json({
       post: formattedPost,
@@ -284,6 +333,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
       Post.findByIdAndDelete(post._id),
       Comment.deleteMany({ post: post._id }),
       Vote.deleteMany({ post: post._id }),
+      Bookmark.deleteMany({ post: post._id }),
     ]);
 
     return res.json({ message: 'Post and associated comments deleted successfully' });
@@ -293,8 +343,34 @@ router.delete('/:id', requireAuth, async (req, res) => {
   }
 });
 
-// @route   POST /api/posts/:id/vote
-// @desc    Upvote / downvote a post (toggle off if same value clicked)
+router.post('/:id/bookmark', requireAuth, async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+
+    const existing = await Bookmark.findOne({
+      user: req.user.id,
+      post: post._id,
+    });
+
+    if (existing) {
+      await Bookmark.deleteOne({ _id: existing._id });
+      return res.json({ bookmarked: false, message: 'Bookmark removed' });
+    } else {
+      await Bookmark.create({
+        user: req.user.id,
+        post: post._id,
+      });
+      return res.json({ bookmarked: true, message: 'Saved to bookmarks' });
+    }
+  } catch (err) {
+    console.error('[Bookmark Error]', err);
+    return res.status(500).json({ error: 'Failed to update bookmark' });
+  }
+});
+
 router.post('/:id/vote', requireAuth, async (req, res) => {
   const { value } = req.body;
   const numericValue = Number(value);
@@ -314,35 +390,62 @@ router.post('/:id/vote', requireAuth, async (req, res) => {
       post: post._id,
     });
 
-    let scoreDelta = 0;
+    let targetVote = numericValue;
+    if (numericValue === 0 || (existingVote && existingVote.value === numericValue)) {
+      targetVote = 0;
+    }
+
+    const votes = await Vote.find({ post: post._id });
+    const upvotes = votes.filter((v) => v.value === 1).length;
+    const downvotes = votes.filter((v) => v.value === -1).length;
+    const curScore = Math.max(0, upvotes - downvotes);
+
+    if (targetVote === -1) {
+      if (!existingVote || existingVote.value === 0) {
+        if (curScore <= 0) {
+          return res.status(400).json({
+            error: 'Cannot downvote when score is 0',
+            voteScore: 0,
+            userVote: 0,
+          });
+        }
+      } else if (existingVote.value === 1) {
+        if (curScore <= 1) {
+          targetVote = 0;
+        }
+      }
+    }
+
     let newUserVote = 0;
 
-    if (numericValue === 0 || (existingVote && existingVote.value === numericValue)) {
+    if (targetVote === 0) {
       if (existingVote) {
-        scoreDelta = -existingVote.value;
-        await Vote.findByIdAndDelete(existingVote._id);
+        await Vote.deleteOne({ _id: existingVote._id });
       }
       newUserVote = 0;
     } else if (existingVote) {
-      scoreDelta = numericValue - existingVote.value;
-      existingVote.value = numericValue;
+      existingVote.value = targetVote;
       await existingVote.save();
-      newUserVote = numericValue;
+      newUserVote = targetVote;
     } else {
-      scoreDelta = numericValue;
       await Vote.create({
         user: req.user.id,
         post: post._id,
-        value: numericValue,
+        value: targetVote,
       });
-      newUserVote = numericValue;
+      newUserVote = targetVote;
     }
 
-    post.voteScore = Math.max(0, (post.voteScore || 0) + scoreDelta);
+    const updatedVotes = await Vote.find({ post: post._id });
+    const newUp = updatedVotes.filter((v) => v.value === 1).length;
+    const newDown = updatedVotes.filter((v) => v.value === -1).length;
+    const trueScore = Math.max(0, newUp - newDown);
+
+    post.voteScore = trueScore;
     await post.save();
 
     return res.json({
-      voteScore: Math.max(0, post.voteScore),
+      voteScore: trueScore,
       userVote: newUserVote,
     });
   } catch (err) {
@@ -371,7 +474,7 @@ router.post('/:id/comments', requireAuth, async (req, res) => {
     }
 
     let parentId = null;
-    if (parentComment) {
+    if (parentComment && mongoose.Types.ObjectId.isValid(parentComment)) {
       const parent = await Comment.findOne({ _id: parentComment, post: post._id });
       if (parent) {
         parentId = parent._id;
@@ -414,32 +517,52 @@ router.post('/:id/comments', requireAuth, async (req, res) => {
   }
 });
 
-// @route   DELETE /api/posts/:id/comments/:commentId
-// @desc    Delete a comment (author or admin)
+async function getAllDescendantCommentIds(initialCommentId) {
+  const idsToDelete = [initialCommentId.toString()];
+  let currentParentIds = [initialCommentId];
+  while (currentParentIds.length > 0) {
+    const children = await Comment.find({ parentComment: { $in: currentParentIds } }).select('_id').lean();
+    if (!children.length) break;
+    const childIds = children.map((c) => c._id);
+    for (const cid of childIds) {
+      idsToDelete.push(cid.toString());
+    }
+    currentParentIds = childIds;
+  }
+  return idsToDelete;
+}
+
 router.delete('/:id/comments/:commentId', requireAuth, async (req, res) => {
   try {
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+
     const comment = await Comment.findOne({
       _id: req.params.commentId,
-      post: req.params.id,
+      post: post._id,
     });
 
     if (!comment) {
       return res.status(404).json({ error: 'Comment not found' });
     }
 
-    if (comment.author.toString() !== req.user.id && req.user.role !== 'admin') {
+    const isPostAuthor = post.author.toString() === req.user.id;
+    const isCommentAuthor = comment.author.toString() === req.user.id;
+    const isAdmin = req.user.role === 'admin';
+
+    if (!isPostAuthor && !isCommentAuthor && !isAdmin) {
       return res.status(403).json({ error: 'Unauthorized to delete this comment' });
     }
 
-    const deletedCount = await Comment.deleteMany({
-      $or: [{ _id: comment._id }, { parentComment: comment._id }],
-    });
+    const allIds = await getAllDescendantCommentIds(comment._id);
+    await Comment.deleteMany({ _id: { $in: allIds } });
 
-    await Post.findByIdAndUpdate(req.params.id, {
-      $inc: { commentCount: -deletedCount.deletedCount },
-    });
+    const remainingCount = await Comment.countDocuments({ post: post._id });
+    await Post.findByIdAndUpdate(post._id, { commentCount: remainingCount });
 
-    return res.json({ message: 'Comment removed successfully' });
+    return res.json({ message: 'Comment removed successfully', deletedCount: allIds.length, remainingCount });
   } catch (err) {
     console.error('[Delete Comment Error]', err);
     return res.status(500).json({ error: 'Failed to delete comment' });
@@ -464,6 +587,87 @@ router.put('/:id/pin', requireAuth, requireAdmin, async (req, res) => {
     return res.status(500).json({ error: 'Failed to update pin status' });
   }
 });
+
+const handleVoteComment = async (req, res) => {
+  const { value } = req.body;
+  const numericValue = Number(value);
+
+  if (![1, -1, 0].includes(numericValue)) {
+    return res.status(400).json({ error: 'Vote value must be 1, -1, or 0' });
+  }
+
+  try {
+    const comment = await Comment.findById(req.params.commentId);
+    if (!comment) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+
+    if (!Array.isArray(comment.votes)) {
+      comment.votes = [];
+    }
+
+    const voteIdx = comment.votes.findIndex((v) => v.user.toString() === req.user.id);
+    const existingVote = voteIdx !== -1 ? comment.votes[voteIdx] : null;
+
+    let targetVote = numericValue;
+    if (numericValue === 0 || (existingVote && existingVote.value === numericValue)) {
+      targetVote = 0;
+    }
+
+    const upvotes = comment.votes.filter((v) => v.value === 1).length;
+    const downvotes = comment.votes.filter((v) => v.value === -1).length;
+    const curScore = Math.max(0, upvotes - downvotes);
+
+    if (targetVote === -1) {
+      if (!existingVote || existingVote.value === 0) {
+        if (curScore <= 0) {
+          return res.status(400).json({
+            error: 'Cannot downvote when score is 0',
+            voteScore: 0,
+            userVote: 0,
+          });
+        }
+      } else if (existingVote.value === 1) {
+        if (curScore <= 1) {
+          targetVote = 0;
+        }
+      }
+    }
+
+    let newUserVote = 0;
+
+    if (targetVote === 0) {
+      if (existingVote) {
+        comment.votes.splice(voteIdx, 1);
+      }
+      newUserVote = 0;
+    } else if (existingVote) {
+      existingVote.value = targetVote;
+      newUserVote = targetVote;
+    } else {
+      comment.votes.push({ user: req.user.id, value: targetVote });
+      newUserVote = targetVote;
+    }
+
+    const newUp = comment.votes.filter((v) => v.value === 1).length;
+    const newDown = comment.votes.filter((v) => v.value === -1).length;
+    const trueScore = Math.max(0, newUp - newDown);
+
+    comment.voteScore = trueScore;
+    await comment.save();
+
+    return res.json({
+      voteScore: trueScore,
+      userVote: newUserVote,
+    });
+  } catch (err) {
+    console.error('[Vote Comment Error]', err);
+    return res.status(500).json({ error: 'Failed to register comment vote' });
+  }
+};
+
+router.post('/:id/comments/:commentId/vote', requireAuth, handleVoteComment);
+router.post('/comments/:commentId/vote', requireAuth, handleVoteComment);
 
 export default router;
 

@@ -1,8 +1,12 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { postsApi } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { avatarInitials, avatarColor } from '../components/common/avatar.js'
+import { formatRelativeTime } from '../utils/timeAgo.js'
+import { calculateNextVoteScore } from '../utils/voteCalculator.js'
+import MarkdownRenderer from '../components/common/MarkdownRenderer.jsx'
+import RichTextEditor from '../components/common/RichTextEditor.jsx'
 import {
   Plus,
   ArrowUp,
@@ -21,7 +25,11 @@ import {
   Layers,
   ArrowRight,
   Send,
-  X
+  X,
+  Loader2,
+  Sparkles,
+  Tag,
+  AlertCircle
 } from 'lucide-react'
 import './Forum.css'
 
@@ -226,25 +234,6 @@ function renderPostIcon(type) {
   return <HelpCircle size={17} />
 }
 
-function formatRelativeTime(dateInput) {
-  if (!dateInput) return 'Recently'
-  if (typeof dateInput === 'string' && (dateInput.includes('ago') || dateInput.includes('Just now'))) {
-    return dateInput
-  }
-  const date = new Date(dateInput)
-  if (isNaN(date.getTime())) return 'Recently'
-  const now = new Date()
-  const diffSec = Math.floor((now - date) / 1000)
-  if (diffSec < 60) return 'Just now'
-  const diffMin = Math.floor(diffSec / 60)
-  if (diffMin < 60) return `${diffMin}m ago`
-  const diffHours = Math.floor(diffMin / 60)
-  if (diffHours < 24) return `${diffHours}h ago`
-  const diffDays = Math.floor(diffHours / 24)
-  if (diffDays < 7) return `${diffDays}d ago`
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
 function UserAvatar({ src, username, size = 30 }) {
   const [error, setError] = useState(false)
   if (src && !error) {
@@ -282,13 +271,90 @@ function UserAvatar({ src, username, size = 30 }) {
   )
 }
 
+function cleanPreviewText(text) {
+  if (!text) return ''
+  return text
+    .replace(/<img[^>]*>/gi, ' 📷 [Image] ')
+    .replace(/!\[.*?\]\(.*?\)/g, ' 📷 [Image] ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\[(.*?)\]\(.*?\)/g, '$1')
+    .replace(/[`#*~_>]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function PostTags({ tags }) {
+  const containerRef = useRef(null)
+  const [maxVisible, setMaxVisible] = useState(tags?.length || 1)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el || !tags || tags.length === 0) return
+
+    const checkFit = () => {
+      const parent = el.parentElement
+      if (!parent) return
+      const titleEl = parent.querySelector('.forum-post-title')
+      const totalWidth = parent.clientWidth
+      const titleWidth = titleEl ? Math.min(titleEl.scrollWidth, totalWidth * 0.6) : 0
+      const available = Math.max(60, totalWidth - titleWidth - 16)
+
+      let currentWidth = 0
+      let count = 0
+      for (let i = 0; i < tags.length; i++) {
+        const tagText = tags[i] || ''
+        const tagW = Math.min(115, Math.max(45, tagText.length * 7.2 + 22))
+        const badgeW = i < tags.length - 1 ? 36 : 0
+        if (currentWidth + tagW + badgeW <= available) {
+          currentWidth += tagW
+          count++
+        } else {
+          break
+        }
+      }
+      setMaxVisible(Math.max(1, count))
+    }
+
+    checkFit()
+    const ro = new ResizeObserver(checkFit)
+    if (el.parentElement) ro.observe(el.parentElement)
+    return () => ro.disconnect()
+  }, [tags])
+
+  if (!tags || tags.length === 0) return null
+
+  const visible = tags.slice(0, maxVisible)
+  const hiddenCount = tags.length - maxVisible
+
+  return (
+    <div ref={containerRef} className="forum-post-tags">
+      {visible.map((t) => (
+        <span key={t} className="forum-post-tag" title={t}>
+          {t}
+        </span>
+      ))}
+      {hiddenCount > 0 && (
+        <span className="forum-post-tag tag-more-count" title={tags.slice(maxVisible).join(', ')}>
+          +{hiddenCount}
+        </span>
+      )}
+    </div>
+  )
+}
+
 export default function Forum() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const [activeTab, setActiveTab] = useState('latest')
-  const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '')
+  const selectedCategory = searchParams.get('category') || ''
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -297,55 +363,110 @@ export default function Forum() {
   const [newTags, setNewTags] = useState('')
   const [newBody, setNewBody] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [uploadError, setUploadError] = useState('')
+  const [imageUploading, setImageUploading] = useState(false)
+  const votingPostsRef = useRef(new Set())
 
-  const loadPosts = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = { limit: 20 }
-      if (selectedCategory) params.category = selectedCategory
-      if (activeTab === 'latest') params.sort = 'new'
-      if (activeTab === 'trending') params.sort = 'hot'
+  const loadPosts = useCallback(
+    async (catToFetch) => {
+      setLoading(true)
+      try {
+        const params = { limit: 20 }
+        if (catToFetch) params.category = catToFetch
+        if (activeTab === 'latest') params.sort = 'new'
+        if (activeTab === 'trending') params.sort = 'hot'
+        if (activeTab === 'unanswered') params.tab = 'unanswered'
+        if (activeTab === 'my-posts') {
+          if (!user) {
+            setPosts([])
+            setLoading(false)
+            return
+          }
+          params.tab = 'my-posts'
+        }
+        if (activeTab === 'bookmarks') {
+          if (!user) {
+            setPosts([])
+            setLoading(false)
+            return
+          }
+          params.tab = 'bookmarks'
+        }
 
-      const res = await postsApi.list(params)
-      if (res?.posts && res.posts.length > 0) {
-        const mapped = res.posts.map((p, idx) => ({
-          id: p._id || p.id,
-          isPinned: p.isPinned,
-          title: p.title,
-          body: p.body,
-          category: p.category || 'general',
-          tags: p.tags?.length ? p.tags : [p.category || 'General'],
-          voteScore: Math.max(0, p.voteScore || 0),
-          commentCount: p.commentCount ?? (p.comments ? p.comments.length : 0),
-          views: p.views ?? 0,
-          author: {
-            username: p.author?.username || 'member',
-            avatar: p.author?.avatar
-          },
-          userVote: p.userVote || 0,
-          timeAgo: formatRelativeTime(p.createdAt),
-          iconType: ['tux', 'terminal', 'code', 'settings', 'screen'][idx % 5],
-          iconBg: ['#422006', '#022c22', '#3b0764', '#1e3a8a', '#1e1b4b'][idx % 5],
-          iconColor: ['#facc15', '#34d399', '#c084fc', '#60a5fa', '#818cf8'][idx % 5]
-        }))
-        setPosts(mapped)
-      } else if (!selectedCategory && activeTab === 'latest' && (!res?.posts || res.posts.length === 0)) {
-        setPosts(DEFAULT_POSTS)
-      } else {
-        setPosts([])
+        const res = await postsApi.list(params)
+        if (res?.posts && res.posts.length > 0) {
+          const mapped = res.posts.map((p, idx) => ({
+            id: p._id || p.id,
+            isPinned: p.isPinned,
+            title: p.title,
+            body: p.body,
+            category: p.category || 'general',
+            tags: p.tags?.length ? p.tags : [p.category || 'General'],
+            voteScore: Math.max(0, p.voteScore || 0),
+            commentCount: p.commentCount ?? (p.comments ? p.comments.length : 0),
+            views: p.views ?? 0,
+            author: {
+              username: p.author?.username || 'member',
+              avatar: p.author?.avatar
+            },
+            userVote: p.userVote || 0,
+            isBookmarked: !!p.isBookmarked,
+            timeAgo: formatRelativeTime(p.createdAt),
+            iconType: ['tux', 'terminal', 'code', 'settings', 'screen'][idx % 5],
+            iconBg: ['#422006', '#022c22', '#3b0764', '#1e3a8a', '#1e1b4b'][idx % 5],
+            iconColor: ['#facc15', '#34d399', '#c084fc', '#60a5fa', '#818cf8'][idx % 5]
+          }))
+          setPosts(mapped)
+        } else if (!catToFetch && activeTab === 'latest' && (!res?.posts || res.posts.length === 0)) {
+          setPosts(DEFAULT_POSTS)
+        } else {
+          setPosts([])
+        }
+      } catch {
+        if (!catToFetch && activeTab === 'latest') {
+          setPosts(DEFAULT_POSTS)
+        } else {
+          setPosts([])
+        }
+      } finally {
+        setLoading(false)
       }
-    } catch {
-      setPosts(DEFAULT_POSTS)
-    } finally {
-      setLoading(false)
-    }
-  }, [selectedCategory, activeTab])
+    },
+    [activeTab, user]
+  )
+
+  const handleClearCategory = useCallback(() => {
+    setSearchParams({})
+  }, [setSearchParams])
+
+  const handleSelectCategory = useCallback(
+    (catId) => {
+      if (selectedCategory === catId) {
+        setSearchParams({})
+      } else {
+        setSearchParams({ category: catId })
+      }
+    },
+    [selectedCategory, setSearchParams]
+  )
+
+  const handleOpenNewPost = useCallback(
+    (categoryOverride) => {
+      if (!user) {
+        navigate('/login')
+        return
+      }
+      const catToUse = categoryOverride || selectedCategory || 'linux'
+      const isValid = CATEGORIES_LIST.some((c) => c.id === catToUse)
+      setNewCategory(isValid ? catToUse : 'linux')
+      setShowModal(true)
+    },
+    [user, selectedCategory, navigate]
+  )
 
   useEffect(() => {
-    const cat = searchParams.get('category')
-    if (cat) setSelectedCategory(cat)
-    loadPosts()
-  }, [searchParams, loadPosts])
+    loadPosts(selectedCategory)
+  }, [selectedCategory, activeTab, loadPosts])
 
   const handleVote = async (e, post) => {
     e.stopPropagation()
@@ -353,8 +474,24 @@ export default function Forum() {
       navigate('/login')
       return
     }
+    if (votingPostsRef.current.has(post.id)) {
+      return
+    }
+    votingPostsRef.current.add(post.id)
+
     const currentVote = post.userVote || 0
     const nextVote = currentVote === 1 ? 0 : 1
+    const currentScore = Math.max(0, post.voteScore || 0)
+    const nextScore = calculateNextVoteScore(currentScore, currentVote, nextVote)
+
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === post.id
+          ? { ...p, voteScore: nextScore, userVote: nextVote }
+          : p
+      )
+    )
+
     try {
       const res = await postsApi.vote(post.id, nextVote)
       if (res && typeof res.voteScore === 'number') {
@@ -367,13 +504,26 @@ export default function Forum() {
         )
       }
     } catch {
-      // ignore
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === post.id
+            ? { ...p, voteScore: currentScore, userVote: currentVote }
+            : p
+        )
+      )
+    } finally {
+      votingPostsRef.current.delete(post.id)
     }
   }
 
   const handleCreatePost = async (e) => {
     e.preventDefault()
-    if (!newTitle.trim() || !newBody.trim()) return
+    if (submitting || imageUploading) return
+    const hasContent = newBody.replace(/<[^>]*>/g, '').trim().length > 0 || newBody.includes('<img')
+    if (!newTitle.trim() || !hasContent) {
+      setUploadError('Please provide a title and discussion content.')
+      return
+    }
     setSubmitting(true)
     try {
       const tagList = newTags
@@ -390,13 +540,14 @@ export default function Forum() {
       setNewTitle('')
       setNewBody('')
       setNewTags('')
+      setUploadError('')
       if (res?.post) {
         navigate(`/forum/posts/${res.post._id || res.post.id}`)
       } else {
-        loadPosts()
+        loadPosts(selectedCategory)
       }
-    } catch {
-      setShowModal(false)
+    } catch (err) {
+      setUploadError(err.message || 'Failed to create discussion')
     } finally {
       setSubmitting(false)
     }
@@ -415,7 +566,7 @@ export default function Forum() {
             <button
               type="button"
               className="forum-hero-new-btn"
-              onClick={() => (user ? setShowModal(true) : navigate('/login'))}
+              onClick={() => handleOpenNewPost()}
             >
               <Plus size={18} /> New Post
             </button>
@@ -436,7 +587,7 @@ export default function Forum() {
             className={`forum-tab-btn ${activeTab === 'latest' ? 'is-active' : ''}`}
             onClick={() => {
               setActiveTab('latest')
-              setSelectedCategory('')
+              setSearchParams({})
             }}
           >
             Latest
@@ -477,10 +628,7 @@ export default function Forum() {
             <button
               type="button"
               className="clear-cat-btn"
-              onClick={() => {
-                setSelectedCategory('')
-                navigate('/forum')
-              }}
+              onClick={handleClearCategory}
             >
               <X size={14} /> Clear
             </button>
@@ -503,16 +651,89 @@ export default function Forum() {
             </div>
           ) : posts.length === 0 ? (
             <div className="forum-empty-card">
-              <MessageSquare size={32} className="forum-empty-icon" />
-              <h3>No discussions found</h3>
-              <p>Be the first to start a conversation in this category!</p>
-              <button
-                type="button"
-                className="btn-hero-post"
-                onClick={() => setShowModal(true)}
-              >
-                <Plus size={16} /> New Post
-              </button>
+              {activeTab === 'bookmarks' ? (
+                !user ? (
+                  <>
+                    <Bookmark size={32} className="forum-empty-icon" />
+                    <h3>Sign in to view bookmarks</h3>
+                    <p>Save interesting discussions to easily find and review them later.</p>
+                    <button
+                      type="button"
+                      className="forum-empty-new-btn"
+                      onClick={() => navigate('/login')}
+                    >
+                      Sign In
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Bookmark size={32} className="forum-empty-icon" />
+                    <h3>No bookmarks yet</h3>
+                    <p>Bookmark discussions across the forum to revisit them here anytime.</p>
+                    <button
+                      type="button"
+                      className="forum-empty-new-btn"
+                      onClick={() => setActiveTab('latest')}
+                    >
+                      Explore Discussions
+                    </button>
+                  </>
+                )
+              ) : activeTab === 'my-posts' ? (
+                !user ? (
+                  <>
+                    <User size={32} className="forum-empty-icon" />
+                    <h3>Sign in to view your posts</h3>
+                    <p>Track discussions and questions you have shared with the community.</p>
+                    <button
+                      type="button"
+                      className="forum-empty-new-btn"
+                      onClick={() => navigate('/login')}
+                    >
+                      Sign In
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <MessageSquare size={32} className="forum-empty-icon" />
+                    <h3>No discussions yet</h3>
+                    <p>You haven't started any discussions in this section yet.</p>
+                    <button
+                      type="button"
+                      className="forum-empty-new-btn"
+                      onClick={() => handleOpenNewPost(selectedCategory)}
+                    >
+                      <Plus size={16} /> New Post
+                    </button>
+                  </>
+                )
+              ) : activeTab === 'unanswered' ? (
+                <>
+                  <MessageSquare size={32} className="forum-empty-icon" />
+                  <h3>No unanswered discussions</h3>
+                  <p>All questions in this section have received at least one response.</p>
+                  <button
+                    type="button"
+                    className="forum-empty-new-btn"
+                    onClick={() => setActiveTab('latest')}
+                  >
+                    View All Discussions
+                  </button>
+                </>
+              ) : (
+                <>
+                  <MessageSquare size={32} className="forum-empty-icon" />
+                  <h3>No discussions found</h3>
+                  <p>Be the first to start a conversation in this category!</p>
+                  <button
+                    type="button"
+                    className="forum-empty-new-btn"
+                    onClick={() => handleOpenNewPost(selectedCategory)}
+                  >
+                    <Plus size={16} /> New Post
+                  </button>
+                </>
+              )}
             </div>
           ) : (
             posts.map((post) => (
@@ -526,13 +747,16 @@ export default function Forum() {
                   if (e.key === 'Enter') navigate(`/forum/posts/${post.id}`)
                 }}
               >
-                <div
+                <button
+                  type="button"
                   className={`forum-vote-box ${post.userVote === 1 ? 'voted-up' : ''}`}
                   onClick={(e) => handleVote(e, post)}
+                  title={post.userVote === 1 ? 'Upvoted (click to remove)' : 'Upvote'}
+                  aria-pressed={post.userVote === 1}
                 >
-                  <ArrowUp size={16} className="vote-arrow" />
+                  <ArrowUp size={16} className="vote-arrow" strokeWidth={post.userVote === 1 ? 2.8 : 2} />
                   <span className="vote-score">{Math.max(0, post.voteScore || 0)}</span>
-                </div>
+                </button>
 
                 <div
                   className="forum-post-icon"
@@ -544,15 +768,9 @@ export default function Forum() {
                 <div className="forum-post-center">
                   <div className="forum-post-header">
                     <h3 className="forum-post-title">{post.title}</h3>
-                    <div className="forum-post-tags">
-                      {post.tags?.map((t) => (
-                        <span key={t} className="forum-post-tag">
-                          {t}
-                        </span>
-                      ))}
-                    </div>
+                    <PostTags tags={post.tags} />
                   </div>
-                  <p className="forum-post-body-preview">{post.body}</p>
+                  <p className="forum-post-body-preview">{cleanPreviewText(post.body)}</p>
                 </div>
 
                 <div className="forum-post-metrics">
@@ -605,7 +823,7 @@ export default function Forum() {
                 type="button"
                 key={c.id}
                 className={`cat-sidebar-item ${selectedCategory === c.id ? 'is-selected' : ''}`}
-                onClick={() => setSelectedCategory(c.id)}
+                onClick={() => handleSelectCategory(c.id)}
               >
                 <div className="cat-item-left">
                   <span className="cat-bullet" style={{ color: c.color }}>
@@ -669,14 +887,31 @@ export default function Forum() {
       </aside>
 
       {showModal && (
-        <div className="forum-modal-backdrop" onClick={() => setShowModal(false)}>
-          <div className="forum-modal" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="forum-modal-backdrop"
+          onClick={() => {
+            setShowModal(false)
+            setUploadError('')
+          }}
+        >
+          <div className="forum-modal modern-discussion-modal" onClick={(e) => e.stopPropagation()}>
             <div className="forum-modal-header">
-              <h3 className="forum-modal-title">Create New Discussion</h3>
+              <div className="modal-header-text">
+                <div className="modal-header-badge">
+                  <Sparkles size={14} />
+                  <span>Start Discussion</span>
+                </div>
+                <h3 className="forum-modal-title">Create New Discussion</h3>
+                <p className="modal-header-sub">Share code, ask troubleshooting questions, or write guides</p>
+              </div>
               <button
                 type="button"
                 className="modal-close-btn"
-                onClick={() => setShowModal(false)}
+                onClick={() => {
+                  setShowModal(false)
+                  setUploadError('')
+                }}
+                aria-label="Close modal"
               >
                 <X size={18} />
               </button>
@@ -684,13 +919,19 @@ export default function Forum() {
 
             <form onSubmit={handleCreatePost} className="forum-modal-form">
               <div className="form-group">
-                <label className="form-label">Discussion Title</label>
+                <div className="form-label-row">
+                  <label className="form-label">Discussion Title</label>
+                  <span className={`title-char-counter ${newTitle.length > 110 ? 'is-warning' : ''}`}>
+                    {newTitle.length}/120
+                  </span>
+                </div>
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="What would you like to ask or share?"
+                  placeholder="e.g. How to properly configure GRUB for Arch Linux & Windows 11"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
+                  maxLength={120}
                   required
                 />
               </div>
@@ -713,42 +954,85 @@ export default function Forum() {
 
                 <div className="form-group">
                   <label className="form-label">Tags (comma-separated)</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="Linux, Beginner, GRUB..."
-                    value={newTags}
-                    onChange={(e) => setNewTags(e.target.value)}
-                  />
+                  <div className="tags-input-wrap">
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Linux, DualBoot, GRUB, C++"
+                      value={newTags}
+                      onChange={(e) => setNewTags(e.target.value)}
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Content</label>
-                <textarea
-                  className="form-textarea"
-                  rows={6}
-                  placeholder="Provide context, code snippets, logs, or explanations..."
-                  value={newBody}
-                  onChange={(e) => setNewBody(e.target.value)}
-                  required
+              {newTags.trim() && (
+                <div className="tag-chips-preview">
+                  {newTags
+                    .split(',')
+                    .map((t) => t.trim())
+                    .filter(Boolean)
+                    .map((t, idx) => (
+                      <span key={idx} className="preview-tag-chip">
+                        <Tag size={11} />
+                        {t}
+                      </span>
+                    ))}
+                </div>
+              )}
+
+              <div className="form-group editor-form-group">
+                <label className="form-label">Discussion Content</label>
+                <RichTextEditor
+                  content={newBody}
+                  onChange={setNewBody}
+                  placeholder="Write your discussion content..."
+                  minHeight="210px"
+                  onError={(err) => setUploadError(err)}
+                  onUploadingChange={setImageUploading}
                 />
+
+                {uploadError && (
+                  <div className="editor-error-banner">
+                    <AlertCircle size={14} />
+                    <span>{uploadError}</span>
+                  </div>
+                )}
               </div>
 
               <div className="modal-actions">
                 <button
                   type="button"
                   className="modal-btn-cancel"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false)
+                    setUploadError('')
+                    setImageUploading(false)
+                  }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   className="modal-btn-submit"
-                  disabled={submitting}
+                  disabled={
+                    submitting ||
+                    imageUploading ||
+                    !newTitle.trim() ||
+                    (!newBody.replace(/<[^>]*>/g, '').trim() && !newBody.includes('<img'))
+                  }
                 >
-                  {submitting ? 'Publishing...' : <><Send size={15} /> Publish Discussion</>}
+                  {submitting ? (
+                    <>
+                      <Loader2 size={15} className="spin-icon" />
+                      <span>Publishing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send size={15} />
+                      <span>Publish Discussion</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>

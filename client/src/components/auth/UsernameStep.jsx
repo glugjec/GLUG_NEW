@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { authApi } from '../../api.js';
 import { CheckCircle2, AlertCircle, Loader2, AtSign } from 'lucide-react';
+import { avatarInitials, avatarColor } from '../common/avatar.js';
 
 export default function UsernameStep({
   value,
@@ -14,9 +15,14 @@ export default function UsernameStep({
   buttonText = 'Complete Registration',
 }) {
   const [status, setStatus] = useState({ state: 'idle', message: '' });
+  const [imgError, setImgError] = useState(false);
   const timerRef = useRef(null);
 
   const clean = (value || '').trim();
+
+  useEffect(() => {
+    setImgError(false);
+  }, [avatar]);
 
   useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -77,10 +83,28 @@ export default function UsernameStep({
 
   return (
     <form className="auth-username-form" onSubmit={handleSubmit}>
-      {avatar && (
+      {email && (
         <div className="auth-user-preview">
-          <img src={avatar} alt="Profile" className="auth-user-preview-avatar" />
-          <span className="auth-user-preview-email">{email}</span>
+          {avatar && !imgError ? (
+            <img
+              src={avatar}
+              alt="Profile"
+              className="auth-user-preview-avatar"
+              referrerPolicy="no-referrer"
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <div
+              className="auth-user-preview-avatar auth-user-preview-fallback"
+              style={{ background: avatarColor(clean || email) }}
+            >
+              {avatarInitials(clean || email)}
+            </div>
+          )}
+          <div className="auth-user-preview-info">
+            <span className="auth-user-preview-email">{email}</span>
+            <span className="auth-user-preview-badge">Verified</span>
+          </div>
         </div>
       )}
 

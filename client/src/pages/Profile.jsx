@@ -377,10 +377,64 @@ export default function Profile() {
     }
   }
 
-  if (authLoading) {
+  if (authLoading || loading) {
     return (
-      <div className="profile-page-container">
-        <LoadingSpinner text="Loading profile…" />
+      <div className="profile-page-container profile-skeleton-wrap">
+        <div className="profile-hero-card">
+          <div className="profile-cover-banner profile-cover-skeleton glug-skeleton-shimmer">
+            <div className="profile-cover-glow" />
+          </div>
+          <div className="profile-header-content">
+            <div className="profile-avatar-row">
+              <div className="profile-avatar-wrapper">
+                <div className="profile-avatar-skeleton glug-skeleton-shimmer" />
+              </div>
+              <div className="profile-user-info-col" style={{ flex: 1, minWidth: 0 }}>
+                <div className="profile-name-row" style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                  <div className="profile-skel-line profile-skel-title glug-skeleton-shimmer" />
+                  <div className="profile-skel-badge glug-skeleton-shimmer" />
+                </div>
+                <div className="profile-skel-line profile-skel-sub glug-skeleton-shimmer" />
+              </div>
+            </div>
+            <div className="profile-stats-bar">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="profile-stat-cell is-skeleton glug-skeleton-shimmer">
+                  <div className="profile-skel-stat-num glug-skeleton-shimmer" />
+                  <div className="profile-skel-stat-label glug-skeleton-shimmer" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="profile-tabs-skeleton">
+          <div className="profile-skel-tab glug-skeleton-shimmer" />
+          <div className="profile-skel-tab glug-skeleton-shimmer" />
+        </div>
+
+        <div className="profile-content-grid">
+          <div className="profile-sidebar-col">
+            <div className="profile-content-card profile-card-skeleton">
+              <div className="profile-skel-line profile-skel-card-title glug-skeleton-shimmer" />
+              <div className="profile-skel-line profile-skel-body-1 glug-skeleton-shimmer" />
+              <div className="profile-skel-line profile-skel-body-2 glug-skeleton-shimmer" />
+            </div>
+            <div className="profile-content-card profile-card-skeleton">
+              <div className="profile-skel-line profile-skel-card-title glug-skeleton-shimmer" />
+              <div className="profile-skel-chips-wrap">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="profile-skel-chip glug-skeleton-shimmer" />
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="profile-main-col">
+            <div className="profile-content-card" style={{ minHeight: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <LoadingSpinner text="Loading profile…" size="md" />
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -398,14 +452,6 @@ export default function Profile() {
             Log in to GLUG
           </Link>
         </div>
-      </div>
-    )
-  }
-
-  if (loading) {
-    return (
-      <div className="profile-page-container">
-        <LoadingSpinner text="Loading profile…" />
       </div>
     )
   }

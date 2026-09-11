@@ -5,7 +5,9 @@ import Sidebar from './Sidebar.jsx'
 import Footer from '../common/Footer.jsx'
 
 export default function Layout() {
-  const [collapsed, setCollapsed] = useState(window.innerWidth < 1100)
+  const [collapsed, setCollapsed] = useState(() => {
+    return window.innerWidth >= 900 && window.innerWidth < 1100
+  })
   const [mobileOpen, setMobileOpen] = useState(false)
   const location = useLocation()
 
@@ -20,8 +22,11 @@ export default function Layout() {
 
   useEffect(() => {
     const onResize = () => {
-      if (window.innerWidth >= 900) setMobileOpen(false)
-      else setCollapsed(false)
+      if (window.innerWidth >= 900) {
+        setMobileOpen(false)
+      } else {
+        setCollapsed(false)
+      }
     }
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
