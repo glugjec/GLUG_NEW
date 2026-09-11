@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { postsApi } from '../api.js'
+import { postsApi, uploadApi } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { avatarInitials, avatarColor } from '../components/common/avatar.js'
 import { formatRelativeTime } from '../utils/timeAgo.js'
+import MarkdownRenderer from '../components/common/MarkdownRenderer.jsx'
 import {
   Home,
   ChevronRight,
@@ -144,9 +145,7 @@ function CommentThreadItem({
       </div>
 
       <div className="reply-body-content">
-        {bodyText.split('\n').map((line, lidx) => (
-          <p key={lidx}>{line || '\u00A0'}</p>
-        ))}
+        <MarkdownRenderer content={bodyText} />
       </div>
 
       <div className="reply-footer-actions">
@@ -278,9 +277,7 @@ function CommentThreadItem({
                     </div>
 
                     <div className="reply-body-content yt-reply-body">
-                      {repBody.split('\n').map((line, lidx) => (
-                        <p key={lidx}>{line || '\u00A0'}</p>
-                      ))}
+                      <MarkdownRenderer content={repBody} />
                     </div>
 
                     <div className="reply-footer-actions">
@@ -488,6 +485,8 @@ export default function PostDetail() {
   const [submitting, setSubmitting] = useState(false)
 
   const textareaRef = useRef(null)
+  const replyFileInputRef = useRef(null)
+  const [uploadingReplyImage, setUploadingReplyImage] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -709,6 +708,43 @@ export default function PostDetail() {
       el.focus()
       el.setSelectionRange(start + prefix.length, start + prefix.length + (selected ? selected.length : 4))
     }, 10)
+  }
+
+  const handleReplyImageUpload = async (e) => {
+    const file = e.target?.files?.[0]
+    if (!file) return
+    if (!user) {
+      showToast('Please log in to upload images')
+      return
+    }
+    if (!file.type.startsWith('image/')) {
+      showToast('Only image files are supported')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Image size exceeds 5MB limit')
+      return
+    }
+    setUploadingReplyImage(true)
+    try {
+      const res = await uploadApi.uploadImage(file)
+      if (res?.url) {
+        const alt = file.name.replace(/\.[^/.]+$/, '') || 'image'
+        const el = textareaRef.current
+        const val = replyText
+        const start = el?.selectionStart ?? val.length
+        const end = el?.selectionEnd ?? val.length
+        const insertion = `![${alt}](${res.url})`
+        const nextVal = val.substring(0, start) + insertion + val.substring(end)
+        setReplyText(nextVal)
+        showToast('Image uploaded!')
+      }
+    } catch (err) {
+      showToast(err.message || 'Image upload failed')
+    } finally {
+      setUploadingReplyImage(false)
+      if (e.target) e.target.value = ''
+    }
   }
 
   const handleAddComment = async (text, parentId = null) => {
@@ -943,9 +979,7 @@ export default function PostDetail() {
             </div>
 
             <div className="discussion-body-text">
-              {(activePost.body || '').split('\n').map((para, i) => (
-                <p key={i}>{para || '\u00A0'}</p>
-              ))}
+              <MarkdownRenderer content={activePost.body || ''} />
             </div>
 
             <footer className="discussion-bottom-bar">
@@ -1068,13 +1102,22 @@ export default function PostDetail() {
                   />
                 </div>
 
+                <input
+                  type="file"
+                  ref={replyFileInputRef}
+                  style={{ display: 'none' }}
+                  accept="image/*"
+                  onChange={handleReplyImageUpload}
+                />
+
                 <div className="composer-toolbar-bottom">
                   <div className="composer-tools-left">
                     <button
                       type="button"
                       className="tool-icon-btn"
-                      title="Insert Image"
-                      onClick={() => insertFormat('![alt](', ')')}
+                      title="Upload Image"
+                      onClick={() => replyFileInputRef.current?.click()}
+                      disabled={uploadingReplyImage}
                     >
                       <ImageIcon size={15} />
                     </button>
