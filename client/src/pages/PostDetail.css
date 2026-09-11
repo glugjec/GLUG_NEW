@@ -65,6 +65,8 @@
   padding: 1.75rem 2rem;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   position: relative;
+  overflow: hidden;
+  max-width: 100%;
 }
 
 .discussion-author-row {
@@ -254,13 +256,28 @@
   font-size: 1rem;
   line-height: 1.75;
   color: var(--text);
-  white-space: pre-wrap;
   margin-bottom: 1.75rem;
   min-height: 48px;
+  max-width: 100%;
+  overflow-x: hidden;
+  word-break: break-word;
 }
 
 .discussion-body-text p {
   margin-bottom: 0.85rem;
+}
+
+.discussion-body-text img {
+  max-width: 100%;
+  max-height: 540px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  display: block;
+  margin: 0.85rem 0;
 }
 
 .discussion-bottom-bar {
@@ -558,12 +575,27 @@
   font-size: 0.94rem;
   line-height: 1.68;
   color: var(--text);
-  white-space: pre-wrap;
   margin-bottom: 1rem;
+  max-width: 100%;
+  overflow-x: hidden;
+  word-break: break-word;
 }
 
 .reply-body-content p {
   margin-bottom: 0.65rem;
+}
+
+.reply-body-content img {
+  max-width: 100%;
+  max-height: 480px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  display: block;
+  margin: 0.65rem 0;
 }
 
 .reply-footer-actions {

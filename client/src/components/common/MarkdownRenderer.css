@@ -119,15 +119,18 @@
   max-width: 100%;
 }
 
+.glug-markdown-content img,
 .glug-markdown-content .md-image {
   max-width: 100%;
-  max-height: 480px;
+  max-height: 520px;
   width: auto;
   height: auto;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
   display: block;
+  object-fit: contain;
+  margin: 0.85rem 0;
 }
 
 .glug-markdown-content table {

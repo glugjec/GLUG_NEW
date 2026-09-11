@@ -273,10 +273,18 @@ function UserAvatar({ src, username, size = 30 }) {
 function cleanPreviewText(text) {
   if (!text) return ''
   return text
-    .replace(/!\[.*?\]\(.*?\)/g, '📷 [Image]')
+    .replace(/<img[^>]*>/gi, ' 📷 [Image] ')
+    .replace(/!\[.*?\]\(.*?\)/g, ' 📷 [Image] ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
     .replace(/\[(.*?)\]\(.*?\)/g, '$1')
     .replace(/[`#*~_>]/g, '')
-    .replace(/\n+/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim()
 }
 
