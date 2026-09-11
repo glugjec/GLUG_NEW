@@ -39,6 +39,8 @@ export default function AdminDashboard() {
   const [posts, setPosts] = useState([]);
   const [postSearch, setPostSearch] = useState("");
   const [loadingPosts, setLoadingPosts] = useState(false);
+  const [postToDelete, setPostToDelete] = useState(null);
+  const [isDeletingAdminPost, setIsDeletingAdminPost] = useState(false);
 
   // Toast notification
   const [toast, setToast] = useState(null);
