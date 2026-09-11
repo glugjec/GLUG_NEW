@@ -380,7 +380,7 @@ router.post('/:id/comments', requireAuth, async (req, res) => {
     }
 
     let parentId = null;
-    if (parentComment) {
+    if (parentComment && mongoose.Types.ObjectId.isValid(parentComment)) {
       const parent = await Comment.findOne({ _id: parentComment, post: post._id });
       if (parent) {
         parentId = parent._id;

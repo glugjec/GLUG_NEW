@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { postsApi } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -73,6 +73,207 @@ function UserAvatar({ src, username, size = 36, className = '' }) {
       }}
     >
       {avatarInitials(username)}
+    </div>
+  )
+}
+
+function CommentThreadItem({
+  comment,
+  depth = 0,
+  activeReplyId,
+  setActiveReplyId,
+  subReplyText,
+  setSubReplyText,
+  handleAddComment,
+  handleCommentVote,
+  submitting,
+  user,
+  navigate,
+  showToast
+}) {
+  const [showAllReplies, setShowAllReplies] = useState(false)
+  if (!comment || depth > 6) return null
+
+  const commentId = String(comment.id || comment._id || '')
+  if (!commentId) return null
+
+  const rAuthor = comment.author?.username || 'member'
+  const rRole = comment.author?.role || 'Core Member'
+  const rTime = formatRelativeTime(comment.createdAt)
+  const isReplying = activeReplyId === commentId
+
+  const replies = Array.isArray(comment.replies) ? comment.replies : []
+  const hasReplies = replies.length > 0
+  const repliesToShow = showAllReplies || (replies.length <= 2)
+    ? replies
+    : replies.slice(0, 2)
+  const hiddenReplyCount = hasReplies ? replies.length - repliesToShow.length : 0
+  const bodyText = typeof comment.body === 'string' ? comment.body : String(comment.body || '')
+
+  return (
+    <div
+      id={`comment-${commentId}`}
+      className={`reply-card ${depth > 0 ? 'nested-reply-card' : ''} ${comment.isAccepted ? 'is-accepted' : ''}`}
+    >
+      <div className="reply-top-header">
+        <div className="reply-user-left">
+          <UserAvatar
+            src={comment.author?.avatar}
+            username={rAuthor}
+            size={depth > 0 ? 30 : 36}
+            className="reply-avatar"
+          />
+          <div className="reply-user-info">
+            <Link to={`/profile/${encodeURIComponent(rAuthor)}`} className="reply-username">
+              {rAuthor}
+            </Link>
+            <span
+              className={`role-badge ${
+                rRole.toLowerCase().includes('moderator')
+                  ? 'role-mod'
+                  : 'role-core-member'
+              }`}
+            >
+              {rRole}
+            </span>
+            <span className="reply-time">{rTime}</span>
+          </div>
+        </div>
+
+        {comment.isAccepted && (
+          <div className="accepted-answer-pill">
+            <CheckCircle2 size={14} />
+            <span>Accepted Answer</span>
+          </div>
+        )}
+      </div>
+
+      <div className="reply-body-content">
+        {bodyText.split('\n').map((line, lidx) => (
+          <p key={lidx}>{line || '\u00A0'}</p>
+        ))}
+      </div>
+
+      <div className="reply-footer-actions">
+        <div className={`vote-capsule ${comment.userVote === 1 ? 'voted-up' : comment.userVote === -1 ? 'voted-down' : ''}`}>
+          <button
+            type="button"
+            className={`vote-capsule-btn ${comment.userVote === 1 ? 'voted-up' : ''}`}
+            onClick={() => handleCommentVote(commentId, 1)}
+            title={comment.userVote === 1 ? 'Upvoted (click to undo)' : 'Upvote'}
+            aria-pressed={comment.userVote === 1}
+          >
+            <ChevronUp size={15} strokeWidth={comment.userVote === 1 ? 2.8 : 2} />
+          </button>
+          <span className="vote-score-num">{comment.voteScore || 0}</span>
+        </div>
+
+        <button
+          type="button"
+          className={`btn-reply-action ${isReplying ? 'active-reply-btn' : ''}`}
+          onClick={() => {
+            if (!user) {
+              showToast('Please log in to reply')
+              navigate('/login')
+              return
+            }
+            if (activeReplyId === commentId) {
+              setActiveReplyId(null)
+              setSubReplyText('')
+            } else {
+              setActiveReplyId(commentId)
+              setSubReplyText('')
+            }
+          }}
+        >
+          <CornerDownRight size={14} />
+          <span>Reply</span>
+        </button>
+      </div>
+
+      {isReplying && (
+        <div className="inline-nested-reply">
+          <div className="composer-input-area">
+            <input
+              type="text"
+              placeholder={`Reply to @${rAuthor}…`}
+              value={subReplyText}
+              onChange={(e) => setSubReplyText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !submitting && subReplyText.trim()) {
+                  handleAddComment(subReplyText, commentId)
+                }
+              }}
+              className="composer-textarea"
+              style={{ minHeight: '38px' }}
+              autoFocus
+            />
+            <div className="inline-reply-btn-group">
+              <button
+                type="button"
+                className="btn-cancel-inline-reply"
+                onClick={() => {
+                  setActiveReplyId(null)
+                  setSubReplyText('')
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-post-reply"
+                disabled={submitting || !subReplyText.trim()}
+                onClick={() => handleAddComment(subReplyText, commentId)}
+              >
+                {submitting ? 'Posting…' : 'Reply'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {hasReplies && (
+        <div className="nested-replies-tree">
+          {repliesToShow.map((child) => (
+            <CommentThreadItem
+              key={child.id || child._id}
+              comment={child}
+              depth={depth + 1}
+              activeReplyId={activeReplyId}
+              setActiveReplyId={setActiveReplyId}
+              subReplyText={subReplyText}
+              setSubReplyText={setSubReplyText}
+              handleAddComment={handleAddComment}
+              handleCommentVote={handleCommentVote}
+              submitting={submitting}
+              user={user}
+              navigate={navigate}
+              showToast={showToast}
+            />
+          ))}
+
+          {hiddenReplyCount > 0 && (
+            <button
+              type="button"
+              className="btn-show-thread-replies"
+              onClick={() => setShowAllReplies(true)}
+            >
+              <CornerDownRight size={13} />
+              <span>Show {hiddenReplyCount} more {hiddenReplyCount === 1 ? 'reply' : 'replies'}</span>
+            </button>
+          )}
+
+          {showAllReplies && replies.length > 2 && (
+            <button
+              type="button"
+              className="btn-collapse-thread-replies"
+              onClick={() => setShowAllReplies(false)}
+            >
+              <span>Collapse replies</span>
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -174,6 +375,7 @@ export default function PostDetail() {
   const [showMoreMenu, setShowMoreMenu] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
   const [sortBy, setSortBy] = useState('best')
+  const [visibleRootCount, setVisibleRootCount] = useState(5)
   const [submitting, setSubmitting] = useState(false)
 
   const textareaRef = useRef(null)
@@ -200,6 +402,84 @@ export default function PostDetail() {
   useEffect(() => {
     load()
   }, [load])
+
+  const commentTree = useMemo(() => {
+    if (!Array.isArray(comments) || comments.length === 0) return []
+
+    const map = new Map()
+    comments.forEach((c) => {
+      if (!c) return
+      const cid = String(c.id || c._id || '')
+      if (cid) {
+        map.set(cid, { ...c, id: cid, replies: [] })
+      }
+    })
+
+    const roots = []
+    comments.forEach((c) => {
+      if (!c) return
+      const cid = String(c.id || c._id || '')
+      if (!cid) return
+      const node = map.get(cid)
+      if (!node) return
+
+      let pId = c.parentComment
+      if (pId && typeof pId === 'object') {
+        pId = pId._id || pId.id
+      }
+      pId = pId ? String(pId) : null
+
+      if (pId && pId !== cid && map.has(pId)) {
+        let isCycle = false
+        let curr = map.get(pId)
+        let steps = 0
+        while (curr && steps < 50) {
+          if (curr.id === cid) {
+            isCycle = true
+            break
+          }
+          const nextPid = curr.parentComment ? String(typeof curr.parentComment === 'object' ? curr.parentComment._id || curr.parentComment.id : curr.parentComment) : null
+          curr = nextPid && nextPid !== curr.id ? map.get(nextPid) : null
+          steps++
+        }
+
+        if (!isCycle) {
+          map.get(pId).replies.push(node)
+        } else {
+          roots.push(node)
+        }
+      } else {
+        roots.push(node)
+      }
+    })
+
+    const compareFn = (a, b) => {
+      if (sortBy === 'best') return (b.voteScore || 0) - (a.voteScore || 0)
+      if (sortBy === 'newest') return new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+      return new Date(a.createdAt || 0) - new Date(b.createdAt || 0)
+    }
+
+    roots.sort(compareFn)
+
+    const seenSort = new Set()
+    const sortThread = (items) => {
+      items.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0))
+      items.forEach((item) => {
+        if (!seenSort.has(item.id) && Array.isArray(item.replies) && item.replies.length > 0) {
+          seenSort.add(item.id)
+          sortThread(item.replies)
+        }
+      })
+    }
+    roots.forEach((root) => {
+      if (!seenSort.has(root.id) && Array.isArray(root.replies) && root.replies.length > 0) {
+        seenSort.add(root.id)
+        sortThread(root.replies)
+      }
+    })
+
+    return roots
+  }, [comments, sortBy])
 
   const showToast = (msg) => {
     setToastMessage(msg)
@@ -350,7 +630,7 @@ export default function PostDetail() {
 
     try {
       if (post && post._id && !post.id?.startsWith('distro-')) {
-        await postsApi.addComment(post._id || post.id, { body: text, parentComment: parentId })
+        await postsApi.addComment(post._id || post.id, { body: text.trim(), parentComment: parentId })
         await load()
       } else {
         setComments((prev) => [...prev, newComment])
@@ -360,6 +640,7 @@ export default function PostDetail() {
         setSubReplyText('')
       } else {
         setReplyText('')
+        setVisibleRootCount((prev) => prev + 1)
       }
       showToast('Reply posted!')
     } catch (err) {
@@ -460,11 +741,6 @@ export default function PostDetail() {
     'Distribution'
   ]
 
-  const sortedComments = [...comments].sort((a, b) => {
-    if (sortBy === 'best') return (b.voteScore || 0) - (a.voteScore || 0)
-    if (sortBy === 'newest') return (b.createdAt || '').localeCompare(a.createdAt || '')
-    return (a.createdAt || '').localeCompare(b.createdAt || '')
-  })
 
   const viewsCount = activePost.views ?? 0
   const repliesCount = comments.length
@@ -561,7 +837,7 @@ export default function PostDetail() {
             </div>
 
             <div className="discussion-body-text">
-              {activePost.body.split('\n').map((para, i) => (
+              {(activePost.body || '').split('\n').map((para, i) => (
                 <p key={i}>{para || '\u00A0'}</p>
               ))}
             </div>
@@ -625,7 +901,7 @@ export default function PostDetail() {
               </div>
             </div>
 
-            {sortedComments.length === 0 ? (
+            {commentTree.length === 0 ? (
               <div className="no-replies-placeholder">
                 <div className="no-replies-icon-wrap">
                   <MessageSquare size={26} />
@@ -635,118 +911,36 @@ export default function PostDetail() {
               </div>
             ) : (
               <div className="replies-list-container">
-                {sortedComments.map((reply) => {
-                  const rAuthor = reply.author?.username || 'member'
-                  const rRole = reply.author?.role || 'Core Member'
-                  const rTime = formatRelativeTime(reply.createdAt)
-                  return (
-                    <div
-                      key={reply.id || reply._id}
-                      className={`reply-card ${reply.isAccepted ? 'is-accepted' : ''}`}
+                {commentTree.slice(0, visibleRootCount).map((root) => (
+                  <CommentThreadItem
+                    key={root.id || root._id}
+                    comment={root}
+                    depth={0}
+                    activeReplyId={activeReplyId}
+                    setActiveReplyId={setActiveReplyId}
+                    subReplyText={subReplyText}
+                    setSubReplyText={setSubReplyText}
+                    handleAddComment={handleAddComment}
+                    handleCommentVote={handleCommentVote}
+                    submitting={submitting}
+                    user={user}
+                    navigate={navigate}
+                    showToast={showToast}
+                  />
+                ))}
+
+                {commentTree.length > visibleRootCount && (
+                  <div className="show-more-comments-wrapper">
+                    <button
+                      type="button"
+                      className="btn-show-more-roots"
+                      onClick={() => setVisibleRootCount((prev) => prev + 5)}
                     >
-                      <div className="reply-top-header">
-                        <div className="reply-user-left">
-                          <UserAvatar
-                            src={reply.author?.avatar}
-                            username={rAuthor}
-                            size={36}
-                            className="reply-avatar"
-                          />
-                          <div className="reply-user-info">
-                            <Link to={`/profile/${encodeURIComponent(rAuthor)}`} className="reply-username">
-                              {rAuthor}
-                            </Link>
-                            <span
-                              className={`role-badge ${
-                                rRole.toLowerCase().includes('moderator')
-                                  ? 'role-mod'
-                                  : 'role-core-member'
-                              }`}
-                            >
-                              {rRole}
-                            </span>
-                            <span className="reply-time">{rTime}</span>
-                          </div>
-                        </div>
-
-                        {reply.isAccepted && (
-                          <div className="accepted-answer-pill">
-                            <CheckCircle2 size={14} />
-                            <span>Accepted Answer</span>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="reply-body-content">
-                        {reply.body.split('\n').map((line, lidx) => (
-                          <p key={lidx}>{line || '\u00A0'}</p>
-                        ))}
-                      </div>
-
-                      <div className="reply-footer-actions">
-                        <div className={`vote-capsule ${reply.userVote === 1 ? 'voted-up' : reply.userVote === -1 ? 'voted-down' : ''}`}>
-                          <button
-                            type="button"
-                            className={`vote-capsule-btn ${reply.userVote === 1 ? 'voted-up' : ''}`}
-                            onClick={() => handleCommentVote(reply.id || reply._id, 1)}
-                            title={reply.userVote === 1 ? 'Upvoted (click to undo)' : 'Upvote'}
-                            aria-pressed={reply.userVote === 1}
-                          >
-                            <ChevronUp size={15} strokeWidth={reply.userVote === 1 ? 2.8 : 2} />
-                          </button>
-                          <span className="vote-score-num">{reply.voteScore || 0}</span>
-                        </div>
-
-                        <button
-                          type="button"
-                          className="btn-reply-action"
-                          onClick={() => {
-                            if (!user) {
-                              showToast('Please log in to reply')
-                              navigate('/login')
-                              return
-                            }
-                            setActiveReplyId(activeReplyId === reply.id ? null : reply.id)
-                          }}
-                        >
-                          <CornerDownRight size={14} />
-                          <span>Reply</span>
-                        </button>
-
-                        <button type="button" className="icon-action-btn" title="More">
-                          <MoreHorizontal size={15} />
-                        </button>
-                      </div>
-
-                      {activeReplyId === reply.id && (
-                        <div className="inline-nested-reply">
-                          <div className="composer-input-area">
-                            <input
-                              type="text"
-                              placeholder={`Reply to @${rAuthor}…`}
-                              value={subReplyText}
-                              onChange={(e) => setSubReplyText(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  handleAddComment(subReplyText, reply.id)
-                                }
-                              }}
-                              className="composer-textarea"
-                              style={{ minHeight: '38px' }}
-                            />
-                            <button
-                              type="button"
-                              className="btn-post-reply"
-                              onClick={() => handleAddComment(subReplyText, reply.id)}
-                            >
-                              Reply
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
+                      <ChevronDown size={16} />
+                      <span>Show more replies ({commentTree.length - visibleRootCount} remaining)</span>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
