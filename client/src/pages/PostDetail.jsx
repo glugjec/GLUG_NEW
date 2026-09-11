@@ -31,6 +31,7 @@ import {
   Code
 } from 'lucide-react'
 import LoadingSpinner from '../components/common/LoadingSpinner.jsx'
+import ConfirmDeleteModal from '../components/common/ConfirmDeleteModal.jsx'
 import './PostDetail.css'
 
 function capitalize(str) {
@@ -83,6 +84,9 @@ function CommentThreadItem({
   setSubReplyText,
   handleAddComment,
   handleCommentVote,
+  handleDeleteComment,
+  postAuthorName,
+  postAuthorId,
   submitting,
   user,
   navigate,
@@ -99,6 +103,18 @@ function CommentThreadItem({
   const rRole = comment.author?.role || 'Core Member'
   const rTime = formatRelativeTime(comment.createdAt)
   const isReplying = activeReplyId === commentId
+
+  const isPostAuthor = user && (
+    (postAuthorName && user.username === postAuthorName) ||
+    (postAuthorId && (String(user.id) === String(postAuthorId) || String(user._id) === String(postAuthorId)))
+  )
+  const isAdmin = user?.role === 'admin'
+  const isCommentAuthor = user && (
+    (rAuthor && user.username === rAuthor) ||
+    (comment.author?._id && (String(user.id) === String(comment.author._id) || String(user._id) === String(comment.author._id))) ||
+    (comment.author?.id && (String(user.id) === String(comment.author.id) || String(user._id) === String(comment.author.id)))
+  )
+  const canDelete = isAdmin || isPostAuthor || isCommentAuthor
 
   const replies = Array.isArray(comment.replies) ? comment.replies : []
   const hasReplies = replies.length > 0
@@ -175,6 +191,18 @@ function CommentThreadItem({
           <CornerDownRight size={14} />
           <span>Reply</span>
         </button>
+
+        {canDelete && (
+          <button
+            type="button"
+            className="btn-reply-action btn-delete-reply"
+            onClick={() => handleDeleteComment(commentId, false, comment.body)}
+            title="Delete comment"
+          >
+            <Trash2 size={13} />
+            <span>Delete</span>
+          </button>
+        )}
       </div>
 
       {isReplying && (
@@ -315,6 +343,22 @@ function CommentThreadItem({
                         <CornerDownRight size={14} />
                         <span>Reply</span>
                       </button>
+
+                      {(isAdmin || isPostAuthor || (user && (
+                        (repAuthor && user.username === repAuthor) ||
+                        (reply.author?._id && (String(user.id) === String(reply.author._id) || String(user._id) === String(reply.author._id))) ||
+                        (reply.author?.id && (String(user.id) === String(reply.author.id) || String(user._id) === String(reply.author.id)))
+                      ))) && (
+                        <button
+                          type="button"
+                          className="btn-reply-action btn-delete-reply"
+                          onClick={() => handleDeleteComment(repId, true, reply.body)}
+                          title="Delete reply"
+                        >
+                          <Trash2 size={13} />
+                          <span>Delete</span>
+                        </button>
+                      )}
                     </div>
 
                     {isRepReplying && (
@@ -497,6 +541,10 @@ export default function PostDetail() {
   const [visibleRootCount, setVisibleRootCount] = useState(5)
   const [submitting, setSubmitting] = useState(false)
   const [imageUploading, setImageUploading] = useState(false)
+  const [showDeletePostModal, setShowDeletePostModal] = useState(false)
+  const [isDeletingPost, setIsDeletingPost] = useState(false)
+  const [commentToDelete, setCommentToDelete] = useState(null)
+  const [isDeletingComment, setIsDeletingComment] = useState(false)
   const pendingPostVoteRef = useRef(null)
   const isPostVotingRef = useRef(false)
   const pendingCommentVotesRef = useRef(new Map())
@@ -785,15 +833,65 @@ export default function PostDetail() {
     }
   }
 
-  const handleDeletePost = async () => {
-    if (!window.confirm('Delete this discussion?')) return
+  const promptDeleteComment = (commentId, isReply = false, snippet = '') => {
+    setCommentToDelete({ id: commentId, isReply, snippet })
+  }
+
+  const confirmDeleteComment = async () => {
+    if (!commentToDelete) return
+    const commentId = commentToDelete.id
+    const postId = post?._id || post?.id || id
+    setIsDeletingComment(true)
     try {
-      if (post && post._id) {
-        await postsApi.delete(post._id || post.id)
+      if (postId && !String(postId).startsWith('distro-') && !String(commentId).startsWith('c_')) {
+        await postsApi.deleteComment(postId, commentId)
       }
+
+      const getDescendantIds = (targetId, list) => {
+        const toDelete = new Set([String(targetId)])
+        let changed = true
+        while (changed) {
+          changed = false
+          for (const item of list) {
+            const pid = String(item.parentComment || '')
+            const cid = String(item.id || item._id || '')
+            if (toDelete.has(pid) && !toDelete.has(cid)) {
+              toDelete.add(cid)
+              changed = true
+            }
+          }
+        }
+        return toDelete
+      }
+
+      setComments((prev) => {
+        const idsToRemove = getDescendantIds(commentId, prev)
+        const updated = prev.filter((c) => !idsToRemove.has(String(c.id || c._id || '')))
+        setPost((p) => p ? { ...p, commentCount: Math.max(0, (p.commentCount || 0) - idsToRemove.size) } : p)
+        return updated
+      })
+      showToast(commentToDelete.isReply ? 'Reply deleted' : 'Comment deleted')
+      setCommentToDelete(null)
+    } catch (err) {
+      showToast(err.message || 'Failed to delete comment')
+    } finally {
+      setIsDeletingComment(false)
+    }
+  }
+
+  const confirmDeletePost = async () => {
+    setIsDeletingPost(true)
+    try {
+      const postId = post?._id || post?.id || id
+      if (postId && !String(postId).startsWith('distro-')) {
+        await postsApi.delete(postId)
+      }
+      showToast('Discussion deleted')
+      setShowDeletePostModal(false)
       navigate('/forum')
     } catch (err) {
-      showToast(err.message)
+      showToast(err.message || 'Failed to delete discussion')
+      setIsDeletingPost(false)
     }
   }
 
@@ -944,8 +1042,8 @@ export default function PostDetail() {
                     <button type="button" className="post-more-item" onClick={handleShare}>
                       <Share2 size={14} /> Copy link
                     </button>
-                    {(user?.role === 'admin' || user?.username === authorName) && (
-                      <button type="button" className="post-more-item danger" onClick={handleDeletePost}>
+                    {(user?.role === 'admin' || user?.username === authorName || (activePost.author?._id && (String(user?.id) === String(activePost.author._id) || String(user?._id) === String(activePost.author._id)))) && (
+                      <button type="button" className="post-more-item danger" onClick={() => setShowDeletePostModal(true)}>
                         <Trash2 size={14} /> Delete post
                       </button>
                     )}
@@ -1051,6 +1149,9 @@ export default function PostDetail() {
                     setSubReplyText={setSubReplyText}
                     handleAddComment={handleAddComment}
                     handleCommentVote={handleCommentVote}
+                    handleDeleteComment={promptDeleteComment}
+                    postAuthorName={authorName}
+                    postAuthorId={activePost.author?.id || activePost.author?._id}
                     submitting={submitting}
                     user={user}
                     navigate={navigate}
@@ -1249,6 +1350,38 @@ export default function PostDetail() {
           <span>{toastMessage}</span>
         </div>
       )}
+
+      <ConfirmDeleteModal
+        isOpen={showDeletePostModal}
+        onClose={() => {
+          if (!isDeletingPost) setShowDeletePostModal(false)
+        }}
+        onConfirm={confirmDeletePost}
+        title="Delete Discussion"
+        description="Are you sure you want to delete this discussion?"
+        itemTitle={activePost?.title}
+        warningNote="This action cannot be undone. All comments, replies, upvotes, and bookmarks associated with this discussion will be permanently removed."
+        confirmText="Delete Discussion"
+        isDeleting={isDeletingPost}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(commentToDelete)}
+        onClose={() => {
+          if (!isDeletingComment) setCommentToDelete(null)
+        }}
+        onConfirm={confirmDeleteComment}
+        title={commentToDelete?.isReply ? 'Delete Reply' : 'Delete Comment'}
+        description={
+          commentToDelete?.isReply
+            ? 'Are you sure you want to delete this reply?'
+            : 'Are you sure you want to delete this comment?'
+        }
+        itemTitle={commentToDelete?.snippet}
+        warningNote="This action cannot be undone. Any nested replies underneath will also be permanently deleted."
+        confirmText={commentToDelete?.isReply ? 'Delete Reply' : 'Delete Comment'}
+        isDeleting={isDeletingComment}
+      />
     </div>
   )
 }

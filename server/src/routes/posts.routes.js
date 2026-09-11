@@ -491,32 +491,52 @@ router.post('/:id/comments', requireAuth, async (req, res) => {
   }
 });
 
-// @route   DELETE /api/posts/:id/comments/:commentId
-// @desc    Delete a comment (author or admin)
+async function getAllDescendantCommentIds(initialCommentId) {
+  const idsToDelete = [initialCommentId.toString()];
+  let currentParentIds = [initialCommentId];
+  while (currentParentIds.length > 0) {
+    const children = await Comment.find({ parentComment: { $in: currentParentIds } }).select('_id').lean();
+    if (!children.length) break;
+    const childIds = children.map((c) => c._id);
+    for (const cid of childIds) {
+      idsToDelete.push(cid.toString());
+    }
+    currentParentIds = childIds;
+  }
+  return idsToDelete;
+}
+
 router.delete('/:id/comments/:commentId', requireAuth, async (req, res) => {
   try {
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+
     const comment = await Comment.findOne({
       _id: req.params.commentId,
-      post: req.params.id,
+      post: post._id,
     });
 
     if (!comment) {
       return res.status(404).json({ error: 'Comment not found' });
     }
 
-    if (comment.author.toString() !== req.user.id && req.user.role !== 'admin') {
+    const isPostAuthor = post.author.toString() === req.user.id;
+    const isCommentAuthor = comment.author.toString() === req.user.id;
+    const isAdmin = req.user.role === 'admin';
+
+    if (!isPostAuthor && !isCommentAuthor && !isAdmin) {
       return res.status(403).json({ error: 'Unauthorized to delete this comment' });
     }
 
-    const deletedCount = await Comment.deleteMany({
-      $or: [{ _id: comment._id }, { parentComment: comment._id }],
-    });
+    const allIds = await getAllDescendantCommentIds(comment._id);
+    await Comment.deleteMany({ _id: { $in: allIds } });
 
-    await Post.findByIdAndUpdate(req.params.id, {
-      $inc: { commentCount: -deletedCount.deletedCount },
-    });
+    const remainingCount = await Comment.countDocuments({ post: post._id });
+    await Post.findByIdAndUpdate(post._id, { commentCount: remainingCount });
 
-    return res.json({ message: 'Comment removed successfully' });
+    return res.json({ message: 'Comment removed successfully', deletedCount: allIds.length, remainingCount });
   } catch (err) {
     console.error('[Delete Comment Error]', err);
     return res.status(500).json({ error: 'Failed to delete comment' });

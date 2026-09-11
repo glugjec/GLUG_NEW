@@ -629,6 +629,11 @@
   background: var(--accent-subtle);
 }
 
+.btn-reply-action.btn-delete-reply:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+}
+
 .inline-nested-reply {
   margin-top: 0.85rem;
   margin-bottom: 0.5rem;

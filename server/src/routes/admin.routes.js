@@ -314,8 +314,21 @@ router.delete("/posts/:id", async (req, res) => {
   }
 });
 
-// @route   DELETE /api/admin/comments/:id
-// @desc    Delete a specific comment
+async function getAllDescendantCommentIds(initialCommentId) {
+  const idsToDelete = [initialCommentId.toString()];
+  let currentParentIds = [initialCommentId];
+  while (currentParentIds.length > 0) {
+    const children = await Comment.find({ parentComment: { $in: currentParentIds } }).select('_id').lean();
+    if (!children.length) break;
+    const childIds = children.map((c) => c._id);
+    for (const cid of childIds) {
+      idsToDelete.push(cid.toString());
+    }
+    currentParentIds = childIds;
+  }
+  return idsToDelete;
+}
+
 router.delete("/comments/:id", async (req, res) => {
   try {
     const comment = await Comment.findById(req.params.id);
@@ -324,12 +337,13 @@ router.delete("/comments/:id", async (req, res) => {
     }
 
     const postId = comment.post;
-    await Comment.findByIdAndDelete(comment._id);
+    const allIds = await getAllDescendantCommentIds(comment._id);
+    await Comment.deleteMany({ _id: { $in: allIds } });
 
-    // Decrement post comment count
-    await Post.findByIdAndUpdate(postId, { $inc: { commentCount: -1 } });
+    const remainingCount = await Comment.countDocuments({ post: postId });
+    await Post.findByIdAndUpdate(postId, { commentCount: remainingCount });
 
-    return res.json({ success: true, message: "Comment deleted successfully" });
+    return res.json({ success: true, message: "Comment deleted successfully", deletedCount: allIds.length, remainingCount });
   } catch (err) {
     console.error("[Admin Delete Comment Error]", err);
     return res.status(500).json({ error: "Failed to delete comment" });
