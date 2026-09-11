@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { postsApi } from '../api.js'
 import { avatarInitials, avatarColor } from '../components/common/avatar.js'
+import { formatRelativeTime } from '../utils/timeAgo.js'
 import {
   ArrowRight,
   MessageSquare,
@@ -255,9 +256,7 @@ export default function Home() {
         const data = await postsApi.list({ limit: 5, sort: 'new' })
         if (data?.posts && data.posts.length > 0) {
           const formatted = data.posts.map((post, idx) => {
-            const date = new Date(post.createdAt)
-            const diffSec = Math.floor((Date.now() - date) / 1000)
-            const timeAgo = diffSec < 60 ? 'Just now' : diffSec < 3600 ? `${Math.floor(diffSec/60)}m ago` : `${Math.floor(diffSec/3600)}h ago`
+            const timeAgo = formatRelativeTime(post.createdAt)
             return {
               id: post._id || post.id,
               title: post.title,

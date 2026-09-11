@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { postsApi } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { avatarInitials, avatarColor } from '../components/common/avatar.js'
+import { formatRelativeTime } from '../utils/timeAgo.js'
 import {
   Home,
   ChevronRight,
@@ -33,25 +34,6 @@ import {
 } from 'lucide-react'
 import LoadingSpinner from '../components/common/LoadingSpinner.jsx'
 import './PostDetail.css'
-
-function formatRelativeTime(dateInput) {
-  if (!dateInput) return 'Recently'
-  if (typeof dateInput === 'string' && (dateInput.includes('ago') || dateInput.includes('Just now'))) {
-    return dateInput
-  }
-  const date = new Date(dateInput)
-  if (isNaN(date.getTime())) return 'Recently'
-  const now = new Date()
-  const diffSec = Math.floor((now - date) / 1000)
-  if (diffSec < 60) return 'Just now'
-  const diffMin = Math.floor(diffSec / 60)
-  if (diffMin < 60) return `${diffMin}m ago`
-  const diffHours = Math.floor(diffMin / 60)
-  if (diffHours < 24) return `${diffHours}h ago`
-  const diffDays = Math.floor(diffHours / 24)
-  if (diffDays < 7) return `${diffDays}d ago`
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-}
 
 function capitalize(str) {
   if (!str) return ''

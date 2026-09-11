@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { postsApi } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { avatarInitials, avatarColor } from '../components/common/avatar.js'
+import { formatRelativeTime } from '../utils/timeAgo.js'
 import {
   Plus,
   ArrowUp,
@@ -224,25 +225,6 @@ function renderPostIcon(type) {
   if (type === 'game') return <Flame size={17} />
   if (type === 'bulb') return <Flame size={17} />
   return <HelpCircle size={17} />
-}
-
-function formatRelativeTime(dateInput) {
-  if (!dateInput) return 'Recently'
-  if (typeof dateInput === 'string' && (dateInput.includes('ago') || dateInput.includes('Just now'))) {
-    return dateInput
-  }
-  const date = new Date(dateInput)
-  if (isNaN(date.getTime())) return 'Recently'
-  const now = new Date()
-  const diffSec = Math.floor((now - date) / 1000)
-  if (diffSec < 60) return 'Just now'
-  const diffMin = Math.floor(diffSec / 60)
-  if (diffMin < 60) return `${diffMin}m ago`
-  const diffHours = Math.floor(diffMin / 60)
-  if (diffHours < 24) return `${diffHours}h ago`
-  const diffDays = Math.floor(diffHours / 24)
-  if (diffDays < 7) return `${diffDays}d ago`
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 function UserAvatar({ src, username, size = 30 }) {
