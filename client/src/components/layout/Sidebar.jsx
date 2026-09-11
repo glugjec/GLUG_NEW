@@ -11,7 +11,6 @@ import {
   Terminal,
   Code2,
   Info,
-  Plus,
   Sun,
   Moon,
   Shield,
@@ -136,18 +135,6 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onToggleMobil
               </span>
             </NavLink>
           )}
-
-          <div className="sb-action-wrap">
-            <Link
-              to="/forum"
-              className="sb-new-post-btn"
-              onClick={handleNavClick}
-              title={collapsed ? 'New Post' : undefined}
-            >
-              <Plus size={18} />
-              <span className="sb-nav-text">New Post</span>
-            </Link>
-          </div>
         </nav>
 
         <div className="sb-footer">
