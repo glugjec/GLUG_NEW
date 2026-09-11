@@ -28,7 +28,10 @@ import {
   Trash2,
   Check,
   Loader2,
-  Code
+  Code,
+  FileQuestion,
+  ArrowLeft,
+  Sparkles
 } from 'lucide-react'
 import LoadingSpinner from '../components/common/LoadingSpinner.jsx'
 import ConfirmDeleteModal from '../components/common/ConfirmDeleteModal.jsx'
@@ -550,21 +553,30 @@ export default function PostDetail() {
   const pendingCommentVotesRef = useRef(new Map())
   const activeCommentVotesRef = useRef(new Set())
 
+  const [notFound, setNotFound] = useState(false)
+
   const load = useCallback(async () => {
+    if (!id) {
+      setNotFound(true)
+      setLoading(false)
+      return
+    }
     setLoading(true)
+    setNotFound(false)
     try {
       const res = await postsApi.get(id)
       if (res && res.post) {
         setPost(res.post)
         setComments(res.comments || [])
         setBookmarked(!!res.post.isBookmarked)
+        setNotFound(false)
       } else {
-        setPost(DEMO_DISCUSSION)
-        setComments(DEMO_DISCUSSION.comments)
+        setPost(null)
+        setNotFound(true)
       }
     } catch {
-      setPost(DEMO_DISCUSSION)
-      setComments(DEMO_DISCUSSION.comments)
+      setPost(null)
+      setNotFound(true)
     } finally {
       setLoading(false)
     }
@@ -958,7 +970,67 @@ export default function PostDetail() {
     )
   }
 
-  const activePost = post || DEMO_DISCUSSION
+  if (notFound || !post) {
+    return (
+      <div className="post-detail-page">
+        <nav className="discussion-breadcrumb" aria-label="Breadcrumb">
+          <Link to="/" className="breadcrumb-item" title="Home">
+            <Home size={15} />
+          </Link>
+          <ChevronRight size={13} className="breadcrumb-sep" />
+          <Link to="/forum" className="breadcrumb-item">
+            Discussions
+          </Link>
+          <ChevronRight size={13} className="breadcrumb-sep" />
+          <span className="breadcrumb-current">Not Found</span>
+        </nav>
+
+        <div className="post-not-found-card">
+          <div className="post-not-found-halo">
+            <FileQuestion size={40} strokeWidth={1.75} />
+          </div>
+          <span className="post-not-found-badge">404 · Discussion Not Found</span>
+          <h1 className="post-not-found-title">Post Not Found</h1>
+          <p className="post-not-found-desc">
+            The discussion or technical thread you are looking for {id ? <span className="post-not-found-highlight">(ID: {id})</span> : ''} doesn't exist, may have been deleted by the author, or the URL is invalid.
+          </p>
+
+          <div className="post-not-found-actions">
+            <button
+              type="button"
+              className="post-not-found-btn post-not-found-btn-secondary"
+              onClick={() => navigate(-1)}
+            >
+              <ArrowLeft size={16} /> Go Back
+            </button>
+            <Link to="/forum" className="post-not-found-btn post-not-found-btn-primary">
+              <MessageSquare size={16} /> Explore Discussions
+            </Link>
+            <Link to="/" className="post-not-found-btn post-not-found-btn-secondary">
+              <Home size={16} /> Home
+            </Link>
+          </div>
+
+          <div className="post-not-found-quick-links">
+            <span className="post-quick-links-label">Popular sections:</span>
+            <div className="post-quick-links-row">
+              <Link to="/terminal" className="post-quick-link-pill">
+                <Terminal size={13} /> Linux Terminal
+              </Link>
+              <Link to="/compiler" className="post-quick-link-pill">
+                <Code size={13} /> Online Compiler
+              </Link>
+              <Link to="/resources" className="post-quick-link-pill">
+                <Sparkles size={13} /> Resources
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const activePost = post
   const authorName = activePost.author?.username || activePost.username || 'kaushik'
   const formattedCreatedTime = formatRelativeTime(activePost.createdAt || activePost.created_at)
 
