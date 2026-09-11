@@ -190,6 +190,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 2rem;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -251,11 +252,12 @@
   font-size: 0.96rem;
   font-weight: 600;
   color: var(--text);
+  line-height: 1.35;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 72%;
-  flex-shrink: 0;
+  min-width: 0;
+  flex: 0 1 auto;
 }
 
 .discussion-card-row:hover .disc-title {
@@ -263,12 +265,10 @@
 }
 
 .disc-tags {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  min-width: 0;
-  flex: 1;
-  overflow: hidden;
+  flex-shrink: 0;
 }
 
 .disc-tag {
@@ -278,9 +278,6 @@
   border-radius: 6px;
   border: 1px solid transparent;
   white-space: nowrap;
-  max-width: 110px;
-  overflow: hidden;
-  text-overflow: ellipsis;
   flex-shrink: 0;
 }
 
