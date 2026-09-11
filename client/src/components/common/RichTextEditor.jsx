@@ -61,6 +61,9 @@ export default function RichTextEditor({
 
   uploadHandlerRef.current = handleUploadImage
 
+  const [, setTick] = useState(0)
+  const forceUpdate = useCallback(() => setTick((t) => (t + 1) % 1000000), [])
+
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -116,7 +119,14 @@ export default function RichTextEditor({
         return false
       }
     },
+    onTransaction: () => {
+      forceUpdate()
+    },
+    onSelectionUpdate: () => {
+      forceUpdate()
+    },
     onUpdate: ({ editor: ed }) => {
+      forceUpdate()
       if (onChange) {
         const html = ed.isEmpty ? '' : ed.getHTML()
         onChange(html)
