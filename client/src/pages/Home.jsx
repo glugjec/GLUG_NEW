@@ -398,18 +398,6 @@ export default function Home() {
                       {item.views} views
                     </span>
                   </div>
-
-                  <div className="disc-last-activity">
-                    <UserAvatar
-                      src={item.lastReply.avatar}
-                      username={item.lastReply.user}
-                      size={24}
-                      className="disc-mini-avatar"
-                    />
-                    <span className="disc-last-text">
-                      {item.lastReply.time} by {item.lastReply.user}
-                    </span>
-                  </div>
                 </div>
               </div>
             ))
