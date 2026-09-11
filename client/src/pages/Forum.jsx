@@ -4,6 +4,7 @@ import { postsApi, uploadApi } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { avatarInitials, avatarColor } from '../components/common/avatar.js'
 import { formatRelativeTime } from '../utils/timeAgo.js'
+import { compressPostImage } from '../utils/imageCompressor.js'
 import MarkdownRenderer from '../components/common/MarkdownRenderer.jsx'
 import {
   Plus,
@@ -346,7 +347,8 @@ export default function Forum() {
     setUploadingImage(true)
     setUploadError('')
     try {
-      const res = await uploadApi.uploadImage(file)
+      const compressed = await compressPostImage(file, 1024 * 1024)
+      const res = await uploadApi.uploadImage(compressed)
       if (res?.url) {
         const alt = file.name.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_') || 'image'
         const el = textareaRef.current

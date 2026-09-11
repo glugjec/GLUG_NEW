@@ -4,6 +4,7 @@ import { postsApi, uploadApi } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { avatarInitials, avatarColor } from '../components/common/avatar.js'
 import { formatRelativeTime } from '../utils/timeAgo.js'
+import { compressPostImage } from '../utils/imageCompressor.js'
 import MarkdownRenderer from '../components/common/MarkdownRenderer.jsx'
 import {
   Home,
@@ -31,7 +32,9 @@ import {
   Gamepad2,
   Monitor,
   Trash2,
-  Check
+  Check,
+  Loader2,
+  Edit3
 } from 'lucide-react'
 import LoadingSpinner from '../components/common/LoadingSpinner.jsx'
 import './PostDetail.css'
@@ -487,6 +490,7 @@ export default function PostDetail() {
   const textareaRef = useRef(null)
   const replyFileInputRef = useRef(null)
   const [uploadingReplyImage, setUploadingReplyImage] = useState(false)
+  const [replyTab, setReplyTab] = useState('write')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -711,32 +715,30 @@ export default function PostDetail() {
   }
 
   const handleReplyImageUpload = async (e) => {
-    const file = e.target?.files?.[0]
-    if (!file) return
+    const originalFile = e.target?.files?.[0]
+    if (!originalFile) return
     if (!user) {
       showToast('Please log in to upload images')
       return
     }
-    if (!file.type.startsWith('image/')) {
+    if (!originalFile.type.startsWith('image/')) {
       showToast('Only image files are supported')
-      return
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      showToast('Image size exceeds 5MB limit')
       return
     }
     setUploadingReplyImage(true)
     try {
+      const file = await compressPostImage(originalFile, 1024 * 1024)
       const res = await uploadApi.uploadImage(file)
       if (res?.url) {
-        const alt = file.name.replace(/\.[^/.]+$/, '') || 'image'
+        const alt = originalFile.name.replace(/\.[^/.]+$/, '') || 'image'
         const el = textareaRef.current
         const val = replyText
         const start = el?.selectionStart ?? val.length
         const end = el?.selectionEnd ?? val.length
-        const insertion = `![${alt}](${res.url})`
+        const insertion = `\n![${alt}](${res.url})\n`
         const nextVal = val.substring(0, start) + insertion + val.substring(end)
         setReplyText(nextVal)
+        setReplyTab('write')
         showToast('Image uploaded!')
       }
     } catch (err) {
@@ -744,6 +746,43 @@ export default function PostDetail() {
     } finally {
       setUploadingReplyImage(false)
       if (e.target) e.target.value = ''
+    }
+  }
+
+  const handleReplyPaste = async (e) => {
+    const items = e.clipboardData?.items
+    if (!items) return
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile()
+        if (file) {
+          e.preventDefault()
+          if (!user) {
+            showToast('Please log in to upload images')
+            return
+          }
+          setUploadingReplyImage(true)
+          try {
+            const compressed = await compressPostImage(file, 1024 * 1024)
+            const res = await uploadApi.uploadImage(compressed)
+            if (res?.url) {
+              const el = textareaRef.current
+              const val = replyText
+              const start = el?.selectionStart ?? val.length
+              const end = el?.selectionEnd ?? val.length
+              const insertion = `\n![image](${res.url})\n`
+              const nextVal = val.substring(0, start) + insertion + val.substring(end)
+              setReplyText(nextVal)
+              showToast('Image uploaded!')
+            }
+          } catch (err) {
+            showToast(err.message || 'Image upload failed')
+          } finally {
+            setUploadingReplyImage(false)
+          }
+          break
+        }
+      }
     }
   }
 
@@ -1085,22 +1124,64 @@ export default function PostDetail() {
 
             {user ? (
               <div className="reply-composer-card">
-                <div className="composer-input-area">
-                  <UserAvatar
-                    src={user?.avatar}
-                    username={user.username}
-                    size={38}
-                    className="composer-avatar"
-                  />
-                  <textarea
-                    ref={textareaRef}
-                    className="composer-textarea"
-                    placeholder="Write a reply..."
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    rows={2}
-                  />
+                <div className="composer-top-header">
+                  <div className="composer-tab-switch">
+                    <button
+                      type="button"
+                      className={`composer-tab-btn ${replyTab === 'write' ? 'is-active' : ''}`}
+                      onClick={() => setReplyTab('write')}
+                    >
+                      <Edit3 size={13} />
+                      <span>Write</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`composer-tab-btn ${replyTab === 'preview' ? 'is-active' : ''}`}
+                      onClick={() => setReplyTab('preview')}
+                    >
+                      <Eye size={13} />
+                      <span>Preview</span>
+                    </button>
+                  </div>
                 </div>
+
+                {replyTab === 'write' ? (
+                  <div className="composer-input-area">
+                    <UserAvatar
+                      src={user?.avatar}
+                      username={user.username}
+                      size={38}
+                      className="composer-avatar"
+                    />
+                    <textarea
+                      ref={textareaRef}
+                      className="composer-textarea"
+                      placeholder="Write a reply..."
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      onPaste={handleReplyPaste}
+                      rows={3}
+                    />
+                  </div>
+                ) : (
+                  <div className="composer-preview-area">
+                    <UserAvatar
+                      src={user?.avatar}
+                      username={user.username}
+                      size={38}
+                      className="composer-avatar"
+                    />
+                    <div className="composer-preview-content">
+                      {replyText.trim() ? (
+                        <MarkdownRenderer content={replyText} />
+                      ) : (
+                        <p className="composer-preview-placeholder">
+                          Nothing to preview yet. Switch back to Write to compose text, format markdown, or upload images.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <input
                   type="file"
@@ -1115,17 +1196,20 @@ export default function PostDetail() {
                     <button
                       type="button"
                       className="tool-icon-btn"
-                      title="Upload Image"
+                      title="Upload Image (compressed to <1MB)"
                       onClick={() => replyFileInputRef.current?.click()}
                       disabled={uploadingReplyImage}
                     >
-                      <ImageIcon size={15} />
+                      {uploadingReplyImage ? <Loader2 size={15} className="spin-icon" /> : <ImageIcon size={15} />}
                     </button>
                     <button
                       type="button"
                       className="tool-icon-btn"
                       title="Bold"
-                      onClick={() => insertFormat('**', '**')}
+                      onClick={() => {
+                        setReplyTab('write')
+                        insertFormat('**', '**')
+                      }}
                     >
                       <Bold size={15} />
                     </button>
@@ -1133,7 +1217,10 @@ export default function PostDetail() {
                       type="button"
                       className="tool-icon-btn"
                       title="Italic"
-                      onClick={() => insertFormat('*', '*')}
+                      onClick={() => {
+                        setReplyTab('write')
+                        insertFormat('*', '*')
+                      }}
                     >
                       <Italic size={15} />
                     </button>
@@ -1141,7 +1228,10 @@ export default function PostDetail() {
                       type="button"
                       className="tool-icon-btn"
                       title="Code"
-                      onClick={() => insertFormat('`', '`')}
+                      onClick={() => {
+                        setReplyTab('write')
+                        insertFormat('`', '`')
+                      }}
                     >
                       <Code size={15} />
                     </button>
@@ -1149,7 +1239,10 @@ export default function PostDetail() {
                       type="button"
                       className="tool-icon-btn"
                       title="Insert Link"
-                      onClick={() => insertFormat('[', '](url)')}
+                      onClick={() => {
+                        setReplyTab('write')
+                        insertFormat('[', '](https://)')
+                      }}
                     >
                       <Link2 size={15} />
                     </button>
@@ -1157,7 +1250,10 @@ export default function PostDetail() {
                       type="button"
                       className="tool-icon-btn"
                       title="Ordered List"
-                      onClick={() => insertFormat('\n1. ')}
+                      onClick={() => {
+                        setReplyTab('write')
+                        insertFormat('\n1. ')
+                      }}
                     >
                       <ListOrdered size={15} />
                     </button>
@@ -1165,7 +1261,10 @@ export default function PostDetail() {
                       type="button"
                       className="tool-icon-btn"
                       title="Bullet List"
-                      onClick={() => insertFormat('\n• ')}
+                      onClick={() => {
+                        setReplyTab('write')
+                        insertFormat('\n• ')
+                      }}
                     >
                       <List size={15} />
                     </button>
@@ -1174,10 +1273,10 @@ export default function PostDetail() {
                   <button
                     type="button"
                     className="btn-post-reply"
-                    disabled={!replyText.trim() || submitting}
+                    disabled={!replyText.trim() || submitting || uploadingReplyImage}
                     onClick={() => handleAddComment(replyText)}
                   >
-                    {submitting ? 'Posting…' : 'Post Reply'}
+                    {submitting ? 'Posting…' : uploadingReplyImage ? 'Uploading…' : 'Post Reply'}
                   </button>
                 </div>
               </div>
