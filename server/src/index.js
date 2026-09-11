@@ -14,6 +14,7 @@ import compileRoutes from './routes/compile.routes.js';
 import uploadRoutes from './routes/upload.routes.js';
 
 const app = express();
+app.set('trust proxy', 1);
 
 app.use(
   helmet({
