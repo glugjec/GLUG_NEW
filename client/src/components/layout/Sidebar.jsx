@@ -16,7 +16,9 @@ import {
   Moon,
   Shield,
   PanelLeftClose,
-  PanelLeft
+  PanelLeft,
+  Menu,
+  X
 } from 'lucide-react'
 
 const NAV_ITEMS = [
@@ -61,22 +63,27 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onToggleMobil
   const linkClass = ({ isActive }) =>
     `sb-nav-item${isActive ? ' sb-nav-item-active' : ''}`
 
+  const handleNavClick = () => {
+    if (mobileOpen && onToggleMobile) {
+      onToggleMobile()
+    }
+  }
+
   return (
     <>
       <button
         type="button"
         className={`sidebar-hamburger${mobileOpen ? ' is-open' : ''}`}
         onClick={onToggleMobile}
-        aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+        aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
+        title={mobileOpen ? 'Close menu' : 'Open menu'}
       >
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-          <path d="M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z" />
-        </svg>
+        {mobileOpen ? <X size={20} /> : <Menu size={20} />}
       </button>
 
       <aside className={`sidebar-v2${collapsed ? ' is-collapsed' : ''}${mobileOpen ? ' is-mobile-open' : ''}`}>
         <div className="sb-header">
-          <Link to="/" className="sb-brand">
+          <Link to="/" className="sb-brand" onClick={handleNavClick}>
             <img src="/logo.png" alt="GLUG" className="sb-brand-logo" />
             <div className="sb-brand-meta">
               <span className="sb-brand-title">GLUG</span>
@@ -87,7 +94,8 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onToggleMobil
             type="button"
             className="sb-collapse-btn"
             onClick={onToggle}
-            aria-label={collapsed ? 'Expand' : 'Collapse'}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             {collapsed ? <PanelLeft size={17} /> : <PanelLeftClose size={17} />}
           </button>
@@ -102,6 +110,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onToggleMobil
                 to={item.to}
                 end={item.end}
                 className={linkClass}
+                onClick={handleNavClick}
                 title={collapsed ? item.label : undefined}
               >
                 <span className="sb-nav-icon">
@@ -116,6 +125,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onToggleMobil
             <NavLink
               to="/admin"
               className={linkClass}
+              onClick={handleNavClick}
               title={collapsed ? 'Admin Panel' : undefined}
             >
               <span className="sb-nav-icon" style={{ color: '#f59e0b' }}>
@@ -128,7 +138,12 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onToggleMobil
           )}
 
           <div className="sb-action-wrap">
-            <Link to="/forum" className="sb-new-post-btn" title={collapsed ? 'New Post' : undefined}>
+            <Link
+              to="/forum"
+              className="sb-new-post-btn"
+              onClick={handleNavClick}
+              title={collapsed ? 'New Post' : undefined}
+            >
               <Plus size={18} />
               <span className="sb-nav-text">New Post</span>
             </Link>
