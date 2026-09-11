@@ -291,6 +291,65 @@ function cleanPreviewText(text) {
     .trim()
 }
 
+function PostTags({ tags }) {
+  const containerRef = useRef(null)
+  const [maxVisible, setMaxVisible] = useState(tags?.length || 1)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el || !tags || tags.length === 0) return
+
+    const checkFit = () => {
+      const parent = el.parentElement
+      if (!parent) return
+      const titleEl = parent.querySelector('.forum-post-title')
+      const totalWidth = parent.clientWidth
+      const titleWidth = titleEl ? titleEl.offsetWidth : 0
+      const available = totalWidth - titleWidth - 16
+
+      let currentWidth = 0
+      let count = 0
+      for (let i = 0; i < tags.length; i++) {
+        const tagText = tags[i] || ''
+        const tagW = Math.min(115, Math.max(45, tagText.length * 7.2 + 22))
+        const badgeW = i < tags.length - 1 ? 36 : 0
+        if (currentWidth + tagW + badgeW <= available) {
+          currentWidth += tagW
+          count++
+        } else {
+          break
+        }
+      }
+      setMaxVisible(Math.max(1, count))
+    }
+
+    checkFit()
+    const ro = new ResizeObserver(checkFit)
+    if (el.parentElement) ro.observe(el.parentElement)
+    return () => ro.disconnect()
+  }, [tags])
+
+  if (!tags || tags.length === 0) return null
+
+  const visible = tags.slice(0, maxVisible)
+  const hiddenCount = tags.length - maxVisible
+
+  return (
+    <div ref={containerRef} className="forum-post-tags">
+      {visible.map((t) => (
+        <span key={t} className="forum-post-tag" title={t}>
+          {t}
+        </span>
+      ))}
+      {hiddenCount > 0 && (
+        <span className="forum-post-tag tag-more-count" title={tags.slice(maxVisible).join(', ')}>
+          +{hiddenCount}
+        </span>
+      )}
+    </div>
+  )
+}
+
 export default function Forum() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -658,18 +717,7 @@ export default function Forum() {
                 <div className="forum-post-center">
                   <div className="forum-post-header">
                     <h3 className="forum-post-title">{post.title}</h3>
-                    <div className="forum-post-tags">
-                      {post.tags?.slice(0, 2).map((t) => (
-                        <span key={t} className="forum-post-tag" title={t}>
-                          {t}
-                        </span>
-                      ))}
-                      {post.tags?.length > 2 && (
-                        <span className="forum-post-tag tag-more-count" title={post.tags.slice(2).join(', ')}>
-                          +{post.tags.length - 2}
-                        </span>
-                      )}
-                    </div>
+                    <PostTags tags={post.tags} />
                   </div>
                   <p className="forum-post-body-preview">{cleanPreviewText(post.body)}</p>
                 </div>

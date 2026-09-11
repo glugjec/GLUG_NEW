@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { postsApi } from '../api.js'
@@ -244,6 +244,74 @@ function renderDiscussionAvatar(item) {
   )
 }
 
+function HomeDiscTags({ tags }) {
+  const containerRef = useRef(null)
+  const [maxVisible, setMaxVisible] = useState(tags?.length || 1)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el || !tags || tags.length === 0) return
+
+    const checkFit = () => {
+      const parent = el.parentElement
+      if (!parent) return
+      const titleEl = parent.querySelector('.disc-title')
+      const totalWidth = parent.clientWidth
+      const titleWidth = titleEl ? titleEl.offsetWidth : 0
+      const available = totalWidth - titleWidth - 16
+
+      let currentWidth = 0
+      let count = 0
+      for (let i = 0; i < tags.length; i++) {
+        const label = tags[i]?.label || ''
+        const tagW = Math.min(115, Math.max(45, label.length * 7.2 + 22))
+        const badgeW = i < tags.length - 1 ? 36 : 0
+        if (currentWidth + tagW + badgeW <= available) {
+          currentWidth += tagW
+          count++
+        } else {
+          break
+        }
+      }
+      setMaxVisible(Math.max(1, count))
+    }
+
+    checkFit()
+    const ro = new ResizeObserver(checkFit)
+    if (el.parentElement) ro.observe(el.parentElement)
+    return () => ro.disconnect()
+  }, [tags])
+
+  if (!tags || tags.length === 0) return null
+
+  const visible = tags.slice(0, maxVisible)
+  const hiddenCount = tags.length - maxVisible
+
+  return (
+    <div ref={containerRef} className="disc-tags">
+      {visible.map((tag) => (
+        <span
+          key={tag.label}
+          className="disc-tag"
+          style={{
+            backgroundColor: `${tag.color}1f`,
+            color: tag.color,
+            borderColor: `${tag.color}35`
+          }}
+          title={tag.label}
+        >
+          {tag.label}
+        </span>
+      ))}
+      {hiddenCount > 0 && (
+        <span className="disc-tag tag-more-count" title={tags.slice(maxVisible).map((t) => t.label).join(', ')}>
+          +{hiddenCount}
+        </span>
+      )}
+    </div>
+  )
+}
+
 export default function Home() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -263,10 +331,9 @@ export default function Home() {
               author: post.author?.username || 'user',
               authorAvatar: post.author?.avatar,
               timeAgo,
-              tags: [
-                { label: post.category || 'General', color: '#3b82f6' },
-                ...(post.tags || []).slice(0, 1).map((t) => ({ label: t, color: '#64748b' }))
-              ],
+              tags: (post.tags && post.tags.length > 0)
+                ? post.tags.map((t, i) => ({ label: t, color: i === 0 ? '#3b82f6' : '#64748b' }))
+                : [{ label: post.category || 'General', color: '#3b82f6' }],
               replies: post.commentCount || 0,
               views: post.views ?? 0,
               lastReply: {
@@ -363,21 +430,7 @@ export default function Home() {
                   <div className="disc-info">
                     <div className="disc-title-row">
                       <span className="disc-title">{item.title}</span>
-                      <div className="disc-tags">
-                        {item.tags.map((tag) => (
-                          <span
-                            key={tag.label}
-                            className="disc-tag"
-                            style={{
-                              backgroundColor: `${tag.color}1f`,
-                              color: tag.color,
-                              borderColor: `${tag.color}35`
-                            }}
-                          >
-                            {tag.label}
-                          </span>
-                        ))}
-                      </div>
+                      <HomeDiscTags tags={item.tags} />
                     </div>
                     <div className="disc-meta">
                       <span className="disc-author">{item.author}</span>

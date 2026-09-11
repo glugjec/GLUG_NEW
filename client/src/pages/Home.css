@@ -231,23 +231,31 @@
 }
 
 .disc-info {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
   min-width: 0;
+  overflow: hidden;
 }
 
 .disc-title-row {
   display: flex;
   align-items: center;
   gap: 0.65rem;
-  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .disc-title {
   font-size: 0.96rem;
   font-weight: 600;
   color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 72%;
+  flex-shrink: 0;
 }
 
 .discussion-card-row:hover .disc-title {
@@ -257,7 +265,10 @@
 .disc-tags {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.35rem;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
 }
 
 .disc-tag {
@@ -266,6 +277,18 @@
   padding: 0.15rem 0.5rem;
   border-radius: 6px;
   border: 1px solid transparent;
+  white-space: nowrap;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.disc-tag.tag-more-count {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 0.15rem 0.4rem;
 }
 
 .disc-meta {
