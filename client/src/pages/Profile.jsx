@@ -29,7 +29,10 @@ import {
   Loader2,
   Camera,
   Trash2,
-  AlertCircle
+  AlertCircle,
+  UserX,
+  ArrowLeft,
+  Home
 } from 'lucide-react'
 import { uploadApi } from '../api.js'
 import { compressImage } from '../utils/imageCompressor.js'
@@ -442,15 +445,29 @@ export default function Profile() {
   if (!user && isOwnProfile) {
     return (
       <div className="profile-page-container">
-        <div className="profile-content-card" style={{ textAlign: 'center', padding: '3.5rem 1.5rem' }}>
-          <User size={48} style={{ color: 'var(--text-dim)', marginBottom: '1rem' }} />
-          <h2 style={{ margin: '0 0 0.5rem', color: 'var(--text)' }}>Sign in to view your profile</h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-            Access your discussions, bookmarks, reputation points, and settings.
+        <div className="profile-not-found-card">
+          <div className="not-found-icon-halo not-found-halo-blue">
+            <User size={38} strokeWidth={1.75} />
+          </div>
+          <span className="not-found-badge not-found-badge-blue">
+            Authentication Required
+          </span>
+          <h2 className="not-found-title">Sign In to View Your Profile</h2>
+          <p className="not-found-desc">
+            Access your technical discussions, bookmarks, reputation points, skills, and account settings.
           </p>
-          <Link to="/login" className="profile-btn-primary" style={{ display: 'inline-flex' }}>
-            Log in to GLUG
-          </Link>
+
+          <div className="not-found-actions">
+            <Link to="/login" className="not-found-btn not-found-btn-primary">
+              Log in to GLUG
+            </Link>
+            <Link to="/register" className="not-found-btn not-found-btn-secondary">
+              Create Account
+            </Link>
+            <Link to="/forum" className="not-found-btn not-found-btn-secondary">
+              <MessageSquare size={16} /> Explore Community
+            </Link>
+          </div>
         </div>
       </div>
     )
@@ -459,7 +476,56 @@ export default function Profile() {
   if (!profile) {
     return (
       <div className="profile-page-container">
-        <ErrorMessage message="User not found." />
+        <div className="profile-not-found-card">
+          <div className="not-found-icon-halo">
+            <UserX size={38} strokeWidth={1.75} />
+          </div>
+          <span className="not-found-badge">404 · Member Profile</span>
+          <h2 className="not-found-title">User Not Found</h2>
+          <p className="not-found-desc">
+            The member profile you are looking for {id ? <span className="not-found-highlight">@{id}</span> : 'this account'} does not exist, may have changed their username, or the account is no longer active.
+          </p>
+
+          <div className="not-found-actions">
+            <button
+              type="button"
+              className="not-found-btn not-found-btn-secondary"
+              onClick={() => navigate(-1)}
+            >
+              <ArrowLeft size={16} /> Go Back
+            </button>
+            <Link to="/forum" className="not-found-btn not-found-btn-primary">
+              <MessageSquare size={16} /> Explore Discussions
+            </Link>
+            <Link to="/" className="not-found-btn not-found-btn-secondary">
+              <Home size={16} /> Home
+            </Link>
+          </div>
+
+          {!user && (
+            <div className="not-found-auth-hint">
+              <span>Looking for your own profile?</span>
+              <Link to="/login" className="not-found-login-link">
+                Sign in to your account →
+              </Link>
+            </div>
+          )}
+
+          <div className="not-found-quick-links">
+            <span className="quick-links-label">Popular sections:</span>
+            <div className="quick-links-row">
+              <Link to="/terminal" className="quick-link-pill">
+                <Terminal size={13} /> Linux Terminal
+              </Link>
+              <Link to="/compiler" className="quick-link-pill">
+                <Code2 size={13} /> Online Compiler
+              </Link>
+              <Link to="/resources" className="quick-link-pill">
+                <Sparkles size={13} /> Resources
+              </Link>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
