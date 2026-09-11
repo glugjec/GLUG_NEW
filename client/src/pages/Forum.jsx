@@ -350,10 +350,10 @@ function PostTags({ tags }) {
 export default function Forum() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const [activeTab, setActiveTab] = useState('latest')
-  const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '')
+  const selectedCategory = searchParams.get('category') || ''
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -365,54 +365,84 @@ export default function Forum() {
   const [uploadError, setUploadError] = useState('')
   const [imageUploading, setImageUploading] = useState(false)
 
-  const loadPosts = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = { limit: 20 }
-      if (selectedCategory) params.category = selectedCategory
-      if (activeTab === 'latest') params.sort = 'new'
-      if (activeTab === 'trending') params.sort = 'hot'
+  const loadPosts = useCallback(
+    async (catToFetch) => {
+      setLoading(true)
+      try {
+        const params = { limit: 20 }
+        if (catToFetch) params.category = catToFetch
+        if (activeTab === 'latest') params.sort = 'new'
+        if (activeTab === 'trending') params.sort = 'hot'
 
-      const res = await postsApi.list(params)
-      if (res?.posts && res.posts.length > 0) {
-        const mapped = res.posts.map((p, idx) => ({
-          id: p._id || p.id,
-          isPinned: p.isPinned,
-          title: p.title,
-          body: p.body,
-          category: p.category || 'general',
-          tags: p.tags?.length ? p.tags : [p.category || 'General'],
-          voteScore: Math.max(0, p.voteScore || 0),
-          commentCount: p.commentCount ?? (p.comments ? p.comments.length : 0),
-          views: p.views ?? 0,
-          author: {
-            username: p.author?.username || 'member',
-            avatar: p.author?.avatar
-          },
-          userVote: p.userVote || 0,
-          timeAgo: formatRelativeTime(p.createdAt),
-          iconType: ['tux', 'terminal', 'code', 'settings', 'screen'][idx % 5],
-          iconBg: ['#422006', '#022c22', '#3b0764', '#1e3a8a', '#1e1b4b'][idx % 5],
-          iconColor: ['#facc15', '#34d399', '#c084fc', '#60a5fa', '#818cf8'][idx % 5]
-        }))
-        setPosts(mapped)
-      } else if (!selectedCategory && activeTab === 'latest' && (!res?.posts || res.posts.length === 0)) {
+        const res = await postsApi.list(params)
+        if (res?.posts && res.posts.length > 0) {
+          const mapped = res.posts.map((p, idx) => ({
+            id: p._id || p.id,
+            isPinned: p.isPinned,
+            title: p.title,
+            body: p.body,
+            category: p.category || 'general',
+            tags: p.tags?.length ? p.tags : [p.category || 'General'],
+            voteScore: Math.max(0, p.voteScore || 0),
+            commentCount: p.commentCount ?? (p.comments ? p.comments.length : 0),
+            views: p.views ?? 0,
+            author: {
+              username: p.author?.username || 'member',
+              avatar: p.author?.avatar
+            },
+            userVote: p.userVote || 0,
+            timeAgo: formatRelativeTime(p.createdAt),
+            iconType: ['tux', 'terminal', 'code', 'settings', 'screen'][idx % 5],
+            iconBg: ['#422006', '#022c22', '#3b0764', '#1e3a8a', '#1e1b4b'][idx % 5],
+            iconColor: ['#facc15', '#34d399', '#c084fc', '#60a5fa', '#818cf8'][idx % 5]
+          }))
+          setPosts(mapped)
+        } else if (!catToFetch && activeTab === 'latest' && (!res?.posts || res.posts.length === 0)) {
+          setPosts(DEFAULT_POSTS)
+        } else {
+          setPosts([])
+        }
+      } catch {
         setPosts(DEFAULT_POSTS)
-      } else {
-        setPosts([])
+      } finally {
+        setLoading(false)
       }
-    } catch {
-      setPosts(DEFAULT_POSTS)
-    } finally {
-      setLoading(false)
-    }
-  }, [selectedCategory, activeTab, user?.id])
+    },
+    [activeTab]
+  )
+
+  const handleClearCategory = useCallback(() => {
+    setSearchParams({})
+  }, [setSearchParams])
+
+  const handleSelectCategory = useCallback(
+    (catId) => {
+      if (selectedCategory === catId) {
+        setSearchParams({})
+      } else {
+        setSearchParams({ category: catId })
+      }
+    },
+    [selectedCategory, setSearchParams]
+  )
+
+  const handleOpenNewPost = useCallback(
+    (categoryOverride) => {
+      if (!user) {
+        navigate('/login')
+        return
+      }
+      const catToUse = categoryOverride || selectedCategory || 'linux'
+      const isValid = CATEGORIES_LIST.some((c) => c.id === catToUse)
+      setNewCategory(isValid ? catToUse : 'linux')
+      setShowModal(true)
+    },
+    [user, selectedCategory, navigate]
+  )
 
   useEffect(() => {
-    const cat = searchParams.get('category')
-    if (cat) setSelectedCategory(cat)
-    loadPosts()
-  }, [searchParams, loadPosts])
+    loadPosts(selectedCategory)
+  }, [selectedCategory, activeTab, loadPosts])
 
   const handleVote = async (e, post) => {
     e.stopPropagation()
@@ -482,7 +512,7 @@ export default function Forum() {
       if (res?.post) {
         navigate(`/forum/posts/${res.post._id || res.post.id}`)
       } else {
-        loadPosts()
+        loadPosts(selectedCategory)
       }
     } catch (err) {
       setUploadError(err.message || 'Failed to create discussion')
@@ -504,7 +534,7 @@ export default function Forum() {
             <button
               type="button"
               className="forum-hero-new-btn"
-              onClick={() => (user ? setShowModal(true) : navigate('/login'))}
+              onClick={() => handleOpenNewPost()}
             >
               <Plus size={18} /> New Post
             </button>
@@ -525,7 +555,7 @@ export default function Forum() {
             className={`forum-tab-btn ${activeTab === 'latest' ? 'is-active' : ''}`}
             onClick={() => {
               setActiveTab('latest')
-              setSelectedCategory('')
+              setSearchParams({})
             }}
           >
             Latest
@@ -566,10 +596,7 @@ export default function Forum() {
             <button
               type="button"
               className="clear-cat-btn"
-              onClick={() => {
-                setSelectedCategory('')
-                navigate('/forum')
-              }}
+              onClick={handleClearCategory}
             >
               <X size={14} /> Clear
             </button>
@@ -597,8 +624,8 @@ export default function Forum() {
               <p>Be the first to start a conversation in this category!</p>
               <button
                 type="button"
-                className="btn-hero-post"
-                onClick={() => setShowModal(true)}
+                className="forum-empty-new-btn"
+                onClick={() => handleOpenNewPost(selectedCategory)}
               >
                 <Plus size={16} /> New Post
               </button>
@@ -691,7 +718,7 @@ export default function Forum() {
                 type="button"
                 key={c.id}
                 className={`cat-sidebar-item ${selectedCategory === c.id ? 'is-selected' : ''}`}
-                onClick={() => setSelectedCategory(c.id)}
+                onClick={() => handleSelectCategory(c.id)}
               >
                 <div className="cat-item-left">
                   <span className="cat-bullet" style={{ color: c.color }}>
