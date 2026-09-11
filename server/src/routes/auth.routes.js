@@ -260,6 +260,104 @@ router.post(
   }
 );
 
+router.post(
+  '/forgot-password',
+  validate([
+    body('email').trim().isEmail().withMessage('Please provide a valid email'),
+  ]),
+  async (req, res) => {
+    const { email } = req.body;
+    const cleanEmail = email.toLowerCase().trim();
+
+    try {
+      const user = await User.findOne({ email: cleanEmail });
+      if (!user) {
+        return res.status(404).json({ error: 'No account registered with this email address' });
+      }
+
+      const recentOtp = await EmailOtp.findOne({
+        email: cleanEmail,
+        purpose: 'reset',
+        createdAt: { $gte: new Date(Date.now() - 45 * 1000) },
+      });
+      if (recentOtp) {
+        return res.status(429).json({ error: 'Please wait 45 seconds before requesting another code' });
+      }
+
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      await EmailOtp.deleteMany({ email: cleanEmail, purpose: 'reset' });
+      await EmailOtp.create({
+        email: cleanEmail,
+        otp,
+        purpose: 'reset',
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+      });
+
+      await sendOtpMail({
+        to: cleanEmail,
+        otp,
+        purpose: 'reset',
+      });
+
+      return res.json({ success: true, message: 'Password reset code sent to your email' });
+    } catch (err) {
+      console.error('[Forgot Password Error]', err);
+      return res.status(500).json({ error: 'Failed to send password reset code' });
+    }
+  }
+);
+
+router.post(
+  '/reset-password',
+  validate([
+    body('email').trim().isEmail().withMessage('Please provide a valid email'),
+    body('otp').trim().isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits'),
+    body('newPassword').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+  ]),
+  async (req, res) => {
+    const { email, otp, newPassword } = req.body;
+    const cleanEmail = email.toLowerCase().trim();
+
+    try {
+      const record = await EmailOtp.findOne({ email: cleanEmail, purpose: 'reset' }).sort({ createdAt: -1 });
+      if (!record) {
+        return res.status(400).json({ error: 'Reset code expired or not found' });
+      }
+
+      if (new Date() > record.expiresAt) {
+        await EmailOtp.deleteOne({ _id: record._id });
+        return res.status(400).json({ error: 'Reset code has expired. Please request a new one' });
+      }
+
+      if (record.attempts >= 5) {
+        await EmailOtp.deleteOne({ _id: record._id });
+        return res.status(400).json({ error: 'Too many incorrect attempts. Please request a new code' });
+      }
+
+      if (record.otp !== otp.trim()) {
+        record.attempts += 1;
+        await record.save();
+        return res.status(400).json({ error: 'Invalid verification code' });
+      }
+
+      await EmailOtp.deleteOne({ _id: record._id });
+
+      const user = await User.findOne({ email: cleanEmail });
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      user.passwordHash = await User.hashPassword(newPassword);
+      await user.save();
+
+      return res.json({ success: true, message: 'Password reset successfully. You can now log in.' });
+    } catch (err) {
+      console.error('[Reset Password Error]', err);
+      return res.status(500).json({ error: 'Failed to reset password' });
+    }
+  }
+);
+
 // @route   POST /api/auth/google
 // @desc    Google OAuth Sign-In / Sign-Up
 router.post('/google', async (req, res) => {

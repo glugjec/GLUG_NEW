@@ -3,10 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { authApi } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import AuthLayout from '../components/auth/AuthLayout.jsx';
-import AuthField from '../components/auth/AuthField.jsx';
 import GoogleAuthButton from '../components/auth/GoogleAuthButton.jsx';
 import UsernameStep from '../components/auth/UsernameStep.jsx';
-import { Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle } from 'lucide-react';
 import './Auth.css';
 
 export default function Login() {
@@ -24,13 +23,24 @@ export default function Login() {
   const submit = async (e) => {
     e.preventDefault();
     setError('');
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!cleanEmail) {
+      setError('Please enter your email address');
+      return;
+    }
+    if (!password) {
+      setError('Please enter your password');
+      return;
+    }
+
     setLoading(true);
     try {
-      const data = await authApi.login({ email, password });
+      const data = await authApi.login({ email: cleanEmail, password });
       login(data.user, data.token);
       navigate('/');
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Invalid email or password');
       setLoading(false);
     }
   };
@@ -61,6 +71,15 @@ export default function Login() {
       <div className="auth-card">
         <div className="auth-card-glow" />
 
+        <div className="auth-mode-switch">
+          <button type="button" className="auth-mode-tab is-active">
+            Log In
+          </button>
+          <Link to="/register" className="auth-mode-tab">
+            Create Account
+          </Link>
+        </div>
+
         {error && (
           <div className="auth-error-banner" role="alert">
             <AlertCircle size={16} className="auth-error-icon" />
@@ -86,30 +105,52 @@ export default function Login() {
         ) : (
           <div>
             <div className="auth-brand">
-              <img src="/logo.png" alt="GLUG" className="auth-logo" />
-              <h1 className="auth-title">Welcome back</h1>
-              <p className="auth-subtitle">Log in to your GLUG community account.</p>
+              <h2 className="auth-title">Welcome back</h2>
+              <p className="auth-subtitle">Log in with your email or Google account.</p>
             </div>
 
             <form className="auth-form" onSubmit={submit} noValidate>
-              <AuthField
-                label="EMAIL ADDRESS"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+              <div className="auth-field-wrap">
+                <label className="auth-field-label">EMAIL ADDRESS</label>
+                <div className="auth-input-relative">
+                  <span className="auth-input-icon">
+                    <Mail size={16} />
+                  </span>
+                  <input
+                    type="email"
+                    className="auth-input has-icon"
+                    placeholder="student@jec.ac.in"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (error) setError('');
+                    }}
+                    required
+                    autoFocus
+                  />
+                </div>
+              </div>
 
               <div className="auth-field-wrap">
-                <label className="auth-field-label">PASSWORD</label>
+                <div className="auth-label-row">
+                  <label className="auth-field-label">PASSWORD</label>
+                  <Link to="/forgot-password" className="auth-forgot-link">
+                    Forgot password?
+                  </Link>
+                </div>
                 <div className="auth-input-relative">
+                  <span className="auth-input-icon">
+                    <Lock size={16} />
+                  </span>
                   <input
                     type={showPassword ? 'text' : 'password'}
-                    className="auth-input"
+                    className="auth-input has-icon"
                     placeholder="••••••••"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (error) setError('');
+                    }}
                     required
                   />
                   <button
@@ -125,13 +166,17 @@ export default function Login() {
               </div>
 
               <button type="submit" className="auth-submit" disabled={loading}>
-                {loading ? 'Logging in…' : 'Log In'}
+                {loading ? 'Signing in…' : (
+                  <>
+                    Sign In <ArrowRight size={16} />
+                  </>
+                )}
                 <span className="auth-submit-glint" />
               </button>
             </form>
 
             <div className="auth-separator">
-              <span>OR</span>
+              <span>OR CONTINUE WITH</span>
             </div>
 
             <GoogleAuthButton
@@ -141,7 +186,7 @@ export default function Login() {
 
             <div className="auth-divider" />
             <p className="auth-footer">
-              Need an account? <Link to="/register">Create an account</Link>
+              New to GLUG? <Link to="/register">Create an account</Link>
             </p>
           </div>
         )}

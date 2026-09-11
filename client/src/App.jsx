@@ -12,12 +12,16 @@ import Settings from './pages/Settings.jsx'
 import AdminDashboard from './pages/AdminDashboard.jsx'
 import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
+import ForgotPassword from './pages/ForgotPassword.jsx'
 import PlaceholderPage from './pages/PlaceholderPage.jsx'
 import { Users, Calendar, Info } from 'lucide-react'
 
 export default function App() {
   const location = useLocation()
-  const isAuthPage = location.pathname === '/login' || location.pathname === '/register'
+  const isAuthPage =
+    location.pathname === '/login' ||
+    location.pathname === '/register' ||
+    location.pathname === '/forgot-password'
 
   return (
     <div className="app-container">
@@ -26,6 +30,7 @@ export default function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
           </Routes>
         </main>
       ) : (

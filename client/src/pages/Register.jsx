@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { authApi } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import AuthLayout from '../components/auth/AuthLayout.jsx';
-import AuthField from '../components/auth/AuthField.jsx';
 import GoogleAuthButton from '../components/auth/GoogleAuthButton.jsx';
 import OtpInput from '../components/auth/OtpInput.jsx';
 import UsernameStep from '../components/auth/UsernameStep.jsx';
@@ -177,6 +176,15 @@ export default function Register() {
       <div className="auth-card">
         <div className="auth-card-glow" />
 
+        <div className="auth-mode-switch">
+          <Link to="/login" className="auth-mode-tab">
+            Log In
+          </Link>
+          <button type="button" className="auth-mode-tab is-active">
+            Create Account
+          </button>
+        </div>
+
         <div className="auth-step-progress">
           <div className={`auth-step-pill ${step >= 1 ? 'is-active' : ''} ${step > 1 ? 'is-done' : ''}`}>
             <span className="auth-step-num">{step > 1 ? <CheckCircle2 size={13} /> : '1'}</span>
@@ -204,31 +212,44 @@ export default function Register() {
         {step === 1 && (
           <div>
             <div className="auth-brand">
-              <img src="/logo.png" alt="GLUG" className="auth-logo" />
-              <h1 className="auth-title">Join GLUG</h1>
-              <p className="auth-subtitle">Open minds build brighter tomorrows.</p>
+              <h2 className="auth-title">Create an account</h2>
+              <p className="auth-subtitle">Sign up with your college email to join GLUG.</p>
             </div>
 
             <form className="auth-form" onSubmit={handleStep1Submit} noValidate>
-              <AuthField
-                label="EMAIL ADDRESS"
-                type="email"
-                placeholder="student@jec.ac.in"
-                value={email}
-                error={fieldErrors.email}
-                onChange={(e) => {
-                  clearFieldError('email');
-                  setEmail(e.target.value);
-                }}
-                required
-              />
+              <div className="auth-field-wrap">
+                <label className="auth-field-label">EMAIL ADDRESS</label>
+                <div className="auth-input-relative">
+                  <span className="auth-input-icon">
+                    <Mail size={16} />
+                  </span>
+                  <input
+                    type="email"
+                    className={`auth-input has-icon ${fieldErrors.email ? 'has-error' : ''}`}
+                    placeholder="student@jec.ac.in"
+                    value={email}
+                    onChange={(e) => {
+                      clearFieldError('email');
+                      setEmail(e.target.value);
+                    }}
+                    required
+                    autoFocus
+                  />
+                </div>
+                {fieldErrors.email && (
+                  <p className="auth-field-error-text">{fieldErrors.email}</p>
+                )}
+              </div>
 
               <div className="auth-field-wrap">
                 <label className="auth-field-label">PASSWORD</label>
                 <div className="auth-input-relative">
+                  <span className="auth-input-icon">
+                    <Lock size={16} />
+                  </span>
                   <input
                     type={showPassword ? 'text' : 'password'}
-                    className={`auth-input ${fieldErrors.password ? 'has-error' : ''}`}
+                    className={`auth-input has-icon ${fieldErrors.password ? 'has-error' : ''}`}
                     placeholder="At least 6 characters"
                     value={password}
                     onChange={(e) => {
@@ -263,7 +284,7 @@ export default function Register() {
             </form>
 
             <div className="auth-separator">
-              <span>OR</span>
+              <span>OR SIGN UP WITH</span>
             </div>
 
             <GoogleAuthButton
@@ -285,7 +306,7 @@ export default function Register() {
             </div>
 
             <div className="auth-brand" style={{ marginBottom: '1.25rem' }}>
-              <h1 className="auth-title">Verify your email</h1>
+              <h2 className="auth-title">Verify your email</h2>
               <p className="auth-subtitle">
                 We sent a 6-digit code to <strong style={{ color: 'var(--text)' }}>{email}</strong>
               </p>

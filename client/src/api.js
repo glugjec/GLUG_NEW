@@ -48,6 +48,8 @@ export const authApi = {
   checkUsername: (username) => client.get('/auth/check-username', { params: { username } }),
   googleLogin: (credential) => client.post('/auth/google', { credential }),
   completeGoogleAuth: (data) => client.post('/auth/google/complete', data),
+  forgotPassword: (data) => client.post('/auth/forgot-password', data),
+  resetPassword: (data) => client.post('/auth/reset-password', data),
   getMe: () => client.get('/auth/me'),
   updateProfile: (data) => client.put('/auth/me', data),
 };
