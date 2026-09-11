@@ -56,6 +56,7 @@ export const authApi = {
 
 export const postsApi = {
   list: (params = {}) => client.get('/posts', { params }),
+  feed: (params = {}) => client.get('/posts/feed', { params }),
   get: (id) => client.get(`/posts/${id}`),
   create: (data) => client.post('/posts', data),
   update: (id, data) => client.put(`/posts/${id}`, data),

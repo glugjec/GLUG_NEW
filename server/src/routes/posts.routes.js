@@ -141,6 +141,165 @@ router.get('/', optionalAuth, async (req, res) => {
   }
 });
 
+router.get('/feed', optionalAuth, async (req, res) => {
+  try {
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 25));
+    const seed = parseInt(req.query.seed) || Date.now();
+
+    const seededRandom = (s) => {
+      let x = Math.sin(s) * 10000;
+      return x - Math.floor(x);
+    };
+
+    const shuffle = (arr, s) => {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(seededRandom(s + i) * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    };
+
+    let boostedCategories = [];
+    let boostedTags = [];
+
+    if (req.user) {
+      const userVotes = await Vote.find({ user: req.user.id, value: 1 })
+        .sort({ createdAt: -1 })
+        .limit(50)
+        .select('post')
+        .lean();
+
+      const userBookmarks = await Bookmark.find({ user: req.user.id })
+        .sort({ createdAt: -1 })
+        .limit(30)
+        .select('post')
+        .lean();
+
+      const interactedIds = [
+        ...userVotes.map((v) => v.post),
+        ...userBookmarks.map((b) => b.post),
+      ];
+
+      if (interactedIds.length > 0) {
+        const interactedPosts = await Post.find({ _id: { $in: interactedIds } })
+          .select('category tags')
+          .lean();
+
+        const catFreq = {};
+        const tagFreq = {};
+        interactedPosts.forEach((p) => {
+          if (p.category) catFreq[p.category] = (catFreq[p.category] || 0) + 1;
+          if (p.tags) p.tags.forEach((t) => { tagFreq[t] = (tagFreq[t] || 0) + 1; });
+        });
+
+        boostedCategories = Object.entries(catFreq)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3)
+          .map(([cat]) => cat);
+
+        boostedTags = Object.entries(tagFreq)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5)
+          .map(([tag]) => tag);
+      }
+    }
+
+    const poolSize = Math.min(limit * 4, 100);
+
+    const [recentPosts, topPosts] = await Promise.all([
+      Post.find({})
+        .sort({ createdAt: -1 })
+        .limit(poolSize)
+        .populate('author', 'username role avatar')
+        .lean(),
+      Post.find({})
+        .sort({ voteScore: -1, createdAt: -1 })
+        .limit(poolSize)
+        .populate('author', 'username role avatar')
+        .lean(),
+    ]);
+
+    const postMap = new Map();
+    [...recentPosts, ...topPosts].forEach((p) => {
+      postMap.set(p._id.toString(), p);
+    });
+
+    let allPosts = Array.from(postMap.values());
+
+    if (req.user && (boostedCategories.length > 0 || boostedTags.length > 0)) {
+      allPosts.forEach((p) => {
+        let boost = 0;
+        if (boostedCategories.includes(p.category)) boost += 2;
+        if (p.tags && p.tags.some((t) => boostedTags.includes(t))) boost += 1;
+        p._feedBoost = boost;
+      });
+
+      const boosted = allPosts.filter((p) => p._feedBoost > 0);
+      const rest = allPosts.filter((p) => !p._feedBoost);
+
+      const shuffledBoosted = shuffle(boosted, seed);
+      const shuffledRest = shuffle(rest, seed + 1);
+
+      const pinned = shuffledBoosted.filter((p) => p.isPinned);
+      const unpinnedBoosted = shuffledBoosted.filter((p) => !p.isPinned);
+
+      allPosts = [...pinned, ...unpinnedBoosted, ...shuffledRest];
+    } else {
+      const pinned = allPosts.filter((p) => p.isPinned);
+      const unpinned = allPosts.filter((p) => !p.isPinned);
+      allPosts = [...pinned, ...shuffle(unpinned, seed)];
+    }
+
+    const feedPosts = allPosts.slice(0, limit);
+
+    let userVoteMap = new Map();
+    let userBookmarkSet = new Set();
+    if (req.user && feedPosts.length > 0) {
+      const postIds = feedPosts.map((p) => p._id);
+      const [uv, ub] = await Promise.all([
+        Vote.find({ user: req.user.id, post: { $in: postIds } }).lean(),
+        Bookmark.find({ user: req.user.id, post: { $in: postIds } }).lean(),
+      ]);
+      uv.forEach((v) => userVoteMap.set(v.post.toString(), v.value));
+      ub.forEach((b) => userBookmarkSet.add(b.post.toString()));
+    }
+
+    const formatted = feedPosts.map((p) => {
+      const { _feedBoost, ...rest } = p;
+      return {
+        id: rest._id.toString(),
+        _id: rest._id.toString(),
+        title: rest.title,
+        body: rest.body,
+        category: rest.category,
+        tags: rest.tags || [],
+        voteScore: Math.max(0, rest.voteScore || 0),
+        commentCount: rest.commentCount || 0,
+        views: rest.views || 0,
+        isPinned: !!rest.isPinned,
+        createdAt: rest.createdAt,
+        updatedAt: rest.updatedAt,
+        author: rest.author
+          ? {
+              id: rest.author._id.toString(),
+              username: rest.author.username,
+              role: rest.author.role,
+              avatar: rest.author.avatar,
+            }
+          : { username: 'deleted', role: 'student' },
+        userVote: userVoteMap.get(rest._id.toString()) || 0,
+        isBookmarked: userBookmarkSet.has(rest._id.toString()),
+      };
+    });
+
+    return res.json({ posts: formatted, seed });
+  } catch (err) {
+    console.error('[Feed Error]', err);
+    return res.status(500).json({ error: 'Failed to load feed' });
+  }
+});
+
 // @route   GET /api/posts/:id
 // @desc    Get single post detail with comments and user vote
 router.get('/:id', optionalAuth, async (req, res) => {

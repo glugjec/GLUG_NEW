@@ -14,7 +14,8 @@ import {
   Share2,
   Bookmark,
   Pin,
-  Compass
+  Compass,
+  RefreshCw
 } from 'lucide-react'
 import './ForYou.css'
 
@@ -90,27 +91,32 @@ export default function ForYou() {
   const [loading, setLoading] = useState(true)
   const [toastText, setToastText] = useState('')
   const [bookmarkedMap, setBookmarkedMap] = useState({})
+  const [feedSeed, setFeedSeed] = useState(() => Math.floor(Math.random() * 1000000))
 
   const showToast = (msg) => {
     setToastText(msg)
     setTimeout(() => setToastText(''), 2500)
   }
 
-  const loadFeed = useCallback(async (tab) => {
+  const loadFeed = useCallback(async (tab, seed) => {
     setLoading(true)
     try {
-      let params = { limit: 25 }
-      if (tab === 'trending') {
-        params.sort = 'hot'
-      } else if (tab === 'latest') {
-        params.sort = 'new'
-      } else if (tab === 'top') {
-        params.sort = 'top'
+      let res
+
+      if (tab === 'for-you') {
+        res = await postsApi.feed({ limit: 25, seed })
       } else {
-        params.sort = 'hot'
+        let params = { limit: 25 }
+        if (tab === 'trending') {
+          params.sort = 'hot'
+        } else if (tab === 'latest') {
+          params.sort = 'new'
+        } else if (tab === 'top') {
+          params.sort = 'top'
+        }
+        res = await postsApi.list(params)
       }
 
-      const res = await postsApi.list(params)
       if (res && Array.isArray(res.posts)) {
         setPosts(res.posts)
         const initialBookmarks = {}
@@ -130,8 +136,8 @@ export default function ForYou() {
   }, [])
 
   useEffect(() => {
-    loadFeed(feedTab)
-  }, [feedTab, loadFeed])
+    loadFeed(feedTab, feedSeed)
+  }, [feedTab, feedSeed, loadFeed])
 
   const handleShare = async (e, postId) => {
     e.preventDefault()
@@ -202,6 +208,16 @@ export default function ForYou() {
           >
             <Award size={16} /> Top Ranked
           </button>
+          {feedTab === 'for-you' && (
+            <button
+              type="button"
+              className="foryou-tab-btn foryou-refresh-btn"
+              onClick={() => setFeedSeed(Math.floor(Math.random() * 1000000))}
+              title="Shuffle feed"
+            >
+              <RefreshCw size={15} />
+            </button>
+          )}
         </div>
 
         {loading ? (
