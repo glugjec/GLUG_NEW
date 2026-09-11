@@ -606,36 +606,195 @@
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
 }
 
-.preset-avatars-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 0.6rem;
+.modal-input.has-error,
+.modal-textarea.has-error {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2) !important;
+}
+
+.modal-field-error {
+  font-size: 0.8rem;
+  color: #f87171;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+  font-weight: 500;
+}
+
+.modal-global-error {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.avatar-uploader-card {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1.15rem 1.25rem;
+  border-radius: 14px;
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border);
   margin-top: 0.35rem;
 }
 
-.preset-avatar-btn {
-  width: 48px;
-  height: 48px;
+.avatar-uploader-preview-wrap {
+  position: relative;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
-  border: 2px solid var(--border);
-  background: var(--bg-card-subtle);
+  flex-shrink: 0;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  border: 2px solid rgba(255, 255, 255, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.avatar-uploader-preview {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.avatar-uploader-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.75);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.avatar-uploader-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.avatar-uploader-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.avatar-hidden-file-input {
+  display: none !important;
+}
+
+.btn-upload-avatar {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.45rem !important;
+  height: 38px;
+  padding: 0 1.15rem !important;
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border-radius: 10px;
+  font-size: 0.88rem !important;
+  font-weight: 600;
   cursor: pointer;
-  padding: 0;
+  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.3);
   transition: all 0.15s ease;
-  overflow: hidden;
+  user-select: none;
+  white-space: nowrap !important;
+  border: none;
+  margin: 0;
 }
 
-.preset-avatar-btn:hover {
-  transform: scale(1.08);
-  border-color: #3b82f6;
+.btn-upload-avatar:hover {
+  background: #1d4ed8 !important;
+  transform: translateY(-1px);
 }
 
-.preset-avatar-btn.is-selected {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.35);
+.btn-upload-avatar.is-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-remove-avatar {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.4rem !important;
+  height: 38px;
+  padding: 0 0.95rem !important;
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: #f87171 !important;
+  border: 1px solid rgba(239, 68, 68, 0.25) !important;
+  border-radius: 10px;
+  font-size: 0.86rem !important;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap !important;
+  margin: 0;
+}
+
+.btn-remove-avatar:hover {
+  background: rgba(239, 68, 68, 0.2) !important;
+  border-color: rgba(239, 68, 68, 0.45) !important;
+}
+
+.avatar-uploader-subtext {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.upload-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  width: fit-content;
+}
+
+.upload-status-badge.is-success {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.upload-status-badge.is-error {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.spin-icon {
+  animation: spin 1s linear infinite;
+  color: #818cf8;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .modal-footer {

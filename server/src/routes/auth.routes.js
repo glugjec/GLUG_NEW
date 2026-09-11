@@ -1,7 +1,10 @@
 import { Router } from 'express';
 import { body, validationResult } from 'express-validator';
 import { OAuth2Client } from 'google-auth-library';
+import jwt from 'jsonwebtoken';
 import { User } from '../models/User.js';
+import { EmailOtp } from '../models/EmailOtp.js';
+import { sendOtpMail } from '../config/mail.js';
 import { signToken, requireAuth } from '../middleware/auth.js';
 
 const router = Router();
@@ -19,8 +22,144 @@ const validate = (validations) => {
   };
 };
 
-// @route   POST /api/auth/register
-// @desc    Register a new user with email and password
+router.post(
+  '/send-otp',
+  validate([
+    body('email').trim().isEmail().withMessage('Please provide a valid email'),
+  ]),
+  async (req, res) => {
+    const { email, purpose = 'register' } = req.body;
+    const cleanEmail = email.toLowerCase().trim();
+
+    try {
+      if (purpose === 'register') {
+        const existing = await User.findOne({ email: cleanEmail });
+        if (existing) {
+          return res.status(409).json({ error: 'An account with this email already exists' });
+        }
+      }
+
+      const recentOtp = await EmailOtp.findOne({
+        email: cleanEmail,
+        purpose,
+        createdAt: { $gte: new Date(Date.now() - 45 * 1000) },
+      });
+      if (recentOtp) {
+        return res.status(429).json({ error: 'Please wait 45 seconds before requesting another code' });
+      }
+
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+      await EmailOtp.deleteMany({ email: cleanEmail, purpose });
+      await EmailOtp.create({
+        email: cleanEmail,
+        otp,
+        purpose,
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+      });
+
+      await sendOtpMail({
+        to: cleanEmail,
+        otp,
+        purpose: purpose === 'register' ? 'registration' : purpose,
+      });
+
+      return res.json({ success: true, message: 'Verification code sent' });
+    } catch (err) {
+      console.error('[Send OTP Error]', err);
+      return res.status(500).json({ error: err.message || 'Failed to send verification code' });
+    }
+  }
+);
+
+router.post(
+  '/verify-otp',
+  validate([
+    body('email').trim().isEmail().withMessage('Please provide a valid email'),
+    body('otp').trim().isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits'),
+  ]),
+  async (req, res) => {
+    const { email, otp, purpose = 'register' } = req.body;
+    const cleanEmail = email.toLowerCase().trim();
+
+    try {
+      const record = await EmailOtp.findOne({ email: cleanEmail, purpose }).sort({ createdAt: -1 });
+      if (!record) {
+        return res.status(400).json({ error: 'Verification code expired or not found' });
+      }
+
+      if (new Date() > record.expiresAt) {
+        await EmailOtp.deleteOne({ _id: record._id });
+        return res.status(400).json({ error: 'Verification code has expired' });
+      }
+
+      if (record.attempts >= 5) {
+        await EmailOtp.deleteOne({ _id: record._id });
+        return res.status(400).json({ error: 'Too many failed attempts. Please request a new code' });
+      }
+
+      if (record.otp !== otp.trim()) {
+        record.attempts += 1;
+        await record.save();
+        return res.status(400).json({ error: 'Invalid verification code' });
+      }
+
+      await EmailOtp.deleteOne({ _id: record._id });
+
+      const verificationToken = jwt.sign(
+        { email: cleanEmail, purpose, verified: true },
+        process.env.JWT_SECRET,
+        { expiresIn: '15m' }
+      );
+
+      return res.json({
+        success: true,
+        verificationToken,
+        message: 'Email verified successfully',
+      });
+    } catch (err) {
+      console.error('[Verify OTP Error]', err);
+      return res.status(500).json({ error: 'Failed to verify code' });
+    }
+  }
+);
+
+router.get('/check-username', async (req, res) => {
+  const username = (req.query.username || '').trim();
+
+  if (!username) {
+    return res.json({ available: false, message: 'Username is required' });
+  }
+
+  if (username.length < 3) {
+    return res.json({ available: false, message: 'Must be at least 3 characters' });
+  }
+
+  if (username.length > 30) {
+    return res.json({ available: false, message: 'Cannot exceed 30 characters' });
+  }
+
+  if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+    return res.json({ available: false, message: 'Only letters, numbers, and underscores allowed' });
+  }
+
+  try {
+    const escapedUsername = username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const existing = await User.findOne({
+      username: { $regex: new RegExp(`^${escapedUsername}$`, 'i') },
+    });
+
+    if (existing) {
+      return res.json({ available: false, message: 'Username already taken' });
+    }
+
+    return res.json({ available: true, message: 'Username is available' });
+  } catch (err) {
+    console.error('[Check Username Error]', err);
+    return res.status(500).json({ error: 'Failed to check username' });
+  }
+});
+
 router.post(
   '/register',
   validate([
@@ -34,12 +173,28 @@ router.post(
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
   ]),
   async (req, res) => {
-    const { username, email, password } = req.body;
+    const { username, email, password, verificationToken } = req.body;
     const cleanEmail = email.toLowerCase().trim();
 
     try {
+      if (verificationToken) {
+        try {
+          const decoded = jwt.verify(verificationToken, process.env.JWT_SECRET);
+          if (decoded.email !== cleanEmail || !decoded.verified) {
+            return res.status(400).json({ error: 'Email verification token is invalid' });
+          }
+        } catch {
+          return res.status(400).json({ error: 'Email verification expired. Please verify your email again' });
+        }
+      }
+
+      const cleanUsername = username.trim();
+      const escapedUsername = cleanUsername.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const existing = await User.findOne({
-        $or: [{ email: cleanEmail }, { username: username.trim() }],
+        $or: [
+          { email: cleanEmail },
+          { username: { $regex: new RegExp(`^${escapedUsername}$`, 'i') } },
+        ],
       });
 
       if (existing) {
@@ -56,6 +211,7 @@ router.post(
         email: cleanEmail,
         passwordHash,
         role,
+        isEmailVerified: Boolean(verificationToken),
       });
 
       const token = signToken(user);
@@ -100,6 +256,104 @@ router.post(
     } catch (err) {
       console.error('[Auth Login Error]', err);
       return res.status(500).json({ error: 'Authentication failed' });
+    }
+  }
+);
+
+router.post(
+  '/forgot-password',
+  validate([
+    body('email').trim().isEmail().withMessage('Please provide a valid email'),
+  ]),
+  async (req, res) => {
+    const { email } = req.body;
+    const cleanEmail = email.toLowerCase().trim();
+
+    try {
+      const user = await User.findOne({ email: cleanEmail });
+      if (!user) {
+        return res.status(404).json({ error: 'No account registered with this email address' });
+      }
+
+      const recentOtp = await EmailOtp.findOne({
+        email: cleanEmail,
+        purpose: 'reset',
+        createdAt: { $gte: new Date(Date.now() - 45 * 1000) },
+      });
+      if (recentOtp) {
+        return res.status(429).json({ error: 'Please wait 45 seconds before requesting another code' });
+      }
+
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      await EmailOtp.deleteMany({ email: cleanEmail, purpose: 'reset' });
+      await EmailOtp.create({
+        email: cleanEmail,
+        otp,
+        purpose: 'reset',
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+      });
+
+      await sendOtpMail({
+        to: cleanEmail,
+        otp,
+        purpose: 'reset',
+      });
+
+      return res.json({ success: true, message: 'Password reset code sent to your email' });
+    } catch (err) {
+      console.error('[Forgot Password Error]', err);
+      return res.status(500).json({ error: 'Failed to send password reset code' });
+    }
+  }
+);
+
+router.post(
+  '/reset-password',
+  validate([
+    body('email').trim().isEmail().withMessage('Please provide a valid email'),
+    body('otp').trim().isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits'),
+    body('newPassword').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+  ]),
+  async (req, res) => {
+    const { email, otp, newPassword } = req.body;
+    const cleanEmail = email.toLowerCase().trim();
+
+    try {
+      const record = await EmailOtp.findOne({ email: cleanEmail, purpose: 'reset' }).sort({ createdAt: -1 });
+      if (!record) {
+        return res.status(400).json({ error: 'Reset code expired or not found' });
+      }
+
+      if (new Date() > record.expiresAt) {
+        await EmailOtp.deleteOne({ _id: record._id });
+        return res.status(400).json({ error: 'Reset code has expired. Please request a new one' });
+      }
+
+      if (record.attempts >= 5) {
+        await EmailOtp.deleteOne({ _id: record._id });
+        return res.status(400).json({ error: 'Too many incorrect attempts. Please request a new code' });
+      }
+
+      if (record.otp !== otp.trim()) {
+        record.attempts += 1;
+        await record.save();
+        return res.status(400).json({ error: 'Invalid verification code' });
+      }
+
+      await EmailOtp.deleteOne({ _id: record._id });
+
+      const user = await User.findOne({ email: cleanEmail });
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      user.passwordHash = await User.hashPassword(newPassword);
+      await user.save();
+
+      return res.json({ success: true, message: 'Password reset successfully. You can now log in.' });
+    } catch (err) {
+      console.error('[Reset Password Error]', err);
+      return res.status(500).json({ error: 'Failed to reset password' });
     }
   }
 );
@@ -157,37 +411,104 @@ router.post('/google', async (req, res) => {
         user.avatar = picture;
         modified = true;
       }
-      if (modified) await user.save();
-    } else {
-      let baseUsername = (cleanEmail.split('@')[0] || 'student')
-        .replace(/[^a-zA-Z0-9_]/g, '_')
-        .slice(0, 20);
-
-      if (baseUsername.length < 3) baseUsername = `${baseUsername}_user`;
-
-      let uniqueUsername = baseUsername;
-      let counter = 1;
-      while (await User.findOne({ username: uniqueUsername })) {
-        uniqueUsername = `${baseUsername}_${counter}`;
-        counter++;
+      if (!user.isEmailVerified) {
+        user.isEmailVerified = true;
+        modified = true;
       }
+      if (modified) await user.save();
 
-      user = await User.create({
-        username: uniqueUsername,
-        email: cleanEmail,
-        googleId,
-        avatar: picture || '',
-        role: isSpecialAdmin ? 'admin' : 'student',
-      });
+      const token = signToken(user);
+      return res.json({ user: user.toJSON(), token });
     }
 
-    const token = signToken(user);
-    return res.json({ user: user.toJSON(), token });
+    const oauthToken = jwt.sign(
+      {
+        googleId,
+        email: cleanEmail,
+        picture: picture || '',
+        name: payload.name || '',
+        role: isSpecialAdmin ? 'admin' : 'student',
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '15m' }
+    );
+
+    const baseUsername = (cleanEmail.split('@')[0] || 'student')
+      .replace(/[^a-zA-Z0-9_]/g, '_')
+      .slice(0, 20);
+
+    return res.json({
+      requiresUsername: true,
+      oauthToken,
+      email: cleanEmail,
+      name: payload.name || '',
+      picture: picture || '',
+      suggestedUsername: baseUsername.length >= 3 ? baseUsername : `${baseUsername}_user`,
+    });
   } catch (err) {
     console.error('[Google Auth Error]', err);
     return res.status(401).json({ error: 'Google authentication failed: ' + (err.message || 'Invalid token') });
   }
 });
+
+router.post(
+  '/google/complete',
+  validate([
+    body('oauthToken').notEmpty().withMessage('OAuth token is required'),
+    body('username')
+      .trim()
+      .isLength({ min: 3, max: 30 })
+      .withMessage('Username must be between 3 and 30 characters')
+      .matches(/^[a-zA-Z0-9_]+$/)
+      .withMessage('Username can only contain letters, numbers, and underscores'),
+  ]),
+  async (req, res) => {
+    const { oauthToken, username } = req.body;
+
+    let payload;
+    try {
+      payload = jwt.verify(oauthToken, process.env.JWT_SECRET);
+    } catch {
+      return res.status(400).json({ error: 'OAuth session has expired. Please sign in with Google again' });
+    }
+
+    const { googleId, email, picture, role } = payload;
+    const cleanEmail = email.toLowerCase().trim();
+    const cleanUsername = username.trim();
+
+    try {
+      const escapedUsername = cleanUsername.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const existing = await User.findOne({
+        $or: [
+          { email: cleanEmail },
+          { username: { $regex: new RegExp(`^${escapedUsername}$`, 'i') } },
+        ],
+      });
+
+      if (existing) {
+        if (existing.email === cleanEmail) {
+          return res.status(409).json({ error: 'An account with this email already exists' });
+        }
+        return res.status(409).json({ error: 'Username already taken' });
+      }
+
+      const user = await User.create({
+        username: cleanUsername,
+        email: cleanEmail,
+        googleId,
+        avatar: picture || '',
+        role: role || (ADMIN_EMAILS.includes(cleanEmail) ? 'admin' : 'student'),
+        isEmailVerified: true,
+      });
+
+      const token = signToken(user);
+      return res.status(201).json({ user: user.toJSON(), token });
+    } catch (err) {
+      console.error('[Google Complete Error]', err);
+      return res.status(500).json({ error: 'Failed to complete Google sign up' });
+    }
+  }
+);
 
 // @route   GET /api/auth/me
 // @desc    Get current user profile
@@ -214,12 +535,16 @@ router.put('/me', requireAuth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    if (typeof username === 'string' && username.trim() && username.trim() !== user.username) {
+    if (typeof username === 'string' && username.trim() && username.trim().toLowerCase() !== user.username.toLowerCase()) {
       const cleanUsername = username.trim();
       if (!/^[a-zA-Z0-9_]{3,30}$/.test(cleanUsername)) {
         return res.status(400).json({ error: 'Username must be 3-30 characters (letters, numbers, underscore)' });
       }
-      const existing = await User.findOne({ username: cleanUsername, _id: { $ne: user._id } });
+      const escapedUsername = cleanUsername.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const existing = await User.findOne({
+        username: { $regex: new RegExp(`^${escapedUsername}$`, 'i') },
+        _id: { $ne: user._id },
+      });
       if (existing) {
         return res.status(409).json({ error: 'Username already taken' });
       }

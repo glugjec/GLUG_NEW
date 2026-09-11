@@ -12,6 +12,7 @@ export default function Header({
     <header className="header">
       <div className="header-left">
         <div className="logo">
+          <img src="/logo.png" alt="GLUG" className="compiler-logo-img" />
           <span className="logo-text">GLUG Compiler</span>
         </div>
 

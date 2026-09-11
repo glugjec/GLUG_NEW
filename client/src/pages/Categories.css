@@ -16,98 +16,66 @@
 }
 
 .cat-hero-banner {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: radial-gradient(circle at 80% 50%, #1e1b4b 0%, #0d1222 65%, #080c18 100%);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 2rem 2.5rem;
   position: relative;
   overflow: hidden;
+  background: #080c18;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2.5rem 2.75rem;
+  display: flex;
+  align-items: center;
   box-shadow: var(--shadow-card);
+  min-height: 250px;
 }
 
 .cat-hero-text {
-  max-width: 520px;
+  position: relative;
   z-index: 2;
+  max-width: 480px;
 }
 
 .cat-hero-title {
-  font-size: 2.2rem;
+  font-size: 2.5rem;
   font-weight: 800;
   color: #f8fafc;
   letter-spacing: -0.03em;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.15;
 }
 
 .cat-hero-desc {
-  font-size: 1rem;
+  font-size: 0.96rem;
   color: #94a3b8;
   line-height: 1.55;
+  max-width: 420px;
 }
 
-.cat-hero-artwork {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  z-index: 2;
-  position: relative;
-}
-
-.cat-signpost {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  position: relative;
-  padding: 0.5rem 0;
-}
-
-.signpost-pole {
+.cat-hero-banner-bg {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 6px;
-  background: #475569;
-  border-radius: 3px;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
   z-index: 1;
 }
 
-.signpost-plate {
-  position: relative;
+.cat-hero-banner-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(8, 12, 24, 0.78) 0%, rgba(8, 12, 24, 0.45) 40%, rgba(8, 12, 24, 0.05) 65%, transparent 85%);
   z-index: 2;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  color: #ffffff;
-  padding: 0.2rem 0.75rem;
-  border-radius: 4px;
-  text-align: center;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
 }
 
-.signpost-blue { background: #2563eb; transform: rotate(-3deg); }
-.signpost-gold { background: #d97706; transform: rotate(2deg); }
-.signpost-green { background: #059669; transform: rotate(-2deg); }
-.signpost-purple { background: #7c3aed; transform: rotate(3deg); }
-
-.cat-tux-svg {
-  width: 90px;
-  height: 100px;
-  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.4));
-}
-
-.cat-banner-quote {
-  display: flex;
-  flex-direction: column;
-  font-family: 'Caveat', cursive, -apple-system, sans-serif;
-  font-size: 1.05rem;
-  line-height: 1.25;
-  color: #cbd5e1;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+.cat-hero-banner-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: right center;
+  display: block;
 }
 
 .cat-cards-grid {
@@ -403,6 +371,21 @@
 @media (max-width: 1024px) {
   .cat-page-container {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .cat-hero-banner {
+    padding: 1.75rem;
+    min-height: auto;
+  }
+
+  .cat-hero-banner-bg {
+    opacity: 0.25;
+  }
+
+  .cat-hero-title {
+    font-size: 2rem;
   }
 }
 

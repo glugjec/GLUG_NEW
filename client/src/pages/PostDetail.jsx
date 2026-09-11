@@ -225,6 +225,11 @@ export default function PostDetail() {
   }
 
   const handlePostVote = async (delta) => {
+    if (!user) {
+      showToast('Please log in to vote')
+      navigate('/login')
+      return
+    }
     if (!post) return
     const currentVote = post.userVote || 0
     const nextVote = currentVote === delta ? 0 : delta
@@ -240,8 +245,9 @@ export default function PostDetail() {
           }))
           return
         }
-      } catch {
-        // silent fail
+      } catch (err) {
+        showToast(err.message || 'Failed to register vote')
+        return
       }
     }
 
@@ -254,6 +260,11 @@ export default function PostDetail() {
   }
 
   const handleCommentVote = (commentId, delta) => {
+    if (!user) {
+      showToast('Please log in to vote')
+      navigate('/login')
+      return
+    }
     setComments((prev) =>
       prev.map((c) => {
         if (c.id === commentId || c._id === commentId) {
@@ -296,6 +307,11 @@ export default function PostDetail() {
   }
 
   const handleAddComment = async (text, parentId = null) => {
+    if (!user) {
+      showToast('Please log in to reply')
+      navigate('/login')
+      return
+    }
     if (!text.trim()) return
     setSubmitting(true)
     const authorUsername = user ? user.username : 'student@glug'
@@ -420,7 +436,9 @@ export default function PostDetail() {
                 />
                 <div className="author-text-details">
                   <div className="author-name-badge-row">
-                    <span className="author-username">{authorName}</span>
+                    <Link to={`/profile/${encodeURIComponent(authorName)}`} className="author-username">
+                      {authorName}
+                    </Link>
                     <span className="op-badge">Original Poster</span>
                   </div>
                   <span className="author-time">{formattedCreatedTime}</span>
@@ -569,7 +587,9 @@ export default function PostDetail() {
                             className="reply-avatar"
                           />
                           <div className="reply-user-info">
-                            <span className="reply-username">{rAuthor}</span>
+                            <Link to={`/profile/${encodeURIComponent(rAuthor)}`} className="reply-username">
+                              {rAuthor}
+                            </Link>
                             <span
                               className={`role-badge ${
                                 rRole.toLowerCase().includes('moderator')
@@ -612,9 +632,14 @@ export default function PostDetail() {
                         <button
                           type="button"
                           className="btn-reply-action"
-                          onClick={() =>
+                          onClick={() => {
+                            if (!user) {
+                              showToast('Please log in to reply')
+                              navigate('/login')
+                              return
+                            }
                             setActiveReplyId(activeReplyId === reply.id ? null : reply.id)
-                          }
+                          }}
                         >
                           <CornerDownRight size={14} />
                           <span>Reply</span>
@@ -657,94 +682,116 @@ export default function PostDetail() {
               </div>
             )}
 
-            <div className="reply-composer-card">
-              <div className="composer-input-area">
-                <UserAvatar
-                  src={user?.avatar}
-                  username={user ? user.username : 'student'}
-                  size={38}
-                  className="composer-avatar"
-                />
-                <textarea
-                  ref={textareaRef}
-                  className="composer-textarea"
-                  placeholder="Write a reply..."
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  rows={2}
-                />
-              </div>
-
-              <div className="composer-toolbar-bottom">
-                <div className="composer-tools-left">
-                  <button
-                    type="button"
-                    className="tool-icon-btn"
-                    title="Insert Image"
-                    onClick={() => insertFormat('![alt](', ')')}
-                  >
-                    <ImageIcon size={15} />
-                  </button>
-                  <button
-                    type="button"
-                    className="tool-icon-btn"
-                    title="Bold"
-                    onClick={() => insertFormat('**', '**')}
-                  >
-                    <Bold size={15} />
-                  </button>
-                  <button
-                    type="button"
-                    className="tool-icon-btn"
-                    title="Italic"
-                    onClick={() => insertFormat('*', '*')}
-                  >
-                    <Italic size={15} />
-                  </button>
-                  <button
-                    type="button"
-                    className="tool-icon-btn"
-                    title="Code"
-                    onClick={() => insertFormat('`', '`')}
-                  >
-                    <Code size={15} />
-                  </button>
-                  <button
-                    type="button"
-                    className="tool-icon-btn"
-                    title="Insert Link"
-                    onClick={() => insertFormat('[', '](url)')}
-                  >
-                    <Link2 size={15} />
-                  </button>
-                  <button
-                    type="button"
-                    className="tool-icon-btn"
-                    title="Ordered List"
-                    onClick={() => insertFormat('\n1. ')}
-                  >
-                    <ListOrdered size={15} />
-                  </button>
-                  <button
-                    type="button"
-                    className="tool-icon-btn"
-                    title="Bullet List"
-                    onClick={() => insertFormat('\n• ')}
-                  >
-                    <List size={15} />
-                  </button>
+            {user ? (
+              <div className="reply-composer-card">
+                <div className="composer-input-area">
+                  <UserAvatar
+                    src={user?.avatar}
+                    username={user.username}
+                    size={38}
+                    className="composer-avatar"
+                  />
+                  <textarea
+                    ref={textareaRef}
+                    className="composer-textarea"
+                    placeholder="Write a reply..."
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    rows={2}
+                  />
                 </div>
 
-                <button
-                  type="button"
-                  className="btn-post-reply"
-                  disabled={!replyText.trim() || submitting}
-                  onClick={() => handleAddComment(replyText)}
-                >
-                  {submitting ? 'Posting…' : 'Post Reply'}
-                </button>
+                <div className="composer-toolbar-bottom">
+                  <div className="composer-tools-left">
+                    <button
+                      type="button"
+                      className="tool-icon-btn"
+                      title="Insert Image"
+                      onClick={() => insertFormat('![alt](', ')')}
+                    >
+                      <ImageIcon size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      className="tool-icon-btn"
+                      title="Bold"
+                      onClick={() => insertFormat('**', '**')}
+                    >
+                      <Bold size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      className="tool-icon-btn"
+                      title="Italic"
+                      onClick={() => insertFormat('*', '*')}
+                    >
+                      <Italic size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      className="tool-icon-btn"
+                      title="Code"
+                      onClick={() => insertFormat('`', '`')}
+                    >
+                      <Code size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      className="tool-icon-btn"
+                      title="Insert Link"
+                      onClick={() => insertFormat('[', '](url)')}
+                    >
+                      <Link2 size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      className="tool-icon-btn"
+                      title="Ordered List"
+                      onClick={() => insertFormat('\n1. ')}
+                    >
+                      <ListOrdered size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      className="tool-icon-btn"
+                      title="Bullet List"
+                      onClick={() => insertFormat('\n• ')}
+                    >
+                      <List size={15} />
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn-post-reply"
+                    disabled={!replyText.trim() || submitting}
+                    onClick={() => handleAddComment(replyText)}
+                  >
+                    {submitting ? 'Posting…' : 'Post Reply'}
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="reply-composer-card reply-login-gate">
+                <div className="login-gate-left">
+                  <div className="login-gate-icon">
+                    <MessageSquare size={22} />
+                  </div>
+                  <div className="login-gate-text">
+                    <h4>Join the Discussion</h4>
+                    <p>Log in or register to post a reply and contribute to this discussion.</p>
+                  </div>
+                </div>
+                <div className="login-gate-actions">
+                  <Link to="/login" className="btn-post-reply login-gate-btn">
+                    Log In to Reply
+                  </Link>
+                  <Link to="/register" className="login-gate-secondary-btn">
+                    Register
+                  </Link>
+                </div>
+              </div>
+            )}
           </section>
         </div>
 

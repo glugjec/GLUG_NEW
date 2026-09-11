@@ -119,6 +119,13 @@
   user-select: none;
 }
 
+.compiler-scoped-container .compiler-logo-img {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
 .compiler-scoped-container .logo-icon {
   width: 32px;
   height: 32px;

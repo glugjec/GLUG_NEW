@@ -77,7 +77,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onToggleMobil
       <aside className={`sidebar-v2${collapsed ? ' is-collapsed' : ''}${mobileOpen ? ' is-mobile-open' : ''}`}>
         <div className="sb-header">
           <Link to="/" className="sb-brand">
-            <div className="sb-brand-logo">G</div>
+            <img src="/logo.png" alt="GLUG" className="sb-brand-logo" />
             <div className="sb-brand-meta">
               <span className="sb-brand-title">GLUG</span>
               <span className="sb-brand-sub">Learn · Share · Grow</span>

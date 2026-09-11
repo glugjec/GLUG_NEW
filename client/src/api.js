@@ -13,6 +13,9 @@ client.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+    }
     return config;
   },
   (error) => Promise.reject(error)
@@ -40,7 +43,13 @@ export const api = {
 export const authApi = {
   register: (data) => client.post('/auth/register', data),
   login: (data) => client.post('/auth/login', data),
+  sendOtp: (data) => client.post('/auth/send-otp', data),
+  verifyOtp: (data) => client.post('/auth/verify-otp', data),
+  checkUsername: (username) => client.get('/auth/check-username', { params: { username } }),
   googleLogin: (credential) => client.post('/auth/google', { credential }),
+  completeGoogleAuth: (data) => client.post('/auth/google/complete', data),
+  forgotPassword: (data) => client.post('/auth/forgot-password', data),
+  resetPassword: (data) => client.post('/auth/reset-password', data),
   getMe: () => client.get('/auth/me'),
   updateProfile: (data) => client.put('/auth/me', data),
 };
@@ -83,5 +92,19 @@ export const adminApi = {
   deleteComment: (id) => client.delete(`/admin/comments/${id}`),
 };
 
+export const uploadApi = {
+  uploadAvatar: (file) => {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    return client.post('/upload/avatar', formData);
+  },
+  uploadImage: (file) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    return client.post('/upload', formData);
+  },
+};
+
 export default api;
+
 

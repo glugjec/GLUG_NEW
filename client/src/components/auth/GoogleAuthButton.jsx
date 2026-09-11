@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext.jsx'
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 
-export default function GoogleAuthButton({ onError }) {
+export default function GoogleAuthButton({ onError, onRequiresUsername }) {
   const { login } = useAuth()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
@@ -15,6 +15,10 @@ export default function GoogleAuthButton({ onError }) {
     setLoading(true)
     try {
       const data = await authApi.googleLogin(credentialResponse.credential)
+      if (data?.requiresUsername && onRequiresUsername) {
+        onRequiresUsername(data)
+        return
+      }
       login(data.user, data.token)
       navigate('/')
     } catch (err) {
