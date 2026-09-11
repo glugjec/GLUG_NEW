@@ -290,57 +290,18 @@ function cleanPreviewText(text) {
 }
 
 function PostTags({ tags }) {
-  const containerRef = useRef(null)
-  const [maxVisible, setMaxVisible] = useState(tags?.length || 1)
-
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el || !tags || tags.length === 0) return
-
-    const checkFit = () => {
-      const parent = el.parentElement
-      if (!parent) return
-      const titleEl = parent.querySelector('.forum-post-title')
-      const totalWidth = parent.clientWidth
-      const titleWidth = titleEl ? Math.min(titleEl.scrollWidth, totalWidth * 0.6) : 0
-      const available = Math.max(60, totalWidth - titleWidth - 16)
-
-      let currentWidth = 0
-      let count = 0
-      for (let i = 0; i < tags.length; i++) {
-        const tagText = tags[i] || ''
-        const tagW = Math.min(115, Math.max(45, tagText.length * 7.2 + 22))
-        const badgeW = i < tags.length - 1 ? 36 : 0
-        if (currentWidth + tagW + badgeW <= available) {
-          currentWidth += tagW
-          count++
-        } else {
-          break
-        }
-      }
-      setMaxVisible(Math.max(1, count))
-    }
-
-    checkFit()
-    const ro = new ResizeObserver(checkFit)
-    if (el.parentElement) ro.observe(el.parentElement)
-    return () => ro.disconnect()
-  }, [tags])
-
   if (!tags || tags.length === 0) return null
 
-  const visible = tags.slice(0, maxVisible)
-  const hiddenCount = tags.length - maxVisible
+  const firstTag = tags[0]
+  const hiddenCount = tags.length - 1
 
   return (
-    <div ref={containerRef} className="forum-post-tags">
-      {visible.map((t) => (
-        <span key={t} className="forum-post-tag" title={t}>
-          {t}
-        </span>
-      ))}
+    <div className="forum-post-tags">
+      <span className="forum-post-tag" title={firstTag}>
+        {firstTag}
+      </span>
       {hiddenCount > 0 && (
-        <span className="forum-post-tag tag-more-count" title={tags.slice(maxVisible).join(', ')}>
+        <span className="forum-post-tag tag-more-count" title={tags.slice(1).join(', ')}>
           +{hiddenCount}
         </span>
       )}

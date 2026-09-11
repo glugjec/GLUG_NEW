@@ -245,66 +245,29 @@ function renderDiscussionAvatar(item) {
 }
 
 function HomeDiscTags({ tags }) {
-  const containerRef = useRef(null)
-  const [maxVisible, setMaxVisible] = useState(tags?.length || 1)
-
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el || !tags || tags.length === 0) return
-
-    const checkFit = () => {
-      const parent = el.parentElement
-      if (!parent) return
-      const titleEl = parent.querySelector('.disc-title')
-      const totalWidth = parent.clientWidth
-      const titleWidth = titleEl ? titleEl.offsetWidth : 0
-      const available = totalWidth - titleWidth - 16
-
-      let currentWidth = 0
-      let count = 0
-      for (let i = 0; i < tags.length; i++) {
-        const label = tags[i]?.label || ''
-        const tagW = Math.min(115, Math.max(45, label.length * 7.2 + 22))
-        const badgeW = i < tags.length - 1 ? 36 : 0
-        if (currentWidth + tagW + badgeW <= available) {
-          currentWidth += tagW
-          count++
-        } else {
-          break
-        }
-      }
-      setMaxVisible(Math.max(1, count))
-    }
-
-    checkFit()
-    const ro = new ResizeObserver(checkFit)
-    if (el.parentElement) ro.observe(el.parentElement)
-    return () => ro.disconnect()
-  }, [tags])
-
   if (!tags || tags.length === 0) return null
 
-  const visible = tags.slice(0, maxVisible)
-  const hiddenCount = tags.length - maxVisible
+  const firstTag = tags[0]
+  const hiddenCount = tags.length - 1
 
   return (
-    <div ref={containerRef} className="disc-tags">
-      {visible.map((tag) => (
-        <span
-          key={tag.label}
-          className="disc-tag"
-          style={{
-            backgroundColor: `${tag.color}1f`,
-            color: tag.color,
-            borderColor: `${tag.color}35`
-          }}
-          title={tag.label}
-        >
-          {tag.label}
-        </span>
-      ))}
+    <div className="disc-tags">
+      <span
+        className="disc-tag"
+        style={{
+          backgroundColor: `${firstTag.color}1f`,
+          color: firstTag.color,
+          borderColor: `${firstTag.color}35`
+        }}
+        title={firstTag.label}
+      >
+        {firstTag.label}
+      </span>
       {hiddenCount > 0 && (
-        <span className="disc-tag tag-more-count" title={tags.slice(maxVisible).map((t) => t.label).join(', ')}>
+        <span
+          className="disc-tag tag-more-count"
+          title={tags.slice(1).map((t) => t.label).join(', ')}
+        >
           +{hiddenCount}
         </span>
       )}
@@ -444,11 +407,11 @@ export default function Home() {
                   <div className="disc-metrics">
                     <span className="disc-metric">
                       <MessageSquare size={14} />
-                      {item.replies} replies
+                      {item.replies} {item.replies === 1 ? 'reply' : 'replies'}
                     </span>
                     <span className="disc-metric">
                       <Eye size={14} />
-                      {item.views} views
+                      {item.views} {item.views === 1 ? 'view' : 'views'}
                     </span>
                   </div>
                 </div>
