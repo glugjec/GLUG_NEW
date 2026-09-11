@@ -3,6 +3,7 @@ import { User } from "../models/User.js";
 import { Post } from "../models/Post.js";
 import { Comment } from "../models/Comment.js";
 import { Vote } from "../models/Vote.js";
+import { Bookmark } from "../models/Bookmark.js";
 import { Resource } from "../models/Resource.js";
 import { requireAuth, requireAdmin } from "../middleware/auth.js";
 
@@ -302,6 +303,7 @@ router.delete("/posts/:id", async (req, res) => {
     await Promise.all([
       Comment.deleteMany({ post: post._id }),
       Vote.deleteMany({ post: post._id }),
+      Bookmark.deleteMany({ post: post._id }),
       Post.findByIdAndDelete(post._id),
     ]);
 

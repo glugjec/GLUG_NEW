@@ -301,8 +301,8 @@ function PostTags({ tags }) {
       if (!parent) return
       const titleEl = parent.querySelector('.forum-post-title')
       const totalWidth = parent.clientWidth
-      const titleWidth = titleEl ? titleEl.offsetWidth : 0
-      const available = totalWidth - titleWidth - 16
+      const titleWidth = titleEl ? Math.min(titleEl.scrollWidth, totalWidth * 0.6) : 0
+      const available = Math.max(60, totalWidth - titleWidth - 16)
 
       let currentWidth = 0
       let count = 0
@@ -373,6 +373,23 @@ export default function Forum() {
         if (catToFetch) params.category = catToFetch
         if (activeTab === 'latest') params.sort = 'new'
         if (activeTab === 'trending') params.sort = 'hot'
+        if (activeTab === 'unanswered') params.tab = 'unanswered'
+        if (activeTab === 'my-posts') {
+          if (!user) {
+            setPosts([])
+            setLoading(false)
+            return
+          }
+          params.tab = 'my-posts'
+        }
+        if (activeTab === 'bookmarks') {
+          if (!user) {
+            setPosts([])
+            setLoading(false)
+            return
+          }
+          params.tab = 'bookmarks'
+        }
 
         const res = await postsApi.list(params)
         if (res?.posts && res.posts.length > 0) {
@@ -391,6 +408,7 @@ export default function Forum() {
               avatar: p.author?.avatar
             },
             userVote: p.userVote || 0,
+            isBookmarked: !!p.isBookmarked,
             timeAgo: formatRelativeTime(p.createdAt),
             iconType: ['tux', 'terminal', 'code', 'settings', 'screen'][idx % 5],
             iconBg: ['#422006', '#022c22', '#3b0764', '#1e3a8a', '#1e1b4b'][idx % 5],
@@ -403,12 +421,16 @@ export default function Forum() {
           setPosts([])
         }
       } catch {
-        setPosts(DEFAULT_POSTS)
+        if (!catToFetch && activeTab === 'latest') {
+          setPosts(DEFAULT_POSTS)
+        } else {
+          setPosts([])
+        }
       } finally {
         setLoading(false)
       }
     },
-    [activeTab]
+    [activeTab, user]
   )
 
   const handleClearCategory = useCallback(() => {
@@ -619,16 +641,89 @@ export default function Forum() {
             </div>
           ) : posts.length === 0 ? (
             <div className="forum-empty-card">
-              <MessageSquare size={32} className="forum-empty-icon" />
-              <h3>No discussions found</h3>
-              <p>Be the first to start a conversation in this category!</p>
-              <button
-                type="button"
-                className="forum-empty-new-btn"
-                onClick={() => handleOpenNewPost(selectedCategory)}
-              >
-                <Plus size={16} /> New Post
-              </button>
+              {activeTab === 'bookmarks' ? (
+                !user ? (
+                  <>
+                    <Bookmark size={32} className="forum-empty-icon" />
+                    <h3>Sign in to view bookmarks</h3>
+                    <p>Save interesting discussions to easily find and review them later.</p>
+                    <button
+                      type="button"
+                      className="forum-empty-new-btn"
+                      onClick={() => navigate('/login')}
+                    >
+                      Sign In
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Bookmark size={32} className="forum-empty-icon" />
+                    <h3>No bookmarks yet</h3>
+                    <p>Bookmark discussions across the forum to revisit them here anytime.</p>
+                    <button
+                      type="button"
+                      className="forum-empty-new-btn"
+                      onClick={() => setActiveTab('latest')}
+                    >
+                      Explore Discussions
+                    </button>
+                  </>
+                )
+              ) : activeTab === 'my-posts' ? (
+                !user ? (
+                  <>
+                    <User size={32} className="forum-empty-icon" />
+                    <h3>Sign in to view your posts</h3>
+                    <p>Track discussions and questions you have shared with the community.</p>
+                    <button
+                      type="button"
+                      className="forum-empty-new-btn"
+                      onClick={() => navigate('/login')}
+                    >
+                      Sign In
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <MessageSquare size={32} className="forum-empty-icon" />
+                    <h3>No discussions yet</h3>
+                    <p>You haven't started any discussions in this section yet.</p>
+                    <button
+                      type="button"
+                      className="forum-empty-new-btn"
+                      onClick={() => handleOpenNewPost(selectedCategory)}
+                    >
+                      <Plus size={16} /> New Post
+                    </button>
+                  </>
+                )
+              ) : activeTab === 'unanswered' ? (
+                <>
+                  <MessageSquare size={32} className="forum-empty-icon" />
+                  <h3>No unanswered discussions</h3>
+                  <p>All questions in this section have received at least one response.</p>
+                  <button
+                    type="button"
+                    className="forum-empty-new-btn"
+                    onClick={() => setActiveTab('latest')}
+                  >
+                    View All Discussions
+                  </button>
+                </>
+              ) : (
+                <>
+                  <MessageSquare size={32} className="forum-empty-icon" />
+                  <h3>No discussions found</h3>
+                  <p>Be the first to start a conversation in this category!</p>
+                  <button
+                    type="button"
+                    className="forum-empty-new-btn"
+                    onClick={() => handleOpenNewPost(selectedCategory)}
+                  >
+                    <Plus size={16} /> New Post
+                  </button>
+                </>
+              )}
             </div>
           ) : (
             posts.map((post) => (

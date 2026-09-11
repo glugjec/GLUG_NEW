@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { Post } from '../models/Post.js';
 import { Comment } from '../models/Comment.js';
 import { Vote } from '../models/Vote.js';
+import { Bookmark } from '../models/Bookmark.js';
 import { requireAuth, optionalAuth, requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
@@ -16,7 +17,7 @@ router.get('/', optionalAuth, async (req, res) => {
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 15));
     const skip = (page - 1) * limit;
 
-    const { category, tag, sort = 'hot', search } = req.query;
+    const { category, tag, sort = 'hot', search, tab } = req.query;
 
     const filter = {};
     if (category && category !== 'All' && category !== 'all') {
@@ -32,6 +33,28 @@ router.get('/', optionalAuth, async (req, res) => {
       ];
     }
 
+    if (tab === 'unanswered') {
+      filter.commentCount = { $lte: 0 };
+    } else if (tab === 'my-posts') {
+      if (!req.user) {
+        return res.json({
+          posts: [],
+          pagination: { total: 0, page, limit, totalPages: 1, hasMore: false },
+        });
+      }
+      filter.author = req.user.id;
+    } else if (tab === 'bookmarks') {
+      if (!req.user) {
+        return res.json({
+          posts: [],
+          pagination: { total: 0, page, limit, totalPages: 1, hasMore: false },
+        });
+      }
+      const bookmarks = await Bookmark.find({ user: req.user.id }).select('post').lean();
+      const bookmarkedPostIds = bookmarks.map((b) => b.post);
+      filter._id = { $in: bookmarkedPostIds };
+    }
+
     let sortCriteria = { isPinned: -1 };
     if (sort === 'new') {
       sortCriteria.createdAt = -1;
@@ -39,7 +62,6 @@ router.get('/', optionalAuth, async (req, res) => {
       sortCriteria.voteScore = -1;
       sortCriteria.createdAt = -1;
     } else {
-      // 'hot' default
       sortCriteria.voteScore = -1;
       sortCriteria.createdAt = -1;
     }
@@ -55,15 +77,25 @@ router.get('/', optionalAuth, async (req, res) => {
     ]);
 
     let userVoteMap = new Map();
+    let userBookmarkSet = new Set();
     if (req.user && posts.length > 0) {
       const postIds = posts.map((p) => p._id);
-      const userVotes = await Vote.find({
-        user: req.user.id,
-        post: { $in: postIds },
-      }).lean();
+      const [userVotes, userBookmarks] = await Promise.all([
+        Vote.find({
+          user: req.user.id,
+          post: { $in: postIds },
+        }).lean(),
+        Bookmark.find({
+          user: req.user.id,
+          post: { $in: postIds },
+        }).lean(),
+      ]);
 
       userVotes.forEach((v) => {
         userVoteMap.set(v.post.toString(), v.value);
+      });
+      userBookmarks.forEach((b) => {
+        userBookmarkSet.add(b.post.toString());
       });
     }
 
@@ -89,6 +121,7 @@ router.get('/', optionalAuth, async (req, res) => {
           }
         : { username: 'deleted', role: 'student' },
       userVote: userVoteMap.get(p._id.toString()) || 0,
+      isBookmarked: userBookmarkSet.has(p._id.toString()),
     }));
 
     return res.json({
@@ -125,9 +158,14 @@ router.get('/:id', optionalAuth, async (req, res) => {
       .lean();
 
     let userVote = 0;
+    let isBookmarked = false;
     if (req.user) {
-      const vote = await Vote.findOne({ user: req.user.id, post: post._id });
+      const [vote, bookmark] = await Promise.all([
+        Vote.findOne({ user: req.user.id, post: post._id }).lean(),
+        Bookmark.findOne({ user: req.user.id, post: post._id }).lean(),
+      ]);
       if (vote) userVote = vote.value;
+      if (bookmark) isBookmarked = true;
     }
 
     const viewerKey = `${req.user?.id || req.ip || 'anon'}:${req.params.id}`;
@@ -172,6 +210,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
           }
         : { username: 'deleted', role: 'student' },
       userVote,
+      isBookmarked,
     };
 
     const formattedComments = comments.map((c) => {
@@ -293,12 +332,41 @@ router.delete('/:id', requireAuth, async (req, res) => {
       Post.findByIdAndDelete(post._id),
       Comment.deleteMany({ post: post._id }),
       Vote.deleteMany({ post: post._id }),
+      Bookmark.deleteMany({ post: post._id }),
     ]);
 
     return res.json({ message: 'Post and associated comments deleted successfully' });
   } catch (err) {
     console.error('[Delete Post Error]', err);
     return res.status(500).json({ error: 'Failed to delete post' });
+  }
+});
+
+router.post('/:id/bookmark', requireAuth, async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+
+    const existing = await Bookmark.findOne({
+      user: req.user.id,
+      post: post._id,
+    });
+
+    if (existing) {
+      await Bookmark.deleteOne({ _id: existing._id });
+      return res.json({ bookmarked: false, message: 'Bookmark removed' });
+    } else {
+      await Bookmark.create({
+        user: req.user.id,
+        post: post._id,
+      });
+      return res.json({ bookmarked: true, message: 'Saved to bookmarks' });
+    }
+  } catch (err) {
+    console.error('[Bookmark Error]', err);
+    return res.status(500).json({ error: 'Failed to update bookmark' });
   }
 });
 

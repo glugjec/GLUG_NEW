@@ -61,6 +61,7 @@ export const postsApi = {
   update: (id, data) => client.put(`/posts/${id}`, data),
   delete: (id) => client.delete(`/posts/${id}`),
   vote: (id, value) => client.post(`/posts/${id}/vote`, { value }),
+  bookmark: (id) => client.post(`/posts/${id}/bookmark`),
   pin: (id) => client.put(`/posts/${id}/pin`),
   addComment: (id, data) => client.post(`/posts/${id}/comments`, data),
   deleteComment: (postId, commentId) => client.delete(`/posts/${postId}/comments/${commentId}`),

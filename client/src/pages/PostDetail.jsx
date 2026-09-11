@@ -504,6 +504,7 @@ export default function PostDetail() {
       if (res && res.post) {
         setPost(res.post)
         setComments(res.comments || [])
+        setBookmarked(!!res.post.isBookmarked)
       } else {
         setPost(DEMO_DISCUSSION)
         setComments(DEMO_DISCUSSION.comments)
@@ -703,6 +704,26 @@ export default function PostDetail() {
     }
   }
 
+  const handleToggleBookmark = async () => {
+    if (!user) {
+      showToast('Please log in to bookmark')
+      navigate('/login')
+      return
+    }
+    const next = !bookmarked
+    setBookmarked(next)
+    showToast(next ? 'Saved to bookmarks!' : 'Bookmark removed')
+    try {
+      const res = await postsApi.bookmark(post.id || post._id)
+      if (res && typeof res.bookmarked === 'boolean') {
+        setBookmarked(res.bookmarked)
+      }
+    } catch {
+      setBookmarked(!next)
+      showToast('Failed to update bookmark')
+    }
+  }
+
   const handleAddComment = async (text, parentId = null) => {
     if (!user) {
       showToast('Please log in to reply')
@@ -889,11 +910,8 @@ export default function PostDetail() {
                 <button
                   type="button"
                   className={`icon-action-btn ${bookmarked ? 'bookmarked' : ''}`}
-                  onClick={() => {
-                    setBookmarked(!bookmarked)
-                    showToast(bookmarked ? 'Bookmark removed' : 'Saved to bookmarks!')
-                  }}
-                  title="Bookmark"
+                  onClick={handleToggleBookmark}
+                  title={bookmarked ? 'Remove Bookmark' : 'Bookmark'}
                 >
                   <Bookmark size={18} fill={bookmarked ? '#3b82f6' : 'none'} />
                 </button>
