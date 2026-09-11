@@ -1,11 +1,11 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { postsApi, uploadApi } from '../api.js'
+import { postsApi } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { avatarInitials, avatarColor } from '../components/common/avatar.js'
 import { formatRelativeTime } from '../utils/timeAgo.js'
-import { compressPostImage } from '../utils/imageCompressor.js'
 import MarkdownRenderer from '../components/common/MarkdownRenderer.jsx'
+import RichTextEditor from '../components/common/RichTextEditor.jsx'
 import {
   Plus,
   ArrowUp,
@@ -25,17 +25,6 @@ import {
   ArrowRight,
   Send,
   X,
-  Bold,
-  Italic,
-  Code,
-  Link2,
-  ListOrdered,
-  List,
-  Quote,
-  Image as ImageIcon,
-  Edit3,
-  Eye as EyeIcon,
-  UploadCloud,
   Loader2,
   Sparkles,
   Tag,
@@ -365,90 +354,7 @@ export default function Forum() {
   const [newTags, setNewTags] = useState('')
   const [newBody, setNewBody] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [activeEditorTab, setActiveEditorTab] = useState('write')
-  const [uploadingImage, setUploadingImage] = useState(false)
   const [uploadError, setUploadError] = useState('')
-  const [isDragging, setIsDragging] = useState(false)
-
-  const textareaRef = useRef(null)
-  const fileInputRef = useRef(null)
-
-  const insertFormat = (prefix, suffix = '') => {
-    const el = textareaRef.current
-    if (!el) return
-    const start = el.selectionStart || 0
-    const end = el.selectionEnd || 0
-    const val = newBody
-    const selected = val.substring(start, end)
-    const replacement = prefix + (selected || 'text') + suffix
-    const nextVal = val.substring(0, start) + replacement + val.substring(end)
-    setNewBody(nextVal)
-    setTimeout(() => {
-      el.focus()
-      el.setSelectionRange(start + prefix.length, start + prefix.length + (selected ? selected.length : 4))
-    }, 10)
-  }
-
-  const uploadImageFile = async (file) => {
-    if (!file) return
-    if (!user) {
-      setUploadError('Please log in to upload images')
-      return
-    }
-    if (!file.type.startsWith('image/')) {
-      setUploadError('Only image files are allowed')
-      return
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setUploadError('Image exceeds 5MB limit')
-      return
-    }
-    setUploadingImage(true)
-    setUploadError('')
-    try {
-      const compressed = await compressPostImage(file, 1024 * 1024)
-      const res = await uploadApi.uploadImage(compressed)
-      if (res?.url) {
-        const alt = file.name.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_') || 'image'
-        const el = textareaRef.current
-        const val = newBody
-        const start = el?.selectionStart ?? val.length
-        const end = el?.selectionEnd ?? val.length
-        const insertion = `\n![${alt}](${res.url})\n`
-        const nextVal = val.substring(0, start) + insertion + val.substring(end)
-        setNewBody(nextVal)
-      }
-    } catch (err) {
-      setUploadError(err.message || 'Image upload failed')
-    } finally {
-      setUploadingImage(false)
-      if (fileInputRef.current) fileInputRef.current.value = ''
-    }
-  }
-
-  const handleDrop = (e) => {
-    e.preventDefault()
-    setIsDragging(false)
-    const file = e.dataTransfer?.files?.[0]
-    if (file && file.type.startsWith('image/')) {
-      uploadImageFile(file)
-    }
-  }
-
-  const handlePaste = (e) => {
-    const items = e.clipboardData?.items
-    if (!items) return
-    for (const item of items) {
-      if (item.type.startsWith('image/')) {
-        const file = item.getAsFile()
-        if (file) {
-          e.preventDefault()
-          uploadImageFile(file)
-          break
-        }
-      }
-    }
-  }
 
   const loadPosts = useCallback(async () => {
     setLoading(true)
@@ -541,7 +447,11 @@ export default function Forum() {
 
   const handleCreatePost = async (e) => {
     e.preventDefault()
-    if (!newTitle.trim() || !newBody.trim()) return
+    const hasContent = newBody.replace(/<[^>]*>/g, '').trim().length > 0 || newBody.includes('<img')
+    if (!newTitle.trim() || !hasContent) {
+      setUploadError('Please provide a title and discussion content.')
+      return
+    }
     setSubmitting(true)
     try {
       const tagList = newTags
@@ -558,7 +468,6 @@ export default function Forum() {
       setNewTitle('')
       setNewBody('')
       setNewTags('')
-      setActiveEditorTab('write')
       setUploadError('')
       if (res?.post) {
         navigate(`/forum/posts/${res.post._id || res.post.id}`)
@@ -840,7 +749,6 @@ export default function Forum() {
           className="forum-modal-backdrop"
           onClick={() => {
             setShowModal(false)
-            setActiveEditorTab('write')
             setUploadError('')
           }}
         >
@@ -852,14 +760,13 @@ export default function Forum() {
                   <span>Start Discussion</span>
                 </div>
                 <h3 className="forum-modal-title">Create New Discussion</h3>
-                <p className="modal-header-sub">Share code, ask troubleshooting questions, or write guides with markdown</p>
+                <p className="modal-header-sub">Share code, ask troubleshooting questions, or write guides</p>
               </div>
               <button
                 type="button"
                 className="modal-close-btn"
                 onClick={() => {
                   setShowModal(false)
-                  setActiveEditorTab('write')
                   setUploadError('')
                 }}
                 aria-label="Close modal"
@@ -933,162 +840,14 @@ export default function Forum() {
               )}
 
               <div className="form-group editor-form-group">
-                <div className="editor-container-card">
-                  <div className="editor-top-nav">
-                    <div className="editor-tabs-switch">
-                      <button
-                        type="button"
-                        className={`editor-tab-pill ${activeEditorTab === 'write' ? 'active' : ''}`}
-                        onClick={() => setActiveEditorTab('write')}
-                      >
-                        <Edit3 size={13} />
-                        <span>Write</span>
-                      </button>
-                      <button
-                        type="button"
-                        className={`editor-tab-pill ${activeEditorTab === 'preview' ? 'active' : ''}`}
-                        onClick={() => setActiveEditorTab('preview')}
-                      >
-                        <EyeIcon size={13} />
-                        <span>Preview</span>
-                      </button>
-                    </div>
-
-                    {activeEditorTab === 'write' && (
-                      <div className="editor-toolbar-actions">
-                        <button
-                          type="button"
-                          className="editor-tool-btn"
-                          title="Bold (**text**)"
-                          onClick={() => insertFormat('**', '**')}
-                        >
-                          <Bold size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          className="editor-tool-btn"
-                          title="Italic (*text*)"
-                          onClick={() => insertFormat('*', '*')}
-                        >
-                          <Italic size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          className="editor-tool-btn"
-                          title="Code Block"
-                          onClick={() => insertFormat('\n```\n', '\n```\n')}
-                        >
-                          <Code size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          className="editor-tool-btn"
-                          title="Insert Link"
-                          onClick={() => insertFormat('[', '](https://)')}
-                        >
-                          <Link2 size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          className="editor-tool-btn"
-                          title="Numbered List"
-                          onClick={() => insertFormat('\n1. ')}
-                        >
-                          <ListOrdered size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          className="editor-tool-btn"
-                          title="Bullet List"
-                          onClick={() => insertFormat('\n- ')}
-                        >
-                          <List size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          className="editor-tool-btn"
-                          title="Quote"
-                          onClick={() => insertFormat('\n> ')}
-                        >
-                          <Quote size={14} />
-                        </button>
-
-                        <div className="editor-tool-divider" />
-
-                        <input
-                          type="file"
-                          ref={fileInputRef}
-                          accept="image/*"
-                          style={{ display: 'none' }}
-                          onChange={(e) => uploadImageFile(e.target.files?.[0])}
-                        />
-                        <button
-                          type="button"
-                          className="editor-tool-btn upload-image-tool-btn"
-                          title="Upload image to Cloudinary (or paste / drag-and-drop)"
-                          onClick={() => fileInputRef.current?.click()}
-                          disabled={uploadingImage}
-                        >
-                          {uploadingImage ? (
-                            <Loader2 size={14} className="spin-icon" />
-                          ) : (
-                            <ImageIcon size={14} />
-                          )}
-                          <span>{uploadingImage ? 'Uploading...' : 'Image'}</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {activeEditorTab === 'write' ? (
-                    <div
-                      className={`editor-textarea-wrapper ${isDragging ? 'drag-target-active' : ''}`}
-                      onDragOver={(e) => {
-                        e.preventDefault()
-                        setIsDragging(true)
-                      }}
-                      onDragLeave={() => setIsDragging(false)}
-                      onDrop={handleDrop}
-                    >
-                      {isDragging && (
-                        <div className="editor-drag-overlay">
-                          <UploadCloud size={32} />
-                          <span>Drop image here to upload to Cloudinary</span>
-                        </div>
-                      )}
-                      <textarea
-                        ref={textareaRef}
-                        className="form-textarea editor-markdown-textarea"
-                        rows={8}
-                        placeholder="Write your discussion content using Markdown... You can paste or drag & drop screenshots directly!"
-                        value={newBody}
-                        onChange={(e) => setNewBody(e.target.value)}
-                        onPaste={handlePaste}
-                        required
-                      />
-                    </div>
-                  ) : (
-                    <div className="editor-live-preview-box">
-                      {newBody.trim() ? (
-                        <MarkdownRenderer content={newBody} />
-                      ) : (
-                        <div className="editor-empty-preview">
-                          <p>Nothing to preview yet.</p>
-                          <span>Switch back to the "Write" tab to type text, format markdown, or upload images.</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {uploadingImage && (
-                    <div className="editor-helper-bottom">
-                      <div className="editor-upload-status">
-                        <Loader2 size={12} className="spin-icon" />
-                        <span>Uploading image...</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <label className="form-label">Discussion Content</label>
+                <RichTextEditor
+                  content={newBody}
+                  onChange={setNewBody}
+                  placeholder="Write your discussion content... Format with headings, bold, code, and paste or drop screenshots directly!"
+                  minHeight="210px"
+                  onError={(err) => setUploadError(err)}
+                />
 
                 {uploadError && (
                   <div className="editor-error-banner">
@@ -1104,7 +863,6 @@ export default function Forum() {
                   className="modal-btn-cancel"
                   onClick={() => {
                     setShowModal(false)
-                    setActiveEditorTab('write')
                     setUploadError('')
                   }}
                 >
@@ -1113,7 +871,7 @@ export default function Forum() {
                 <button
                   type="submit"
                   className="modal-btn-submit"
-                  disabled={submitting || uploadingImage || !newTitle.trim() || !newBody.trim()}
+                  disabled={submitting || !newTitle.trim() || (!newBody.replace(/<[^>]*>/g, '').trim() && !newBody.includes('<img'))}
                 >
                   {submitting ? (
                     <>

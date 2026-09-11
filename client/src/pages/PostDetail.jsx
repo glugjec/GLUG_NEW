@@ -1,11 +1,11 @@
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { postsApi, uploadApi } from '../api.js'
+import { postsApi } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { avatarInitials, avatarColor } from '../components/common/avatar.js'
 import { formatRelativeTime } from '../utils/timeAgo.js'
-import { compressPostImage } from '../utils/imageCompressor.js'
 import MarkdownRenderer from '../components/common/MarkdownRenderer.jsx'
+import RichTextEditor from '../components/common/RichTextEditor.jsx'
 import {
   Home,
   ChevronRight,
@@ -21,20 +21,13 @@ import {
   Clock,
   RotateCw,
   ArrowRight,
-  Image as ImageIcon,
-  Bold,
-  Italic,
-  Code,
-  Link2,
-  ListOrdered,
-  List,
   Terminal,
   Gamepad2,
   Monitor,
   Trash2,
   Check,
   Loader2,
-  Edit3
+  Code
 } from 'lucide-react'
 import LoadingSpinner from '../components/common/LoadingSpinner.jsx'
 import './PostDetail.css'
@@ -487,11 +480,6 @@ export default function PostDetail() {
   const [visibleRootCount, setVisibleRootCount] = useState(5)
   const [submitting, setSubmitting] = useState(false)
 
-  const textareaRef = useRef(null)
-  const replyFileInputRef = useRef(null)
-  const [uploadingReplyImage, setUploadingReplyImage] = useState(false)
-  const [replyTab, setReplyTab] = useState('write')
-
   const load = useCallback(async () => {
     setLoading(true)
     try {
@@ -698,101 +686,14 @@ export default function PostDetail() {
     }
   }
 
-  const insertFormat = (prefix, suffix = '') => {
-    const el = textareaRef.current
-    if (!el) return
-    const start = el.selectionStart || 0
-    const end = el.selectionEnd || 0
-    const val = replyText
-    const selected = val.substring(start, end)
-    const replacement = prefix + (selected || 'text') + suffix
-    const nextVal = val.substring(0, start) + replacement + val.substring(end)
-    setReplyText(nextVal)
-    setTimeout(() => {
-      el.focus()
-      el.setSelectionRange(start + prefix.length, start + prefix.length + (selected ? selected.length : 4))
-    }, 10)
-  }
-
-  const handleReplyImageUpload = async (e) => {
-    const originalFile = e.target?.files?.[0]
-    if (!originalFile) return
-    if (!user) {
-      showToast('Please log in to upload images')
-      return
-    }
-    if (!originalFile.type.startsWith('image/')) {
-      showToast('Only image files are supported')
-      return
-    }
-    setUploadingReplyImage(true)
-    try {
-      const file = await compressPostImage(originalFile, 1024 * 1024)
-      const res = await uploadApi.uploadImage(file)
-      if (res?.url) {
-        const alt = originalFile.name.replace(/\.[^/.]+$/, '') || 'image'
-        const el = textareaRef.current
-        const val = replyText
-        const start = el?.selectionStart ?? val.length
-        const end = el?.selectionEnd ?? val.length
-        const insertion = `\n![${alt}](${res.url})\n`
-        const nextVal = val.substring(0, start) + insertion + val.substring(end)
-        setReplyText(nextVal)
-        setReplyTab('write')
-        showToast('Image uploaded!')
-      }
-    } catch (err) {
-      showToast(err.message || 'Image upload failed')
-    } finally {
-      setUploadingReplyImage(false)
-      if (e.target) e.target.value = ''
-    }
-  }
-
-  const handleReplyPaste = async (e) => {
-    const items = e.clipboardData?.items
-    if (!items) return
-    for (const item of items) {
-      if (item.type.startsWith('image/')) {
-        const file = item.getAsFile()
-        if (file) {
-          e.preventDefault()
-          if (!user) {
-            showToast('Please log in to upload images')
-            return
-          }
-          setUploadingReplyImage(true)
-          try {
-            const compressed = await compressPostImage(file, 1024 * 1024)
-            const res = await uploadApi.uploadImage(compressed)
-            if (res?.url) {
-              const el = textareaRef.current
-              const val = replyText
-              const start = el?.selectionStart ?? val.length
-              const end = el?.selectionEnd ?? val.length
-              const insertion = `\n![image](${res.url})\n`
-              const nextVal = val.substring(0, start) + insertion + val.substring(end)
-              setReplyText(nextVal)
-              showToast('Image uploaded!')
-            }
-          } catch (err) {
-            showToast(err.message || 'Image upload failed')
-          } finally {
-            setUploadingReplyImage(false)
-          }
-          break
-        }
-      }
-    }
-  }
-
   const handleAddComment = async (text, parentId = null) => {
     if (!user) {
       showToast('Please log in to reply')
       navigate('/login')
       return
     }
-    if (!text.trim()) return
+    const hasContent = text.replace(/<[^>]*>/g, '').trim().length > 0 || text.includes('<img')
+    if (!hasContent) return
     setSubmitting(true)
     const authorUsername = user ? user.username : 'student@glug'
     const newComment = {
@@ -1124,160 +1025,36 @@ export default function PostDetail() {
 
             {user ? (
               <div className="reply-composer-card">
-                <div className="composer-top-header">
-                  <div className="composer-tab-switch">
-                    <button
-                      type="button"
-                      className={`composer-tab-btn ${replyTab === 'write' ? 'is-active' : ''}`}
-                      onClick={() => setReplyTab('write')}
-                    >
-                      <Edit3 size={13} />
-                      <span>Write</span>
-                    </button>
-                    <button
-                      type="button"
-                      className={`composer-tab-btn ${replyTab === 'preview' ? 'is-active' : ''}`}
-                      onClick={() => setReplyTab('preview')}
-                    >
-                      <Eye size={13} />
-                      <span>Preview</span>
-                    </button>
-                  </div>
-                </div>
-
-                {replyTab === 'write' ? (
-                  <div className="composer-input-area">
-                    <UserAvatar
-                      src={user?.avatar}
-                      username={user.username}
-                      size={38}
-                      className="composer-avatar"
-                    />
-                    <textarea
-                      ref={textareaRef}
-                      className="composer-textarea"
-                      placeholder="Write a reply..."
-                      value={replyText}
-                      onChange={(e) => setReplyText(e.target.value)}
-                      onPaste={handleReplyPaste}
-                      rows={3}
+                <div className="reply-composer-body">
+                  <UserAvatar
+                    src={user?.avatar}
+                    username={user.username}
+                    size={38}
+                    className="composer-avatar"
+                  />
+                  <div className="composer-rte-container">
+                    <RichTextEditor
+                      content={replyText}
+                      onChange={setReplyText}
+                      placeholder="Write a reply... (format with bold, headings, code, and paste or drop screenshots directly)"
+                      minHeight="100px"
+                      onError={showToast}
+                      toolbarPosition="bottom"
+                      actions={
+                        <button
+                          type="button"
+                          className="btn-post-reply"
+                          disabled={
+                            submitting ||
+                            (!replyText.replace(/<[^>]*>/g, '').trim() && !replyText.includes('<img'))
+                          }
+                          onClick={() => handleAddComment(replyText)}
+                        >
+                          {submitting ? 'Posting…' : 'Post Reply'}
+                        </button>
+                      }
                     />
                   </div>
-                ) : (
-                  <div className="composer-preview-area">
-                    <UserAvatar
-                      src={user?.avatar}
-                      username={user.username}
-                      size={38}
-                      className="composer-avatar"
-                    />
-                    <div className="composer-preview-content">
-                      {replyText.trim() ? (
-                        <MarkdownRenderer content={replyText} />
-                      ) : (
-                        <p className="composer-preview-placeholder">
-                          Nothing to preview yet. Switch back to Write to compose text, format markdown, or upload images.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                <input
-                  type="file"
-                  ref={replyFileInputRef}
-                  style={{ display: 'none' }}
-                  accept="image/*"
-                  onChange={handleReplyImageUpload}
-                />
-
-                <div className="composer-toolbar-bottom">
-                  <div className="composer-tools-left">
-                    <button
-                      type="button"
-                      className="tool-icon-btn"
-                      title="Upload Image (compressed to <1MB)"
-                      onClick={() => replyFileInputRef.current?.click()}
-                      disabled={uploadingReplyImage}
-                    >
-                      {uploadingReplyImage ? <Loader2 size={15} className="spin-icon" /> : <ImageIcon size={15} />}
-                    </button>
-                    <button
-                      type="button"
-                      className="tool-icon-btn"
-                      title="Bold"
-                      onClick={() => {
-                        setReplyTab('write')
-                        insertFormat('**', '**')
-                      }}
-                    >
-                      <Bold size={15} />
-                    </button>
-                    <button
-                      type="button"
-                      className="tool-icon-btn"
-                      title="Italic"
-                      onClick={() => {
-                        setReplyTab('write')
-                        insertFormat('*', '*')
-                      }}
-                    >
-                      <Italic size={15} />
-                    </button>
-                    <button
-                      type="button"
-                      className="tool-icon-btn"
-                      title="Code"
-                      onClick={() => {
-                        setReplyTab('write')
-                        insertFormat('`', '`')
-                      }}
-                    >
-                      <Code size={15} />
-                    </button>
-                    <button
-                      type="button"
-                      className="tool-icon-btn"
-                      title="Insert Link"
-                      onClick={() => {
-                        setReplyTab('write')
-                        insertFormat('[', '](https://)')
-                      }}
-                    >
-                      <Link2 size={15} />
-                    </button>
-                    <button
-                      type="button"
-                      className="tool-icon-btn"
-                      title="Ordered List"
-                      onClick={() => {
-                        setReplyTab('write')
-                        insertFormat('\n1. ')
-                      }}
-                    >
-                      <ListOrdered size={15} />
-                    </button>
-                    <button
-                      type="button"
-                      className="tool-icon-btn"
-                      title="Bullet List"
-                      onClick={() => {
-                        setReplyTab('write')
-                        insertFormat('\n• ')
-                      }}
-                    >
-                      <List size={15} />
-                    </button>
-                  </div>
-
-                  <button
-                    type="button"
-                    className="btn-post-reply"
-                    disabled={!replyText.trim() || submitting || uploadingReplyImage}
-                    onClick={() => handleAddComment(replyText)}
-                  >
-                    {submitting ? 'Posting…' : uploadingReplyImage ? 'Uploading…' : 'Post Reply'}
-                  </button>
                 </div>
               </div>
             ) : (
