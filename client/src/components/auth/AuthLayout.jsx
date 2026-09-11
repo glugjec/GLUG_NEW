@@ -13,7 +13,7 @@ export default function AuthLayout({ children }) {
           <img src="/logo.png" alt="GLUG" className="auth-portal-brand-img" />
           <div className="auth-portal-brand-info">
             <span className="auth-portal-brand-title">GLUG</span>
-            <span className="auth-portal-brand-sub">Jorhat Engineering College</span>
+            <span className="auth-portal-brand-sub">Learn · Share · Grow</span>
           </div>
         </Link>
 
@@ -27,7 +27,7 @@ export default function AuthLayout({ children }) {
           <div className="auth-portal-hero">
             <div className="auth-hero-badge">
               <span className="auth-hero-badge-dot" />
-              <span>GNU/Linux User Group • JEC</span>
+              <span>GNU/Linux User Group</span>
             </div>
 
             <h1 className="auth-hero-title">
@@ -35,7 +35,7 @@ export default function AuthLayout({ children }) {
             </h1>
 
             <p className="auth-hero-desc">
-              Join the student developer community at Jorhat Engineering College.
+              Join the open developer community.
               Master Linux systems, collaborate on open-source code, and solve problems together.
             </p>
 
@@ -74,7 +74,7 @@ export default function AuthLayout({ children }) {
             <div className="auth-hero-footer-stats">
               <div className="auth-stat-pill">
                 <Sparkles size={14} color="#60a5fa" />
-                <span>Free &amp; Open to all JEC students</span>
+                <span>Free &amp; Open Source for everyone</span>
               </div>
             </div>
           </div>

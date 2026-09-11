@@ -107,7 +107,7 @@ export async function sendOtpMail({ to, otp, purpose = 'registration' }) {
                     <div style="height: 1px; background: #1a2336; margin: 28px 0 20px 0;"></div>
 
                     <p style="font-size: 12px; color: #64748b; margin: 0 0 6px 0; font-weight: 500;">
-                      GNU/Linux User Group • Jorhat Engineering College
+                      GNU/Linux User Group
                     </p>
                     <p style="font-size: 11px; color: #475569; margin: 0;">
                       Open minds build brighter tomorrows.

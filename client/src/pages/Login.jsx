@@ -119,7 +119,7 @@ export default function Login() {
                   <input
                     type="email"
                     className="auth-input has-icon"
-                    placeholder="student@jec.ac.in"
+                    placeholder="you@example.com"
                     value={email}
                     onChange={(e) => {
                       setEmail(e.target.value);

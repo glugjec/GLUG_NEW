@@ -213,7 +213,7 @@ export default function Register() {
           <div>
             <div className="auth-brand">
               <h2 className="auth-title">Create an account</h2>
-              <p className="auth-subtitle">Sign up with your college email to join GLUG.</p>
+              <p className="auth-subtitle">Sign up with your email to join GLUG.</p>
             </div>
 
             <form className="auth-form" onSubmit={handleStep1Submit} noValidate>
@@ -226,7 +226,7 @@ export default function Register() {
                   <input
                     type="email"
                     className={`auth-input has-icon ${fieldErrors.email ? 'has-error' : ''}`}
-                    placeholder="student@jec.ac.in"
+                    placeholder="you@example.com"
                     value={email}
                     onChange={(e) => {
                       clearFieldError('email');
