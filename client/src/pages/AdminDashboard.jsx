@@ -28,6 +28,7 @@ import {
   TrendingUp,
   UserCheck,
   ShieldCheck,
+  ArrowUp,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { adminApi, resourcesApi } from "../api.js";
@@ -822,9 +823,14 @@ export default function AdminDashboard() {
                       </td>
                       <td>
                         <div className="admin-stats-row">
-                          <span title="Vote score">{p.voteScore} score</span>
-                          <span>•</span>
-                          <span title="Comments">{p.commentCount} replies</span>
+                          <span className="admin-count-chip" title="Vote score">
+                            <ArrowUp size={12} className="text-emerald" />
+                            <span>{p.voteScore}</span>
+                          </span>
+                          <span className="admin-count-chip" title="Comments count">
+                            <MessageSquare size={12} className="text-blue" />
+                            <span>{p.commentCount}</span>
+                          </span>
                         </div>
                       </td>
                       <td>
