@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { avatarInitials, avatarColor } from '../common/avatar.js'
-import { Search, Bell, ChevronDown, LogOut, User, Settings as SettingsIcon, MessageSquare } from 'lucide-react'
+import { Search, Bell, ChevronDown, LogOut, User, Settings as SettingsIcon, MessageSquare, ArrowLeft, X } from 'lucide-react'
 
 function TopBarAvatar({ src, username, email, size = 30, className = '' }) {
   const [error, setError] = useState(false)
@@ -72,10 +72,13 @@ function TopBarAvatar({ src, username, email, size = 30, className = '' }) {
 export default function TopBar() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchTerm, setSearchTerm] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const inputRef = useRef(null)
+  const mobileInputRef = useRef(null)
   const menuRef = useRef(null)
   const notifRef = useRef(null)
 
@@ -89,6 +92,34 @@ export default function TopBar() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
+
+  useEffect(() => {
+    if (!mobileSearchOpen) return
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') {
+        setMobileSearchOpen(false)
+      }
+    }
+    window.addEventListener('keydown', handleEsc)
+    return () => window.removeEventListener('keydown', handleEsc)
+  }, [mobileSearchOpen])
+
+  useEffect(() => {
+    if (mobileSearchOpen) {
+      setTimeout(() => mobileInputRef.current?.focus(), 50)
+    }
+  }, [mobileSearchOpen])
+
+  useEffect(() => {
+    document.body.classList.toggle('glug-mobile-search-open', mobileSearchOpen)
+    return () => document.body.classList.remove('glug-mobile-search-open')
+  }, [mobileSearchOpen])
+
+  useEffect(() => {
+    setMobileSearchOpen(false)
+    setMenuOpen(false)
+    setNotifOpen(false)
+  }, [location.pathname])
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -107,6 +138,7 @@ export default function TopBar() {
     e.preventDefault()
     if (searchTerm.trim()) {
       navigate(`/forum?search=${encodeURIComponent(searchTerm.trim())}`)
+      setMobileSearchOpen(false)
     }
   }
 
@@ -117,7 +149,44 @@ export default function TopBar() {
   }
 
   return (
-    <header className="topbar-v2">
+    <header className={`topbar-v2${mobileSearchOpen ? ' has-mobile-search-open' : ''}`}>
+      {mobileSearchOpen && (
+        <div className="topbar-mobile-search-overlay">
+          <button
+            type="button"
+            className="topbar-mobile-search-back"
+            onClick={() => setMobileSearchOpen(false)}
+            aria-label="Close search"
+          >
+            <ArrowLeft size={19} />
+          </button>
+          <form
+            className="topbar-mobile-search-form"
+            onSubmit={handleSearchSubmit}
+          >
+            <Search size={16} className="topbar-mobile-search-icon" />
+            <input
+              ref={mobileInputRef}
+              type="text"
+              className="topbar-mobile-search-input"
+              placeholder="Search discussions, topics, members..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                className="topbar-mobile-search-clear"
+                onClick={() => setSearchTerm('')}
+                aria-label="Clear search"
+              >
+                <X size={15} />
+              </button>
+            )}
+          </form>
+        </div>
+      )}
+
       <form className="topbar-search-wrapper" onSubmit={handleSearchSubmit}>
         <Search size={17} className="topbar-search-icon" />
         <input
@@ -134,6 +203,15 @@ export default function TopBar() {
       </form>
 
       <div className="topbar-actions">
+        <button
+          type="button"
+          className="topbar-icon-btn topbar-mobile-search-trigger"
+          onClick={() => setMobileSearchOpen(true)}
+          aria-label="Search"
+        >
+          <Search size={18} />
+        </button>
+
         <div className="topbar-notif-wrap" ref={notifRef}>
           <button
             type="button"
