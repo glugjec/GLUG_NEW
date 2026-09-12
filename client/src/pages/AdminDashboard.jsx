@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   Shield,
@@ -136,6 +136,18 @@ export default function AdminDashboard() {
     order: 10,
   });
 
+  const [memberPickerSearch, setMemberPickerSearch] = useState("");
+
+  const selectableUsers = useMemo(() => {
+    const q = memberPickerSearch.trim().toLowerCase();
+    return users.filter((u) => {
+      if (!q) return true;
+      const usernameMatch = u.username?.toLowerCase().includes(q);
+      const emailMatch = u.email?.toLowerCase().includes(q);
+      return usernameMatch || emailMatch;
+    });
+  }, [users, memberPickerSearch]);
+
   const [toast, setToast] = useState(null);
 
   function showToast(msg, type = "success") {
@@ -155,7 +167,17 @@ export default function AdminDashboard() {
     }
   }
 
-  function openTeamModal(member = null, defaultUser = null) {
+  function openTeamModal(member = null) {
+    setMemberPickerSearch("");
+    if (!member) {
+      adminApi
+        .getUsers({ limit: 150 })
+        .then((data) => {
+          if (data?.users) setUsers(data.users);
+        })
+        .catch(() => {});
+    }
+
     if (member) {
       setEditingTeamMember(member);
       setTeamForm({
@@ -168,7 +190,7 @@ export default function AdminDashboard() {
     } else {
       setEditingTeamMember(null);
       setTeamForm({
-        userId: defaultUser?.id || "",
+        userId: "",
         category: "Team Lead",
         positionTitle: "",
         teamDomain: "Technical",
@@ -951,15 +973,6 @@ export default function AdminDashboard() {
                       </td>
                       <td className="admin-td-actions">
                         <div className="admin-actions-row">
-                          <button
-                            type="button"
-                            className="admin-action-btn"
-                            onClick={() => openTeamModal(null, u)}
-                            title="Assign or edit community team position"
-                          >
-                            <Crown size={13} />
-                            <span>Position</span>
-                          </button>
                           {!u.isProtected && u.id !== user.id && (
                             <>
                               <button
@@ -1545,7 +1558,7 @@ export default function AdminDashboard() {
 
             <form onSubmit={handleSaveTeamPosition} className="admin-modal-form">
               <div className="admin-form-group">
-                <label>Select Member</label>
+                <label>Select Existing User</label>
                 {editingTeamMember ? (
                   <input
                     type="text"
@@ -1554,19 +1567,32 @@ export default function AdminDashboard() {
                     disabled
                   />
                 ) : (
-                  <select
-                    className="admin-form-input"
-                    value={teamForm.userId}
-                    onChange={(e) => setTeamForm({ ...teamForm, userId: e.target.value })}
-                    required
-                  >
-                    <option value="">-- Choose Member --</option>
-                    {users.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        @{u.username} ({u.email})
-                      </option>
-                    ))}
-                  </select>
+                  <>
+                    <input
+                      type="text"
+                      className="admin-form-input"
+                      placeholder="Search existing users by username or email..."
+                      value={memberPickerSearch}
+                      onChange={(e) => setMemberPickerSearch(e.target.value)}
+                      style={{ marginBottom: "8px" }}
+                    />
+                    <select
+                      className="admin-form-input"
+                      value={teamForm.userId}
+                      onChange={(e) => setTeamForm({ ...teamForm, userId: e.target.value })}
+                      required
+                    >
+                      <option value="">-- Choose Existing User ({selectableUsers.length} available) --</option>
+                      {selectableUsers.map((u) => {
+                        const isAlreadyTeam = teamMembers.some((tm) => tm.id === u.id);
+                        return (
+                          <option key={u.id} value={u.id}>
+                            @{u.username} ({u.email}) [{u.role.toUpperCase()}]{isAlreadyTeam ? " - (Already in Team)" : ""}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </>
                 )}
               </div>
 

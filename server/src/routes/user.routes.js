@@ -50,10 +50,7 @@ router.put('/me/terminal', requireAuth, async (req, res) => {
 router.get('/team', async (req, res) => {
   try {
     const members = await User.find({
-      $or: [
-        { 'communityRole.isMember': true },
-        { role: 'admin' },
-      ],
+      'communityRole.isMember': true,
     })
       .select('-passwordHash')
       .sort({ 'communityRole.order': 1, createdAt: 1 })
@@ -69,9 +66,9 @@ router.get('/team', async (req, res) => {
       skills: u.skills || [],
       socials: u.socials || {},
       communityRole: {
-        isMember: Boolean(u.communityRole?.isMember || u.role === 'admin'),
-        category: u.communityRole?.category || (u.role === 'admin' ? 'Head' : 'Coordinator'),
-        positionTitle: u.communityRole?.positionTitle || (u.role === 'admin' ? 'Head' : 'Team Member'),
+        isMember: true,
+        category: u.communityRole?.category || 'Coordinator',
+        positionTitle: u.communityRole?.positionTitle || 'Team Member',
         teamDomain: u.communityRole?.teamDomain || 'Core',
         order: typeof u.communityRole?.order === 'number' ? u.communityRole.order : 99,
         assignedAt: u.communityRole?.assignedAt || u.createdAt,
@@ -115,10 +112,10 @@ router.get('/:id', async (req, res) => {
       avatar: user.avatar || '',
       socials: user.socials || {},
       communityRole: user.communityRole || {
-        isMember: user.role === 'admin',
-        category: user.role === 'admin' ? 'Head' : '',
-        positionTitle: user.role === 'admin' ? 'Head' : '',
-        teamDomain: 'Core',
+        isMember: false,
+        category: '',
+        positionTitle: '',
+        teamDomain: '',
         order: 99,
       },
       preferences: user.preferences || {},
