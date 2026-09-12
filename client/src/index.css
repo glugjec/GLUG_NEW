@@ -73,6 +73,9 @@ body {
 .main-content.is-full-app {
   height: calc(100vh - var(--topbar-h, 60px));
   overflow: hidden;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 @media (max-width: 900px) {
@@ -80,6 +83,10 @@ body {
     height: calc(100dvh - var(--topbar-h, 60px));
     max-height: calc(100dvh - var(--topbar-h, 60px));
     overflow: hidden;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
   }
 }
 

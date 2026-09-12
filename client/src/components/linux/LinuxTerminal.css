@@ -1,5 +1,7 @@
 .terminal-frame {
   width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   position: relative;
   border-radius: 14px;
   padding: 1px;
@@ -15,6 +17,8 @@
 .linux-terminal {
   position: relative;
   width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   min-height: 360px;
   display: flex;
   flex-direction: column;
@@ -602,4 +606,122 @@ body.glug-collapsed .terminal-frame.is-expanded {
   color: #ffffff;
   font-family: inherit;
   font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .terminal-frame {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .linux-terminal {
+    height: 440px !important;
+    min-height: 280px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  .terminal-titlebar {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 0 8px;
+    height: 36px;
+    min-height: 36px;
+    gap: 4px;
+  }
+
+  .terminal-buttons {
+    min-width: auto;
+    flex-shrink: 0;
+    gap: 5px;
+  }
+
+  .terminal-window-dot {
+    width: 10px;
+    height: 10px;
+  }
+
+  .terminal-title {
+    font-size: 11px;
+    padding: 0 4px;
+    gap: 4px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .terminal-cloud-status {
+    font-size: 10px;
+    padding: 2px 6px;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .terminal-body {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    font-size: 12px;
+    line-height: 1.55;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .terminal-output,
+  .terminal-error,
+  .terminal-line {
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  .terminal-input-line {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .terminal-input-line input {
+    font-size: 12px;
+    min-width: 0;
+  }
+
+  .terminal-prompt {
+    font-size: 12px;
+    margin-right: 6px;
+    flex-shrink: 0;
+  }
+
+  .terminal-quick-keys-bar {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 6px 10px;
+    gap: 4px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .terminal-quick-key {
+    padding: 3px 8px;
+    font-size: 11px;
+  }
+
+  .nano-footer {
+    gap: 8px;
+    padding: 6px 10px;
+    font-size: 10px;
+  }
 }

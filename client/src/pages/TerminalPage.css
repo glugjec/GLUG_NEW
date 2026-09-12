@@ -7,6 +7,8 @@
   flex-direction: column;
   gap: 1.25rem;
   position: relative;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .terminal-toast {
@@ -744,31 +746,180 @@
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .terminal-page-container {
-    padding: 1rem 0.75rem 2rem;
-    gap: 1rem;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding: 0.75rem 0.65rem 2rem;
+    gap: 0.65rem;
+    max-width: 100%;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    margin: 0;
   }
 
   .terminal-page-header {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     flex-direction: column;
     align-items: flex-start;
-    padding: 1rem;
-    gap: 1rem;
+    padding: 0.8rem 0.85rem;
+    gap: 0.65rem;
+    border-radius: 12px;
+  }
+
+  .terminal-page-title-group {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+  }
+
+  .terminal-title-text-group {
+    flex: 1;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .terminal-badge-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    flex-shrink: 0;
+  }
+
+  .terminal-title-with-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+
+  .terminal-page-title {
+    font-size: 1.12rem;
+    line-height: 1.25;
+    word-break: break-word;
+  }
+
+  .terminal-cloud-pill {
+    font-size: 0.65rem;
+    padding: 1px 6px;
+    white-space: nowrap;
+  }
+
+  .terminal-page-sub {
+    font-size: 0.76rem;
+    line-height: 1.35;
+    margin-top: 0.2rem;
+    word-break: break-word;
   }
 
   .terminal-header-controls {
     align-items: flex-start;
     width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .terminal-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .terminal-pill {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
+    white-space: nowrap;
+  }
+
+  .terminal-main-layout {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .terminal-wrapper-frame {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
   }
 
   .terminal-toolbar {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     flex-direction: column;
     align-items: flex-start;
+    padding: 0.55rem 0.65rem;
+    gap: 0.5rem;
+    border-radius: 10px;
+    margin-bottom: 0.5rem;
+  }
+
+  .terminal-toolbar-left {
+    font-size: 0.75rem;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .terminal-toolbar-path {
+    max-width: 130px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .terminal-toolbar-actions {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.35rem;
     width: 100%;
-    justify-content: flex-start;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .terminal-tool-btn {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    justify-content: center;
+    padding: 0.38rem 0.4rem;
+    font-size: 0.74rem;
+    gap: 0.35rem;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .terminal-tool-btn span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .terminal-drawer {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    height: 380px;
   }
 }

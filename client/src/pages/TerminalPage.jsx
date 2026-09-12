@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import LinuxTerminal from '../components/linux/LinuxTerminal.jsx'
 import {
   Terminal,
@@ -76,12 +76,19 @@ const CHEAT_SHEET_CATEGORIES = [
 
 export default function TerminalPage() {
   const terminalRef = useRef(null)
+  const pageRef = useRef(null)
   const [activeDrawer, setActiveDrawer] = useState(null)
   const [currentFs, setCurrentFs] = useState(null)
   const [currentCwd, setCurrentCwd] = useState('/home/user')
   const [copiedCmd, setCopiedCmd] = useState(null)
   const [toast, setToast] = useState(null)
   const [showResetModal, setShowResetModal] = useState(false)
+
+  useEffect(() => {
+    if (pageRef.current) {
+      pageRef.current.scrollLeft = 0
+    }
+  }, [])
 
   const showToast = useCallback((msg) => {
     setToast(msg)
@@ -145,7 +152,7 @@ export default function TerminalPage() {
   const userFileKeys = Object.keys(userFiles)
 
   return (
-    <div className="terminal-page-container">
+    <div className="terminal-page-container" ref={pageRef}>
       {toast && (
         <div className="terminal-toast">
           <span>{toast}</span>
@@ -157,7 +164,7 @@ export default function TerminalPage() {
           <div className="terminal-badge-icon">
             <Terminal size={22} />
           </div>
-          <div>
+          <div className="terminal-title-text-group">
             <div className="terminal-title-with-pill">
               <h1 className="terminal-page-title">GLUG Linux Terminal</h1>
               <span className="terminal-cloud-pill">Cloud Workstation</span>

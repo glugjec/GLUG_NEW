@@ -366,22 +366,19 @@ const LinuxTerminal = forwardRef(function LinuxTerminal(
     };
   }, [fs, history, cwd, user, activeStorageKey]);
 
-  // Auto scroll
   useEffect(() => {
     if (terminalRef.current) {
-      terminalRef.current.scrollTop =
-        terminalRef.current.scrollHeight;
+      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
     }
   }, [lines]);
 
-  // Focus terminal
   useEffect(() => {
-    inputRef.current?.focus();
+    if (typeof window !== 'undefined' && window.innerWidth <= 900) return;
+    inputRef.current?.focus({ preventScroll: true });
   }, []);
 
-  // Keep focus after expand/restore
   useEffect(() => {
-    if (expanded) inputRef.current?.focus();
+    if (expanded) inputRef.current?.focus({ preventScroll: true });
   }, [expanded]);
 
   const interceptRef = useRef(null);
@@ -2079,7 +2076,7 @@ const LinuxTerminal = forwardRef(function LinuxTerminal(
 
   function handleClearScreen() {
     setLines([]);
-    inputRef.current?.focus();
+    inputRef.current?.focus({ preventScroll: true });
   }
 
   function handleTriggerKey(action) {
@@ -2126,7 +2123,7 @@ const LinuxTerminal = forwardRef(function LinuxTerminal(
       setHistoryIndex(newIndex);
       setInput(history[newIndex]);
     }
-    inputRef.current?.focus();
+    inputRef.current?.focus({ preventScroll: true });
   }
 
   function runCommandFromKey(cmd) {
@@ -2139,7 +2136,7 @@ const LinuxTerminal = forwardRef(function LinuxTerminal(
       },
     ]);
     execute(cmd);
-    inputRef.current?.focus();
+    inputRef.current?.focus({ preventScroll: true });
   }
 
   useImperativeHandle(ref, () => ({
@@ -2156,7 +2153,7 @@ const LinuxTerminal = forwardRef(function LinuxTerminal(
     },
     insertCommand: (cmd) => {
       setInput(cmd);
-      inputRef.current?.focus();
+      inputRef.current?.focus({ preventScroll: true });
     },
     resetFs: (skipConfirm = false) => handleResetFs(skipConfirm),
     clearScreen: handleClearScreen,
@@ -2172,7 +2169,7 @@ const LinuxTerminal = forwardRef(function LinuxTerminal(
       <div
         className="linux-terminal"
         style={{ height }}
-        onClick={() => inputRef.current?.focus()}
+        onClick={() => inputRef.current?.focus({ preventScroll: true })}
       >
         {editor && editor.type === "vim" && (
           <VimEditor
@@ -2349,7 +2346,6 @@ const LinuxTerminal = forwardRef(function LinuxTerminal(
               onKeyDown={handleKeyDown}
               autoComplete="off"
               spellCheck="false"
-              autoFocus
             />
           </form>
         </div>
