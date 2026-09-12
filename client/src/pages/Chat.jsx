@@ -202,7 +202,10 @@ export default function Chat() {
       const res = await chatApi.getMessages(convId);
       const latestMessages = res.messages || [];
       setMessages((prev) => {
-        if (latestMessages.length !== prev.length) {
+        if (
+          latestMessages.length !== prev.length ||
+          latestMessages[latestMessages.length - 1]?.id !== prev[prev.length - 1]?.id
+        ) {
           return latestMessages;
         }
         return prev;
@@ -431,9 +434,15 @@ export default function Chat() {
                       </span>
                     )}
                   </div>
-                  <span className="chat-header-status">
-                    GLUG Community Member
-                  </span>
+                  {(activeConversation.otherUser?.communityRole?.positionTitle ||
+                    activeConversation.otherUser?.communityRole?.category) ? (
+                    <span className="chat-header-status">
+                      {activeConversation.otherUser.communityRole.positionTitle ||
+                        activeConversation.otherUser.communityRole.category}
+                    </span>
+                  ) : (
+                    <span className="chat-header-status">Member</span>
+                  )}
                 </div>
               </div>
 
