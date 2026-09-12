@@ -1226,12 +1226,12 @@ export default function PostDetail() {
 
                 <div className="meta-count-item">
                   <MessageSquare size={16} />
-                  <span>{repliesCount} {repliesCount === 1 ? 'reply' : 'replies'}</span>
+                  <span>{repliesCount} <span className="meta-count-label">{repliesCount === 1 ? 'reply' : 'replies'}</span></span>
                 </div>
 
                 <div className="meta-count-item">
                   <Eye size={16} />
-                  <span>{viewsCount} views</span>
+                  <span>{viewsCount} <span className="meta-count-label">views</span></span>
                 </div>
               </div>
 
