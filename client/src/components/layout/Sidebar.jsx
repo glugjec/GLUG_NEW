@@ -4,7 +4,6 @@ import { useAuth } from '../../context/AuthContext.jsx'
 import {
   Home,
   MessageSquare,
-  MessageCircle,
   Folder,
   Users,
   Calendar,
@@ -26,7 +25,6 @@ const NAV_ITEMS = [
   { to: '/', label: 'Home', icon: Home, end: true },
   { to: '/for-you', label: 'For You', icon: Sparkles },
   { to: '/forum', label: 'Discussions', icon: MessageSquare },
-  { to: '/chat', label: 'Messages', icon: MessageCircle },
   { to: '/categories', label: 'Categories', icon: Folder },
   { to: '/members', label: 'Members', icon: Users },
   { to: '/events', label: 'Events', icon: Calendar },
