@@ -166,6 +166,7 @@ export default function Chat() {
       const res = await chatApi.getOrCreateWithUser(targetId);
       if (res.conversation) {
         setActiveConversation(res.conversation);
+        setMobilePane('chat');
         setConversations((prev) => {
           const exists = prev.some((c) => c.id === res.conversation.id);
           if (exists) {
@@ -351,6 +352,7 @@ export default function Chat() {
                   className={`chat-conv-item ${isActive ? 'active' : ''} ${hasUnread ? 'unread' : ''}`}
                   onClick={() => {
                     setActiveConversation(conv);
+                    setMobilePane('chat');
                     setSearchParams({ with: other?.id }, { replace: true });
                   }}
                 >
@@ -398,8 +400,12 @@ export default function Chat() {
               <button
                 type="button"
                 className="chat-back-mobile-btn"
-                onClick={() => setMobilePane('list')}
-                title="Back to conversations"
+                onClick={() => {
+                  setActiveConversation(null);
+                  setMobilePane('list');
+                  setSearchParams({}, { replace: true });
+                }}
+                title="Back"
               >
                 <ArrowLeft size={18} />
               </button>
@@ -505,7 +511,7 @@ export default function Chat() {
                 value={messageText}
                 onChange={(e) => setMessageText(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={`Message @${activeConversation.otherUser?.username || 'member'}... (Enter to send)`}
+                placeholder={`Message @${activeConversation.otherUser?.username || 'member'}...`}
                 rows={1}
                 className="chat-textarea"
                 maxLength={2000}

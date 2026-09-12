@@ -77,9 +77,9 @@ body {
 
 @media (max-width: 900px) {
   .main-content.is-full-app {
-    height: auto !important;
-    min-height: calc(100dvh - var(--topbar-h, 60px));
-    overflow-y: auto !important;
+    height: calc(100dvh - var(--topbar-h, 60px));
+    max-height: calc(100dvh - var(--topbar-h, 60px));
+    overflow: hidden;
   }
 }
 
