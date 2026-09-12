@@ -4,7 +4,7 @@ import CodeEditor from './components/CodeEditor';
 import OutputPanel from './components/OutputPanel';
 import { LANGUAGES } from './utils/languageConfig';
 import { executeCode } from './api/judge0';
-import { runPythonInteractive, sendInputToPyodide, abortPyodideExecution } from './api/pyodideRunner';
+import { runPythonInteractive, sendInputToPyodide, abortPyodideExecution, evaluatePythonExpression } from './api/pyodideRunner';
 import './compiler.css';
 
 export default function Compiler() {
@@ -205,33 +205,6 @@ export default function Compiler() {
     addTerminalLog('system', '\n[Execution cancelled by user]\n');
   }, [language, addTerminalLog]);
 
-  const handleSendInput = useCallback((inputValue) => {
-    const textToSend = inputValue;
-
-    if (isWaitingForInput) {
-      addTerminalLog('stdin', textToSend + '\n');
-      setIsWaitingForInput(false);
-      setInputPrompt('');
-
-      if (language === 'python') {
-        const sent = sendInputToPyodide(textToSend);
-        if (!sent) {
-          setStdin((prev) => (prev ? `${prev}\n${textToSend}` : textToSend));
-        }
-      }
-    } else {
-      addTerminalLog('stdin', textToSend + '\n');
-      setStdin((prev) => (prev ? `${prev}\n${textToSend}` : textToSend));
-
-      if (result?.isInputMissing) {
-        addTerminalLog(
-          'system',
-          `[Input buffered: "${textToSend}". Re-run code to submit with buffer]\n`
-        );
-      }
-    }
-  }, [isWaitingForInput, language, addTerminalLog, result]);
-
   const runCode = async (fileToRun) => {
     if (mobileView === 'editor') {
       setMobileView(window.innerWidth < 900 ? 'output' : 'split');
@@ -374,6 +347,97 @@ export default function Compiler() {
     if (isRunning || !activeFile.content.trim()) return;
     await runCode(activeFile);
   }, [isRunning, activeFile, stdin]);
+
+  const handleSendInput = useCallback(async (inputValue) => {
+    const textToSend = inputValue;
+
+    if (isWaitingForInput) {
+      addTerminalLog('stdin', textToSend + '\n');
+      setIsWaitingForInput(false);
+      setInputPrompt('');
+
+      if (language === 'python') {
+        const sent = sendInputToPyodide(textToSend);
+        if (!sent) {
+          setStdin((prev) => (prev ? `${prev}\n${textToSend}` : textToSend));
+        }
+      }
+      return;
+    }
+
+    const trimmed = textToSend.trim();
+    if (!trimmed) return;
+
+    if (trimmed === 'clear') {
+      handleClearTerminal();
+      return;
+    }
+
+    if (trimmed === 'run') {
+      addTerminalLog('stdin', textToSend + '\n');
+      await runCode(activeFile);
+      return;
+    }
+
+    if (trimmed === 'ls' || trimmed === 'dir') {
+      addTerminalLog('stdin', textToSend + '\n');
+      const fileList = files.map((f) => `${f.name}  (${f.content.length} bytes)`).join('\n');
+      addTerminalLog('stdout', fileList + '\n');
+      return;
+    }
+
+    if (trimmed === 'pwd') {
+      addTerminalLog('stdin', textToSend + '\n');
+      addTerminalLog('stdout', '/workspace\n');
+      return;
+    }
+
+    if (trimmed === 'help') {
+      addTerminalLog('stdin', textToSend + '\n');
+      addTerminalLog(
+        'system',
+        '[Console Help]\n• Commands: run, clear, ls, pwd, cat <filename>, help\n• Values entered while program is running are passed to input() / stdin\n• For full Linux shell access, visit /terminal\n'
+      );
+      return;
+    }
+
+    if (trimmed.startsWith('cat ')) {
+      const fileName = trimmed.slice(4).trim();
+      const target = files.find((f) => f.name === fileName);
+      addTerminalLog('stdin', textToSend + '\n');
+      if (target) {
+        addTerminalLog('stdout', target.content + '\n');
+      } else {
+        addTerminalLog('stderr', `cat: ${fileName}: No such file\n`);
+      }
+      return;
+    }
+
+    addTerminalLog('stdin', textToSend + '\n');
+
+    if (language === 'python') {
+      const evalRes = await evaluatePythonExpression(
+        trimmed,
+        (out) => addTerminalLog('stdout', out),
+        (err) => addTerminalLog('stderr', err)
+      );
+      if (evalRes.success && evalRes.result !== null) {
+        addTerminalLog('stdout', evalRes.result + '\n');
+      } else if (!evalRes.success) {
+        setStdin((prev) => (prev ? `${prev}\n${textToSend}` : textToSend));
+        addTerminalLog(
+          'system',
+          `[Input buffered: "${textToSend}". Type 'run' or click Run Code to execute]\n`
+        );
+      }
+    } else {
+      setStdin((prev) => (prev ? `${prev}\n${textToSend}` : textToSend));
+      addTerminalLog(
+        'system',
+        `[Input buffered for stdin: "${textToSend}". Click "Run" to execute with input]\n`
+      );
+    }
+  }, [isWaitingForInput, language, addTerminalLog, handleClearTerminal, files, activeFile]);
 
   const handleSelectErrorLine = useCallback((line) => {
     setErrorLines([line]);

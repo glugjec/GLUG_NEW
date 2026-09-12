@@ -262,7 +262,7 @@ export default function OutputPanel({
                     ? (inputPrompt ? `Enter value for: ${inputPrompt}` : 'Type input and press Enter...')
                     : isRunning
                     ? 'Send input to process...'
-                    : 'Interactive input prompt...'
+                    : "Type command (run, clear, ls, help) or stdin input..."
                 }
                 id="interactive-terminal-input"
                 autoComplete="off"

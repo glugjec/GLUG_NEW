@@ -268,3 +268,24 @@ export async function runPythonInteractive(sourceCode, {
     delete window.__glug_term_input_request__;
   }
 }
+
+export async function evaluatePythonExpression(code, onStdout, onStderr) {
+  try {
+    const pyodide = await getPyodide();
+    window.__glug_term_write__ = (text, type = 'stdout') => {
+      if (type === 'stderr') {
+        onStderr?.(text);
+      } else {
+        onStdout?.(text);
+      }
+    };
+    pyodide.setStdout({ batched: (text) => onStdout?.(text + '\n') });
+    pyodide.setStderr({ batched: (text) => onStderr?.(text + '\n') });
+    const res = await pyodide.runPythonAsync(code);
+    return { success: true, result: res !== undefined ? String(res) : null };
+  } catch (err) {
+    return { success: false, error: err.message || String(err) };
+  } finally {
+    delete window.__glug_term_write__;
+  }
+}
