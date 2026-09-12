@@ -32,7 +32,11 @@ export default function Layout() {
     return () => window.removeEventListener('resize', onResize)
   }, [])
 
-  const isFullApp = location.pathname.startsWith('/compiler') || location.pathname.startsWith('/terminal')
+  const isFullApp =
+    location.pathname.startsWith('/compiler') ||
+    location.pathname.startsWith('/terminal') ||
+    location.pathname.startsWith('/chat') ||
+    location.pathname.startsWith('/messages')
 
   return (
     <div className={`app-shell-v2${collapsed ? ' is-collapsed' : ''}${mobileOpen ? ' is-mobile-open' : ''}`}>

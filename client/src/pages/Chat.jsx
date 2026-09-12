@@ -99,6 +99,7 @@ export default function Chat() {
   const [searchQuery, setSearchQuery] = useState('');
   const [mobilePane, setMobilePane] = useState('list');
 
+  const messagesAreaRef = useRef(null);
   const messagesEndRef = useRef(null);
   const pollIntervalRef = useRef(null);
   const activeConvRef = useRef(null);
@@ -142,7 +143,9 @@ export default function Chat() {
   }, [activeConversation?.id]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesAreaRef.current) {
+      messagesAreaRef.current.scrollTop = messagesAreaRef.current.scrollHeight;
+    }
   }, [messages]);
 
   const loadConversations = async () => {
@@ -290,7 +293,8 @@ export default function Chat() {
   }
 
   return (
-    <div className="chat-container">
+    <div className="chat-page">
+      <div className="chat-container">
       <aside className={`chat-sidebar ${mobilePane === 'chat' ? 'hide-mobile' : ''}`}>
         <div className="chat-sidebar-header">
           <div className="chat-sidebar-title-row">
@@ -347,7 +351,7 @@ export default function Chat() {
                   className={`chat-conv-item ${isActive ? 'active' : ''} ${hasUnread ? 'unread' : ''}`}
                   onClick={() => {
                     setActiveConversation(conv);
-                    setSearchParams({ with: other?.id });
+                    setSearchParams({ with: other?.id }, { replace: true });
                   }}
                 >
                   <div className="chat-conv-avatar-wrap">
@@ -438,7 +442,7 @@ export default function Chat() {
               </div>
             </header>
 
-            <div className="chat-messages-area">
+            <div className="chat-messages-area" ref={messagesAreaRef}>
               {loadingMessages ? (
                 <div className="chat-messages-loading">
                   <RefreshCw className="chat-spin" size={24} />
@@ -534,5 +538,6 @@ export default function Chat() {
         )}
       </main>
     </div>
+  </div>
   );
 }

@@ -49,6 +49,10 @@ export default function ScrollToTop() {
   }, [location.key])
 
   useEffect(() => {
+    if (location.pathname.startsWith('/chat') || location.pathname.startsWith('/messages')) {
+      return
+    }
+
     if (navType === 'POP') {
       const saved = scrollPositions.current.get(location.key)
       if (saved) {
