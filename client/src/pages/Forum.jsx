@@ -29,7 +29,7 @@ import {
   Loader2,
   Sparkles,
   Tag,
-  AlertCircle
+  AlertCircle,
 } from 'lucide-react'
 import './Forum.css'
 
@@ -359,6 +359,7 @@ export default function Forum() {
           const mapped = res.posts.map((p, idx) => ({
             id: p._id || p.id,
             isPinned: p.isPinned,
+            isLocked: Boolean(p.isLocked),
             title: p.title,
             body: p.body,
             category: p.category || 'general',

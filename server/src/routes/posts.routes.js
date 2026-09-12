@@ -111,6 +111,7 @@ router.get('/', optionalAuth, async (req, res) => {
       commentCount: p.commentCount || 0,
       views: p.views || 0,
       isPinned: !!p.isPinned,
+      isLocked: !!p.isLocked,
       createdAt: p.createdAt,
       updatedAt: p.updatedAt,
       author: p.author
@@ -278,6 +279,7 @@ router.get('/feed', optionalAuth, async (req, res) => {
         commentCount: rest.commentCount || 0,
         views: rest.views || 0,
         isPinned: !!rest.isPinned,
+        isLocked: !!rest.isLocked,
         createdAt: rest.createdAt,
         updatedAt: rest.updatedAt,
         author: rest.author
@@ -744,6 +746,34 @@ router.put('/:id/pin', requireAuth, requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('[Pin Post Error]', err);
     return res.status(500).json({ error: 'Failed to update pin status' });
+  }
+});
+
+router.put('/:id/lock', requireAuth, async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+
+    const isAuthor = post.author && post.author.toString() === req.user.id;
+    const isAdmin = req.user.role === 'admin';
+
+    if (!isAuthor && !isAdmin) {
+      return res.status(403).json({ error: 'Only the author or an administrator can lock replies' });
+    }
+
+    post.isLocked = !post.isLocked;
+    await post.save();
+
+    return res.json({
+      success: true,
+      isLocked: post.isLocked,
+      message: post.isLocked ? 'Replies locked' : 'Replies unlocked'
+    });
+  } catch (err) {
+    console.error('[Lock Post Error]', err);
+    return res.status(500).json({ error: 'Failed to toggle lock status' });
   }
 });
 

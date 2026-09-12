@@ -31,7 +31,9 @@ import {
   Code,
   FileQuestion,
   ArrowLeft,
-  Sparkles
+  Sparkles,
+  Lock,
+  Unlock,
 } from 'lucide-react'
 import LoadingSpinner from '../components/common/LoadingSpinner.jsx'
 import ConfirmDeleteModal from '../components/common/ConfirmDeleteModal.jsx'
@@ -93,7 +95,8 @@ function CommentThreadItem({
   submitting,
   user,
   navigate,
-  showToast
+  showToast,
+  isLocked
 }) {
   const [showReplies, setShowReplies] = useState(true)
   const [visibleCount, setVisibleCount] = useState(3)
@@ -178,22 +181,24 @@ function CommentThreadItem({
           <span className="vote-score-num">{comment.voteScore || 0}</span>
         </div>
 
-        <button
-          type="button"
-          className={`btn-reply-action ${isReplying ? 'active-reply-btn' : ''}`}
-          onClick={() => {
-            if (!user) {
-              showToast('Please log in to reply')
-              navigate('/login')
-              return
-            }
-            setActiveReplyId(isReplying ? null : commentId)
-            setSubReplyText('')
-          }}
-        >
-          <CornerDownRight size={14} />
-          <span>Reply</span>
-        </button>
+        {!isLocked && (
+          <button
+            type="button"
+            className={`btn-reply-action ${isReplying ? 'active-reply-btn' : ''}`}
+            onClick={() => {
+              if (!user) {
+                showToast('Please log in to reply')
+                navigate('/login')
+                return
+              }
+              setActiveReplyId(isReplying ? null : commentId)
+              setSubReplyText('')
+            }}
+          >
+            <CornerDownRight size={14} />
+            <span>Reply</span>
+          </button>
+        )}
 
         {canDelete && (
           <button
@@ -208,7 +213,7 @@ function CommentThreadItem({
         )}
       </div>
 
-      {isReplying && (
+      {!isLocked && isReplying && (
         <div className="inline-nested-reply">
           <div className="inline-reply-header">
             <span className="inline-reply-target">
@@ -330,22 +335,24 @@ function CommentThreadItem({
                         <span className="vote-score-num">{reply.voteScore || 0}</span>
                       </div>
 
-                      <button
-                        type="button"
-                        className={`btn-reply-action ${isRepReplying ? 'active-reply-btn' : ''}`}
-                        onClick={() => {
-                          if (!user) {
-                            showToast('Please log in to reply')
-                            navigate('/login')
-                            return
-                          }
-                          setActiveReplyId(isRepReplying ? null : repId)
-                          setSubReplyText('')
-                        }}
-                      >
-                        <CornerDownRight size={14} />
-                        <span>Reply</span>
-                      </button>
+                      {!isLocked && (
+                        <button
+                          type="button"
+                          className={`btn-reply-action ${isRepReplying ? 'active-reply-btn' : ''}`}
+                          onClick={() => {
+                            if (!user) {
+                              showToast('Please log in to reply')
+                              navigate('/login')
+                              return
+                            }
+                            setActiveReplyId(isRepReplying ? null : repId)
+                            setSubReplyText('')
+                          }}
+                        >
+                          <CornerDownRight size={14} />
+                          <span>Reply</span>
+                        </button>
+                      )}
 
                       {(isAdmin || isPostAuthor || (user && (
                         (repAuthor && user.username === repAuthor) ||
@@ -364,7 +371,7 @@ function CommentThreadItem({
                       )}
                     </div>
 
-                    {isRepReplying && (
+                    {!isLocked && isRepReplying && (
                       <div className="inline-nested-reply">
                         <div className="inline-reply-header">
                           <span className="inline-reply-target">
@@ -447,7 +454,7 @@ function CommentThreadItem({
 const DEMO_DISCUSSION = {
   id: 'distro-2025',
   title: 'Best Linux distro for beginners in 2025?',
-  body: `Hi everyone!\n\nI'm new to Linux and planning to switch from Windows. Which Linux distribution would you recommend for a beginner in 2025? I'm looking for something stable, user-friendly, and with good community support. Also, any tips for a smooth transition would be really helpful!\n\nThanks in advance! 🙌`,
+  body: `Hi everyone!\n\nI'm new to Linux and planning to switch from Windows. Which Linux distribution would you recommend for a beginner in 2025? I'm looking for something stable, user-friendly, and with good community support. Also, any tips for a smooth transition would be really helpful!\n\nThanks in advance!`,
   category: 'Linux',
   tags: ['Linux', 'Beginner'],
   allTags: ['Linux', 'Beginner', 'Help', 'Installation', 'Distribution'],
@@ -808,10 +815,26 @@ export default function PostDetail() {
     }
   }
 
+  const handleToggleLock = async () => {
+    try {
+      const postId = post?._id || post?.id || id
+      if (!postId) return
+      const res = await postsApi.lock(postId)
+      setPost((prev) => ({ ...prev, isLocked: Boolean(res.isLocked) }))
+      showToast(res.isLocked ? 'Discussion locked from replies' : 'Discussion unlocked')
+    } catch (err) {
+      showToast('Error: ' + (err.message || 'Failed to toggle lock'))
+    }
+  }
+
   const handleAddComment = async (text, parentId = null) => {
     if (!user) {
       showToast('Please log in to reply')
       navigate('/login')
+      return
+    }
+    if (post?.isLocked) {
+      showToast('This discussion is locked from replies')
       return
     }
     if (!parentId && imageUploading) return
@@ -1034,6 +1057,15 @@ export default function PostDetail() {
   const authorName = activePost.author?.username || activePost.username || 'kaushik'
   const formattedCreatedTime = formatRelativeTime(activePost.createdAt || activePost.created_at)
 
+  const isPostAuthor = Boolean(
+    user && (
+      (authorName && user.username === authorName) ||
+      (activePost.author?._id && (String(user.id) === String(activePost.author._id) || String(user._id) === String(activePost.author._id))) ||
+      (activePost.author?.id && (String(user.id) === String(activePost.author.id) || String(user._id) === String(activePost.author.id)))
+    )
+  )
+  const canLockPost = Boolean(user && (user.role === 'admin' || isPostAuthor))
+
   let lastActivityText = ''
   if (comments.length > 0) {
     const lastComment = comments[comments.length - 1]
@@ -1124,6 +1156,12 @@ export default function PostDetail() {
                     <button type="button" className="post-more-item" onClick={handleShare}>
                       <Share2 size={14} /> Copy link
                     </button>
+                    {canLockPost && (
+                      <button type="button" className="post-more-item" onClick={handleToggleLock}>
+                        {activePost.isLocked ? <Unlock size={14} /> : <Lock size={14} />}
+                        <span>{activePost.isLocked ? 'Unlock replies' : 'Lock replies'}</span>
+                      </button>
+                    )}
                     {(user?.role === 'admin' || user?.username === authorName || (activePost.author?._id && (String(user?.id) === String(activePost.author._id) || String(user?._id) === String(activePost.author._id)))) && (
                       <button type="button" className="post-more-item danger" onClick={() => setShowDeletePostModal(true)}>
                         <Trash2 size={14} /> Delete post
@@ -1207,7 +1245,15 @@ export default function PostDetail() {
 
           <section className="replies-section-wrapper">
             <div className="replies-header-bar">
-              <h3 className="replies-title">Replies</h3>
+              <div className="replies-title-group">
+                <h3 className="replies-title">Replies</h3>
+                {activePost.isLocked && (
+                  <span className="replies-locked-badge">
+                    <Lock size={12} />
+                    <span>Locked</span>
+                  </span>
+                )}
+              </div>
               <div className="sort-dropdown-wrap">
                 <span>Sort by:</span>
                 <select
@@ -1249,6 +1295,7 @@ export default function PostDetail() {
                     user={user}
                     navigate={navigate}
                     showToast={showToast}
+                    isLocked={activePost.isLocked}
                   />
                 ))}
 
@@ -1267,7 +1314,27 @@ export default function PostDetail() {
               </div>
             )}
 
-            {user ? (
+            {activePost.isLocked ? (
+              <div className="discussion-locked-card">
+                <div className="discussion-locked-icon">
+                  <Lock size={22} />
+                </div>
+                <div className="discussion-locked-content">
+                  <h4>Replies are locked</h4>
+                  <p>This discussion has been locked from new replies and comments.</p>
+                  {canLockPost && (
+                    <button
+                      type="button"
+                      className="btn-unlock-inline"
+                      onClick={handleToggleLock}
+                    >
+                      <Unlock size={14} />
+                      <span>Unlock replies</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : user ? (
               <div className="reply-composer-card">
                 <div className="reply-composer-body">
                   <UserAvatar
