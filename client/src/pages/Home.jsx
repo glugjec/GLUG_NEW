@@ -157,7 +157,6 @@ function UserAvatar({ src, username, size = 24, className = '' }) {
         src={src}
         alt={username || 'User'}
         referrerPolicy="no-referrer"
-        crossOrigin="anonymous"
         onError={() => setError(true)}
         className={className}
         style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}

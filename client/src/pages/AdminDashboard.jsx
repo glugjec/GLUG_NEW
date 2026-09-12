@@ -33,7 +33,45 @@ import {
 import { useAuth } from "../context/AuthContext.jsx";
 import { adminApi, resourcesApi } from "../api.js";
 import ConfirmDeleteModal from "../components/common/ConfirmDeleteModal.jsx";
+import { avatarInitials, avatarColor } from "../components/common/avatar.js";
 import "./AdminDashboard.css";
+
+function AdminUserAvatar({ src, username }) {
+  const [error, setError] = useState(false);
+  const name = username || 'User';
+
+  useEffect(() => {
+    setError(false);
+  }, [src]);
+
+  const isValid = Boolean(
+    src && typeof src === 'string' && (src.startsWith('http') || src.startsWith('/') || src.startsWith('data:'))
+  );
+
+  if (isValid && !error) {
+    return (
+      <img
+        src={src}
+        alt={name}
+        referrerPolicy="no-referrer"
+        onError={() => setError(true)}
+        className="admin-user-avatar"
+      />
+    );
+  }
+
+  return (
+    <div
+      className="admin-user-avatar fallback"
+      style={{
+        background: avatarColor(name),
+        color: '#ffffff',
+      }}
+    >
+      {avatarInitials(name)}
+    </div>
+  );
+}
 
 export default function AdminDashboard() {
   const { user, authLoading } = useAuth();
@@ -642,13 +680,7 @@ export default function AdminDashboard() {
                     <tr key={u.id}>
                       <td>
                         <div className="admin-user-cell">
-                          {u.avatar ? (
-                            <img src={u.avatar} alt={u.username} className="admin-user-avatar" />
-                          ) : (
-                            <div className="admin-user-avatar fallback">
-                              {u.username.slice(0, 2).toUpperCase()}
-                            </div>
-                          )}
+                          <AdminUserAvatar src={u.avatar} username={u.username} />
                           <div className="admin-user-meta">
                             <span className="admin-user-name">@{u.username}</span>
                             {u.isProtected && (
