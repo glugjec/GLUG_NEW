@@ -1040,10 +1040,6 @@ export default function AdminDashboard() {
                   <span className="admin-email-tag">glug.jec@gmail.com</span>
                   <span className="admin-shield-badge">Protected</span>
                 </div>
-                <div className="admin-protected-item">
-                  <span className="admin-email-tag">admin@glug.dev</span>
-                  <span className="admin-shield-badge">Protected</span>
-                </div>
               </div>
             </div>
           </div>

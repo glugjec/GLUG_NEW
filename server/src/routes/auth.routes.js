@@ -11,7 +11,7 @@ const router = Router();
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Automatic Admin Email List
-const ADMIN_EMAILS = ['glug.jec@gmail.com', 'admin@glug.dev'];
+const ADMIN_EMAILS = ['glug.jec@gmail.com'];
 
 const validate = (validations) => {
   return async (req, res, next) => {

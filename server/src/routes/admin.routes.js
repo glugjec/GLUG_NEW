@@ -12,7 +12,7 @@ const router = Router();
 // Protect all admin routes
 router.use(requireAuth, requireAdmin);
 
-const PROTECTED_ADMIN_EMAILS = ["glug.jec@gmail.com", "admin@glug.dev"];
+const PROTECTED_ADMIN_EMAILS = ["glug.jec@gmail.com"];
 
 // @route   GET /api/admin/stats
 // @desc    Get platform-wide metrics
