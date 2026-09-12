@@ -181,7 +181,7 @@ function CommentThreadItem({
           <span className="vote-score-num">{comment.voteScore || 0}</span>
         </div>
 
-        {!isLocked && (
+        {(!isLocked || user?.role === 'admin') && (
           <button
             type="button"
             className={`btn-reply-action ${isReplying ? 'active-reply-btn' : ''}`}
@@ -213,7 +213,7 @@ function CommentThreadItem({
         )}
       </div>
 
-      {!isLocked && isReplying && (
+      {(!isLocked || user?.role === 'admin') && isReplying && (
         <div className="inline-nested-reply">
           <div className="inline-reply-header">
             <span className="inline-reply-target">
@@ -335,7 +335,7 @@ function CommentThreadItem({
                         <span className="vote-score-num">{reply.voteScore || 0}</span>
                       </div>
 
-                      {!isLocked && (
+                      {(!isLocked || user?.role === 'admin') && (
                         <button
                           type="button"
                           className={`btn-reply-action ${isRepReplying ? 'active-reply-btn' : ''}`}
@@ -371,7 +371,7 @@ function CommentThreadItem({
                       )}
                     </div>
 
-                    {!isLocked && isRepReplying && (
+                    {(!isLocked || user?.role === 'admin') && isRepReplying && (
                       <div className="inline-nested-reply">
                         <div className="inline-reply-header">
                           <span className="inline-reply-target">
@@ -833,7 +833,7 @@ export default function PostDetail() {
       navigate('/login')
       return
     }
-    if (post?.isLocked) {
+    if (post?.isLocked && user?.role !== 'admin') {
       showToast('This discussion is locked from replies')
       return
     }
@@ -1314,7 +1314,7 @@ export default function PostDetail() {
               </div>
             )}
 
-            {activePost.isLocked ? (
+            {activePost.isLocked && user?.role !== 'admin' ? (
               <div className="discussion-locked-card">
                 <div className="discussion-locked-icon">
                   <Lock size={22} />
@@ -1336,6 +1336,12 @@ export default function PostDetail() {
               </div>
             ) : user ? (
               <div className="reply-composer-card">
+                {activePost.isLocked && (
+                  <div className="discussion-admin-lock-note">
+                    <Lock size={14} />
+                    <span>This discussion is locked to the public. You are replying as an administrator.</span>
+                  </div>
+                )}
                 <div className="reply-composer-body">
                   <UserAvatar
                     src={user?.avatar}
