@@ -24,7 +24,7 @@ export default function LanguageSelector({ selectedLanguage, onLanguageChange })
     }
     if (isOpen) {
       document.addEventListener('keydown', handleKeyDown);
-      setTimeout(() => searchInputRef.current?.focus(), 50);
+      setTimeout(() => searchInputRef.current?.focus({ preventScroll: true }), 50);
       return () => document.removeEventListener('keydown', handleKeyDown);
     } else {
       setSearchQuery('');

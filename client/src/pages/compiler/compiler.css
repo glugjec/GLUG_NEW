@@ -76,9 +76,8 @@
   flex-shrink: 0;
   gap: 12px;
   position: relative;
-  z-index: 50;
-  overflow-x: auto;
-  overflow-y: hidden;
+  z-index: 200;
+  overflow: visible;
 }
 
 .compiler-header-left {
