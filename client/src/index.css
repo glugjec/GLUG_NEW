@@ -3324,7 +3324,7 @@ body.glug-mobile-search-open .sidebar-hamburger {
     width: 260px !important;
     max-width: 82vw;
     height: 100vh;
-    z-index: 80;
+    z-index: 9999;
     transform: translateX(-100%);
     transition: transform 0.25s ease;
     box-shadow: 6px 0 28px rgba(0, 0, 0, 0.5);
@@ -3369,7 +3369,7 @@ body.glug-mobile-search-open .sidebar-hamburger {
     inset: 0;
     background: rgba(0, 0, 0, 0.65);
     backdrop-filter: blur(4px);
-    z-index: 75;
+    z-index: 9998;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.25s ease;
@@ -3385,7 +3385,7 @@ body.glug-mobile-search-open .sidebar-hamburger {
     align-items: center;
     justify-content: center;
     position: fixed;
-    z-index: 85;
+    z-index: 10000;
     top: 15px;
     left: 14px;
     width: 38px;

@@ -345,6 +345,9 @@ export default function CodeEditor({
             insertSpaces: true,
             wordWrap: 'on',
             automaticLayout: true,
+            scrollbar: {
+              alwaysConsumeMouseWheel: false,
+            },
             suggest: {
               showKeywords: true,
               showSnippets: true,

@@ -30,7 +30,6 @@ export default function Header({
     <header className="compiler-header">
       <div className="compiler-header-left">
         <div className="compiler-brand">
-          <img src="/logo.png" alt="GLUG" className="compiler-brand-logo" />
           <div className="compiler-brand-info">
             <span className="compiler-brand-title">GLUG Compiler</span>
             <span className="compiler-brand-badge">IDE v2.0</span>
