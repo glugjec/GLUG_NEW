@@ -2901,7 +2901,7 @@ input:focus, textarea:focus, select:focus {
   pointer-events: none;
 }
 
-.topbar-mobile-search-trigger {
+.topbar-icon-btn.topbar-mobile-search-trigger {
   display: none;
 }
 
@@ -3412,7 +3412,7 @@ body.glug-mobile-search-open .sidebar-hamburger {
     display: none;
   }
 
-  .topbar-mobile-search-trigger {
+  .topbar-icon-btn.topbar-mobile-search-trigger {
     display: flex;
   }
 
