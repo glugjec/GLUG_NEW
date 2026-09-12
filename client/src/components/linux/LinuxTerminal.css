@@ -377,10 +377,19 @@ body.glug-collapsed .terminal-frame.is-expanded {
   box-shadow: none;
 }
 
-@media (max-width: 899px) {
+@media (max-width: 900px) {
   .terminal-frame.is-expanded {
     top: 0;
     left: 0;
+    right: 0;
+    bottom: 0;
+    padding-top: 58px;
+    background: #090d16;
+    box-sizing: border-box;
+  }
+
+  .terminal-frame.is-expanded .terminal-titlebar {
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
   }
 }
 
