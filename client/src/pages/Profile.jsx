@@ -20,6 +20,7 @@ import {
   Terminal,
   Code2,
   ExternalLink,
+  Crown,
   Globe,
   Plus,
   X,
@@ -592,14 +593,24 @@ export default function Profile() {
                 <>
                   <button
                     type="button"
+                    className="profile-btn-primary"
+                    onClick={() => {
+                      if (!user) {
+                        navigate('/login?redirect=/profile/' + (profile.username || id));
+                        return;
+                      }
+                      navigate(`/chat?with=${profile.id || profile._id}`);
+                    }}
+                  >
+                    <MessageSquare size={15} /> Message
+                  </button>
+                  <button
+                    type="button"
                     className="profile-btn-secondary"
                     onClick={handleCopyLink}
                   >
                     <Share2 size={15} /> Share Profile
                   </button>
-                  <Link to="/forum" className="profile-btn-primary">
-                    <MessageSquare size={15} /> Browse Forum
-                  </Link>
                 </>
               )}
             </div>
@@ -610,6 +621,14 @@ export default function Profile() {
               <h1 className="profile-display-name">
                 {profile.username || 'Member'}
               </h1>
+              {profile.communityRole?.isMember && (
+                <span className="profile-team-badge">
+                  <Crown size={13} />
+                  <span>
+                    {profile.communityRole.positionTitle || profile.communityRole.category} • {profile.communityRole.teamDomain || 'Core'}
+                  </span>
+                </span>
+              )}
               <span
                 className={`profile-role-badge ${
                   profile.role === 'admin'

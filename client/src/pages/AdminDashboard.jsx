@@ -29,6 +29,9 @@ import {
   UserCheck,
   ShieldCheck,
   ArrowUp,
+  Crown,
+  Award,
+  UserPlus,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { adminApi, resourcesApi } from "../api.js";
@@ -118,11 +121,102 @@ export default function AdminDashboard() {
   const [isDeletingAdminPost, setIsDeletingAdminPost] = useState(false);
   const [previewingPost, setPreviewingPost] = useState(null);
 
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [loadingTeam, setLoadingTeam] = useState(false);
+  const [teamModalOpen, setTeamModalOpen] = useState(false);
+  const [editingTeamMember, setEditingTeamMember] = useState(null);
+  const [memberToRemove, setMemberToRemove] = useState(null);
+  const [isRemovingMember, setIsRemovingMember] = useState(false);
+  const [isSavingTeam, setIsSavingTeam] = useState(false);
+  const [teamForm, setTeamForm] = useState({
+    userId: "",
+    category: "Team Lead",
+    positionTitle: "",
+    teamDomain: "Technical",
+    order: 10,
+  });
+
   const [toast, setToast] = useState(null);
 
   function showToast(msg, type = "success") {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
+  }
+
+  async function loadTeamMembers() {
+    try {
+      setLoadingTeam(true);
+      const res = await adminApi.getTeamMembers();
+      setTeamMembers(res.team || []);
+    } catch (err) {
+      showToast(err.message || "Failed to load team members", "error");
+    } finally {
+      setLoadingTeam(false);
+    }
+  }
+
+  function openTeamModal(member = null, defaultUser = null) {
+    if (member) {
+      setEditingTeamMember(member);
+      setTeamForm({
+        userId: member.id,
+        category: member.communityRole?.category || "Team Lead",
+        positionTitle: member.communityRole?.positionTitle || "",
+        teamDomain: member.communityRole?.teamDomain || "Technical",
+        order: member.communityRole?.order ?? 10,
+      });
+    } else {
+      setEditingTeamMember(null);
+      setTeamForm({
+        userId: defaultUser?.id || "",
+        category: "Team Lead",
+        positionTitle: "",
+        teamDomain: "Technical",
+        order: 10,
+      });
+    }
+    setTeamModalOpen(true);
+  }
+
+  async function handleSaveTeamPosition(e) {
+    e.preventDefault();
+    if (!teamForm.userId) {
+      showToast("Please select a community member", "error");
+      return;
+    }
+    try {
+      setIsSavingTeam(true);
+      await adminApi.updateTeamPosition(teamForm.userId, {
+        category: teamForm.category,
+        positionTitle: teamForm.positionTitle,
+        teamDomain: teamForm.teamDomain,
+        order: Number(teamForm.order) || 10,
+      });
+      showToast("Team position updated successfully", "success");
+      setTeamModalOpen(false);
+      loadTeamMembers();
+      loadStats();
+    } catch (err) {
+      showToast(err.message || "Failed to update team position", "error");
+    } finally {
+      setIsSavingTeam(false);
+    }
+  }
+
+  async function handleRemoveTeamMember() {
+    if (!memberToRemove) return;
+    try {
+      setIsRemovingMember(true);
+      await adminApi.removeTeamMember(memberToRemove.id);
+      showToast("Member removed from community team", "success");
+      setMemberToRemove(null);
+      loadTeamMembers();
+      loadStats();
+    } catch (err) {
+      showToast(err.message || "Failed to remove member", "error");
+    } finally {
+      setIsRemovingMember(false);
+    }
   }
 
   async function loadStats() {
@@ -143,7 +237,13 @@ export default function AdminDashboard() {
   }, [user]);
 
   useEffect(() => {
-    if (user && user.role === "admin" && activeTab === "users") {
+    if (user && user.role === "admin" && (activeTab === "team" || activeTab === "overview")) {
+      loadTeamMembers();
+    }
+  }, [user, activeTab]);
+
+  useEffect(() => {
+    if (user && user.role === "admin" && (activeTab === "users" || activeTab === "team")) {
       if (users.length === 0) setLoadingUsers(true);
       const params = {};
       if (userSearch.trim()) params.q = userSearch.trim();
@@ -463,6 +563,14 @@ export default function AdminDashboard() {
           </button>
           <button
             type="button"
+            className={`admin-tab-btn ${activeTab === "team" ? "active" : ""}`}
+            onClick={() => setSearchParams({ tab: "team" })}
+          >
+            <Crown size={16} />
+            <span>Community Team</span>
+          </button>
+          <button
+            type="button"
             className={`admin-tab-btn ${activeTab === "users" ? "active" : ""}`}
             onClick={() => setSearchParams({ tab: "users" })}
           >
@@ -611,6 +719,120 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {activeTab === "team" && (
+        <div className="admin-tab-content">
+          <div className="admin-toolbar">
+            <div className="admin-toolbar-title-wrap">
+              <h2 className="admin-section-heading">
+                <Crown size={20} className="text-gold" />
+                <span>Community Team & Leadership</span>
+              </h2>
+              <p className="admin-section-subtext">
+                Assign community roles and positions for members displayed in the public community directory.
+              </p>
+            </div>
+            <div className="admin-toolbar-actions">
+              <button
+                type="button"
+                className="admin-primary-btn"
+                onClick={() => openTeamModal(null)}
+              >
+                <Plus size={16} />
+                <span>Assign Team Member</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="admin-table-container">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Member</th>
+                  <th>Hierarchy Tier</th>
+                  <th>Position Title</th>
+                  <th>Domain</th>
+                  <th>Order</th>
+                  <th className="admin-th-actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loadingTeam && teamMembers.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="admin-table-empty">
+                      <RefreshCw className="admin-spin" size={20} />
+                      <span>Loading team members...</span>
+                    </td>
+                  </tr>
+                ) : teamMembers.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="admin-table-empty">
+                      <Users size={24} />
+                      <span>No team members assigned yet. Click "Assign Team Member" above to add leaders and coordinators.</span>
+                    </td>
+                  </tr>
+                ) : (
+                  teamMembers.map((m) => (
+                    <tr key={m.id}>
+                      <td>
+                        <div className="admin-user-cell">
+                          <AdminUserAvatar src={m.avatar} username={m.username} />
+                          <div className="admin-user-meta">
+                            <span className="admin-user-name">@{m.username}</span>
+                            <span className="admin-email-text">{m.email}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`admin-tier-chip tier-${(m.communityRole?.category || "lead").toLowerCase().replace(/\s+/g, '-')}`}>
+                          {m.communityRole?.category || "Member"}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="admin-pos-title">
+                          {m.communityRole?.positionTitle || "—"}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="admin-domain-chip">
+                          {m.communityRole?.teamDomain || "Core"}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="admin-order-chip">
+                          #{m.communityRole?.order ?? 99}
+                        </span>
+                      </td>
+                      <td className="admin-td-actions">
+                        <div className="admin-actions-row">
+                          <button
+                            type="button"
+                            className="admin-action-btn"
+                            onClick={() => openTeamModal(m)}
+                            title="Edit team position and title"
+                          >
+                            <Edit3 size={13} />
+                            <span>Edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="admin-action-btn danger"
+                            onClick={() => setMemberToRemove(m)}
+                            title="Remove from community team"
+                          >
+                            <Trash2 size={13} />
+                            <span>Remove</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {activeTab === "users" && (
         <div className="admin-tab-content">
           <div className="admin-toolbar">
@@ -729,6 +951,15 @@ export default function AdminDashboard() {
                       </td>
                       <td className="admin-td-actions">
                         <div className="admin-actions-row">
+                          <button
+                            type="button"
+                            className="admin-action-btn"
+                            onClick={() => openTeamModal(null, u)}
+                            title="Assign or edit community team position"
+                          >
+                            <Crown size={13} />
+                            <span>Position</span>
+                          </button>
                           {!u.isProtected && u.id !== user.id && (
                             <>
                               <button
@@ -1293,6 +1524,142 @@ export default function AdminDashboard() {
         warningNote="All comments, replies, upvotes, and bookmarks associated with this discussion will be permanently removed."
         confirmText="Delete Discussion"
         isDeleting={isDeletingAdminPost}
+      />
+
+      {teamModalOpen && (
+        <div className="admin-modal-overlay" onClick={() => setTeamModalOpen(false)}>
+          <div className="admin-modal-box" onClick={(e) => e.stopPropagation()}>
+            <div className="admin-modal-header">
+              <h2 className="admin-modal-title">
+                <Crown size={20} className="text-gold" />
+                <span>{editingTeamMember ? `Edit Position: @${editingTeamMember.username}` : "Assign Community Team Member"}</span>
+              </h2>
+              <button
+                type="button"
+                className="admin-modal-close"
+                onClick={() => setTeamModalOpen(false)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveTeamPosition} className="admin-modal-form">
+              <div className="admin-form-group">
+                <label>Select Member</label>
+                {editingTeamMember ? (
+                  <input
+                    type="text"
+                    className="admin-form-input"
+                    value={`@${editingTeamMember.username} (${editingTeamMember.email})`}
+                    disabled
+                  />
+                ) : (
+                  <select
+                    className="admin-form-input"
+                    value={teamForm.userId}
+                    onChange={(e) => setTeamForm({ ...teamForm, userId: e.target.value })}
+                    required
+                  >
+                    <option value="">-- Choose Member --</option>
+                    {users.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        @{u.username} ({u.email})
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              <div className="admin-form-row">
+                <div className="admin-form-group">
+                  <label>Hierarchy Tier</label>
+                  <select
+                    className="admin-form-input"
+                    value={teamForm.category}
+                    onChange={(e) => setTeamForm({ ...teamForm, category: e.target.value })}
+                  >
+                    <option value="Mentor">Mentor</option>
+                    <option value="Head">Head</option>
+                    <option value="Advisor">Advisor</option>
+                    <option value="Co-Head">Co-Head</option>
+                    <option value="Team Lead">Team Lead</option>
+                    <option value="Coordinator">Coordinator</option>
+                  </select>
+                </div>
+
+                <div className="admin-form-group">
+                  <label>Team Domain</label>
+                  <input
+                    type="text"
+                    className="admin-form-input"
+                    placeholder="e.g. Technical, Executive, Design"
+                    value={teamForm.teamDomain}
+                    onChange={(e) => setTeamForm({ ...teamForm, teamDomain: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="admin-form-row">
+                <div className="admin-form-group">
+                  <label>Position Title</label>
+                  <input
+                    type="text"
+                    className="admin-form-input"
+                    placeholder="e.g. Club President, Tech Lead"
+                    value={teamForm.positionTitle}
+                    onChange={(e) => setTeamForm({ ...teamForm, positionTitle: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="admin-form-group">
+                  <label>Display Order (#)</label>
+                  <input
+                    type="number"
+                    className="admin-form-input"
+                    value={teamForm.order}
+                    onChange={(e) => setTeamForm({ ...teamForm, order: e.target.value })}
+                    min={1}
+                    max={999}
+                  />
+                </div>
+              </div>
+
+              <div className="admin-modal-actions">
+                <button
+                  type="button"
+                  className="admin-cancel-btn"
+                  onClick={() => setTeamModalOpen(false)}
+                  disabled={isSavingTeam}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="admin-primary-btn"
+                  disabled={isSavingTeam}
+                >
+                  {isSavingTeam ? "Saving..." : "Save Position"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(memberToRemove)}
+        onClose={() => {
+          if (!isRemovingMember) setMemberToRemove(null);
+        }}
+        onConfirm={handleRemoveTeamMember}
+        title="Remove Member from Community Team"
+        description="Are you sure you want to remove this member from the community leadership directory?"
+        itemTitle={memberToRemove ? `@${memberToRemove.username}` : ""}
+        warningNote="This will clear their community leadership role and remove them from the public community team page."
+        confirmText="Remove Member"
+        isDeleting={isRemovingMember}
       />
     </section>
   );

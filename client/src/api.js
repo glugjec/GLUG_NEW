@@ -84,11 +84,27 @@ export const resourcesApi = {
   delete: (id) => client.delete(`/resources/${id}`),
 };
 
+export const membersApi = {
+  getTeam: () => client.get('/users/team'),
+};
+
+export const chatApi = {
+  getUnreadCount: () => client.get('/chat/unread-count'),
+  getConversations: () => client.get('/chat/conversations'),
+  getOrCreateWithUser: (userId) => client.get(`/chat/conversations/with/${userId}`),
+  getMessages: (conversationId) => client.get(`/chat/conversations/${conversationId}/messages`),
+  sendMessage: (conversationId, text) => client.post(`/chat/conversations/${conversationId}/messages`, { text }),
+  markRead: (conversationId) => client.put(`/chat/conversations/${conversationId}/read`),
+};
+
 export const adminApi = {
   getStats: () => client.get('/admin/stats'),
   getUsers: (params = {}) => client.get('/admin/users', { params }),
   updateUserRole: (id, role) => client.put(`/admin/users/${id}/role`, { role }),
   deleteUser: (id) => client.delete(`/admin/users/${id}`),
+  getTeamMembers: () => client.get('/admin/team'),
+  updateTeamPosition: (userId, data) => client.put(`/admin/team/${userId}`, data),
+  removeTeamMember: (userId) => client.delete(`/admin/team/${userId}`),
   getPosts: (params = {}) => client.get('/admin/posts', { params }),
   togglePinPost: (id) => client.put(`/admin/posts/${id}/pin`),
   toggleLockPost: (id) => client.put(`/admin/posts/${id}/lock`),

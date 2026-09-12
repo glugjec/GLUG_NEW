@@ -47,8 +47,45 @@ router.put('/me/terminal', requireAuth, async (req, res) => {
   }
 });
 
-// @route   GET /api/users/:id
-// @desc    Get public profile of a user by ID or username
+router.get('/team', async (req, res) => {
+  try {
+    const members = await User.find({
+      $or: [
+        { 'communityRole.isMember': true },
+        { role: 'admin' },
+      ],
+    })
+      .select('-passwordHash')
+      .sort({ 'communityRole.order': 1, createdAt: 1 })
+      .lean();
+
+    const formatted = members.map((u) => ({
+      id: u._id.toString(),
+      username: u.username,
+      email: u.email,
+      role: u.role,
+      avatar: u.avatar || '',
+      bio: u.bio || '',
+      skills: u.skills || [],
+      socials: u.socials || {},
+      communityRole: {
+        isMember: Boolean(u.communityRole?.isMember || u.role === 'admin'),
+        category: u.communityRole?.category || (u.role === 'admin' ? 'Head' : 'Coordinator'),
+        positionTitle: u.communityRole?.positionTitle || (u.role === 'admin' ? 'Head' : 'Team Member'),
+        teamDomain: u.communityRole?.teamDomain || 'Core',
+        order: typeof u.communityRole?.order === 'number' ? u.communityRole.order : 99,
+        assignedAt: u.communityRole?.assignedAt || u.createdAt,
+      },
+      createdAt: u.createdAt,
+    }));
+
+    return res.json({ team: formatted });
+  } catch (err) {
+    console.error('[Get Public Team Error]', err);
+    return res.status(500).json({ error: 'Failed to fetch team members' });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   try {
     const isObjectId = /^[0-9a-fA-F]{24}$/.test(req.params.id);
@@ -77,6 +114,13 @@ router.get('/:id', async (req, res) => {
       skills: user.skills || [],
       avatar: user.avatar || '',
       socials: user.socials || {},
+      communityRole: user.communityRole || {
+        isMember: user.role === 'admin',
+        category: user.role === 'admin' ? 'Head' : '',
+        positionTitle: user.role === 'admin' ? 'Head' : '',
+        teamDomain: 'Core',
+        order: 99,
+      },
       preferences: user.preferences || {},
       createdAt: user.createdAt,
       stats: {

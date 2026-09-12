@@ -28,6 +28,7 @@ router.get("/stats", async (req, res) => {
       totalResources,
       adminCount,
       todayPosts,
+      teamCount,
     ] = await Promise.all([
       User.countDocuments(),
       Post.countDocuments(),
@@ -35,6 +36,7 @@ router.get("/stats", async (req, res) => {
       Resource.countDocuments(),
       User.countDocuments({ role: "admin" }),
       Post.countDocuments({ createdAt: { $gte: today } }),
+      User.countDocuments({ "communityRole.isMember": true }),
     ]);
 
     return res.json({
@@ -44,6 +46,7 @@ router.get("/stats", async (req, res) => {
       totalResources,
       adminCount,
       todayPosts,
+      teamCount,
     });
   } catch (err) {
     console.error("[Admin Stats Error]", err);
@@ -102,6 +105,7 @@ router.get("/users", async (req, res) => {
       email: u.email,
       role: u.role,
       avatar: u.avatar || "",
+      communityRole: u.communityRole || {},
       createdAt: u.createdAt,
       stats: {
         posts: postMap.get(u._id.toString()) || 0,
@@ -347,6 +351,119 @@ router.delete("/comments/:id", async (req, res) => {
   } catch (err) {
     console.error("[Admin Delete Comment Error]", err);
     return res.status(500).json({ error: "Failed to delete comment" });
+  }
+});
+
+router.get("/team", async (req, res) => {
+  try {
+    const teamMembers = await User.find({
+      $or: [
+        { "communityRole.isMember": true },
+        { role: "admin" },
+      ],
+    })
+      .select("-passwordHash")
+      .sort({ "communityRole.order": 1, createdAt: 1 })
+      .lean();
+
+    const formatted = teamMembers.map((u) => ({
+      id: u._id.toString(),
+      username: u.username,
+      email: u.email,
+      role: u.role,
+      avatar: u.avatar || "",
+      bio: u.bio || "",
+      skills: u.skills || [],
+      socials: u.socials || {},
+      communityRole: {
+        isMember: Boolean(u.communityRole?.isMember || u.role === "admin"),
+        category: u.communityRole?.category || (u.role === "admin" ? "Head" : "Coordinator"),
+        positionTitle: u.communityRole?.positionTitle || (u.role === "admin" ? "Head" : "Team Member"),
+        teamDomain: u.communityRole?.teamDomain || "Core",
+        order: typeof u.communityRole?.order === "number" ? u.communityRole.order : 99,
+        assignedAt: u.communityRole?.assignedAt || u.createdAt,
+      },
+      createdAt: u.createdAt,
+    }));
+
+    return res.json({ team: formatted });
+  } catch (err) {
+    console.error("[Admin Get Team Error]", err);
+    return res.status(500).json({ error: "Failed to load team members" });
+  }
+});
+
+router.put("/team/:userId", async (req, res) => {
+  try {
+    const { category, positionTitle, teamDomain, order } = req.body;
+
+    const validCategories = [
+      "Mentor",
+      "Head",
+      "Advisor",
+      "Co-Head",
+      "Team Lead",
+      "Coordinator",
+    ];
+
+    if (category && !validCategories.includes(category)) {
+      return res.status(400).json({ error: "Invalid team category" });
+    }
+
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    user.communityRole = {
+      isMember: true,
+      category: category || user.communityRole?.category || "Coordinator",
+      positionTitle: typeof positionTitle === "string" ? positionTitle.trim() : (user.communityRole?.positionTitle || ""),
+      teamDomain: typeof teamDomain === "string" ? teamDomain.trim() : (user.communityRole?.teamDomain || "Core"),
+      order: typeof order === "number" ? order : (Number(order) || 99),
+      assignedAt: user.communityRole?.assignedAt || new Date(),
+    };
+
+    await user.save();
+
+    return res.json({
+      success: true,
+      message: "Team position updated successfully",
+      user: {
+        id: user._id.toString(),
+        username: user.username,
+        email: user.email,
+        communityRole: user.communityRole,
+      },
+    });
+  } catch (err) {
+    console.error("[Admin Update Team Position Error]", err);
+    return res.status(500).json({ error: "Failed to update team position" });
+  }
+});
+
+router.delete("/team/:userId", async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    user.communityRole = {
+      isMember: false,
+      category: "",
+      positionTitle: "",
+      teamDomain: "",
+      order: 99,
+      assignedAt: null,
+    };
+
+    await user.save();
+
+    return res.json({ success: true, message: "Member removed from community team" });
+  } catch (err) {
+    console.error("[Admin Remove Team Member Error]", err);
+    return res.status(500).json({ error: "Failed to remove member from team" });
   }
 });
 

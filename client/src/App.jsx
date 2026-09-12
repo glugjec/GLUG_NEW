@@ -12,6 +12,8 @@ import ForYou from './pages/ForYou.jsx'
 import Profile from './pages/Profile.jsx'
 import Settings from './pages/Settings.jsx'
 import AdminDashboard from './pages/AdminDashboard.jsx'
+import Members from './pages/Members.jsx'
+import Chat from './pages/Chat.jsx'
 import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
 import ForgotPassword from './pages/ForgotPassword.jsx'
@@ -58,16 +60,10 @@ export default function App() {
             <Route path="/profile/:id" element={<Profile />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/admin" element={<AdminDashboard />} />
-            <Route
-              path="/members"
-              element={
-                <PlaceholderPage
-                  title="Community Members Directory"
-                  subtitle="Explore and connect with Linux enthusiasts, developers, and open source contributors at GLUG."
-                  icon={Users}
-                />
-              }
-            />
+            <Route path="/members" element={<Members />} />
+            <Route path="/chat" element={<Chat />} />
+            <Route path="/chat/:userId" element={<Chat />} />
+            <Route path="/messages" element={<Chat />} />
             <Route
               path="/events"
               element={

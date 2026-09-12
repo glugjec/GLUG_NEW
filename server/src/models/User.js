@@ -63,6 +63,18 @@ const userSchema = new mongoose.Schema(
       eventNotifs: { type: Boolean, default: true },
       theme: { type: String, default: 'dark' },
     },
+    communityRole: {
+      isMember: { type: Boolean, default: false, index: true },
+      category: {
+        type: String,
+        enum: ['', 'Mentor', 'Head', 'Advisor', 'Co-Head', 'Team Lead', 'Coordinator'],
+        default: '',
+      },
+      positionTitle: { type: String, default: '' },
+      teamDomain: { type: String, default: 'Core' },
+      order: { type: Number, default: 99 },
+      assignedAt: { type: Date, default: Date.now },
+    },
     terminalState: {
       fs: {
         type: mongoose.Schema.Types.Mixed,

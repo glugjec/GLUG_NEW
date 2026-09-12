@@ -1116,6 +1116,9 @@
 }
 
 .admin-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 20px;
   font-weight: 700;
   color: #ffffff;
@@ -1146,6 +1149,19 @@
   gap: 16px;
 }
 
+.admin-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 540px) {
+  .admin-form-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
 .admin-form-group {
   display: flex;
   flex-direction: column;
@@ -1159,7 +1175,8 @@
 }
 
 .admin-form-input,
-.admin-form-textarea {
+.admin-form-textarea,
+select.admin-form-input {
   background: #070d19;
   border: 1px solid #1e293b;
   border-radius: 10px;
@@ -1353,6 +1370,101 @@
 }
 
 .text-muted {
+  color: #64748b;
+}
+
+.admin-toolbar-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #f8fafc;
+  margin: 0;
+}
+
+.admin-section-subtext {
+  font-size: 0.84rem;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.admin-tier-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.admin-tier-chip.tier-mentor {
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.admin-tier-chip.tier-head,
+.admin-tier-chip.tier-club-head {
+  background: rgba(234, 179, 8, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.admin-tier-chip.tier-advisor,
+.admin-tier-chip.tier-faculty-advisor {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.admin-tier-chip.tier-co-head {
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.admin-tier-chip.tier-team-lead,
+.admin-tier-chip.tier-lead {
+  background: rgba(6, 182, 212, 0.15);
+  color: #22d3ee;
+  border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+.admin-tier-chip.tier-coordinator {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.admin-pos-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.admin-domain-chip {
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #94a3b8;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-order-chip {
+  font-size: 0.76rem;
+  font-weight: 700;
   color: #64748b;
 }
 

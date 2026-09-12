@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { avatarInitials, avatarColor } from '../common/avatar.js'
-import { Search, Bell, ChevronDown, LogOut, User, Settings as SettingsIcon } from 'lucide-react'
+import { Search, Bell, ChevronDown, LogOut, User, Settings as SettingsIcon, MessageSquare } from 'lucide-react'
 
 function TopBarAvatar({ src, username, email, size = 30, className = '' }) {
   const [error, setError] = useState(false)
@@ -163,6 +163,12 @@ export default function TopBar() {
             </div>
           )}
         </div>
+
+        {user && (
+          <Link to="/chat" className="topbar-icon-btn" title="Direct Messages">
+            <MessageSquare size={17} />
+          </Link>
+        )}
 
         {user ? (
           <div className="topbar-user-wrap" ref={menuRef}>
