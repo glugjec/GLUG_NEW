@@ -32,6 +32,8 @@ export default function Layout() {
     return () => window.removeEventListener('resize', onResize)
   }, [])
 
+  const isFullApp = location.pathname.startsWith('/compiler') || location.pathname.startsWith('/terminal')
+
   return (
     <div className={`app-shell-v2${collapsed ? ' is-collapsed' : ''}${mobileOpen ? ' is-mobile-open' : ''}`}>
       <Sidebar
@@ -42,9 +44,9 @@ export default function Layout() {
       />
       <div className="app-main-viewport">
         <TopBar />
-        <main className="main-content">
+        <main className={`main-content${isFullApp ? ' is-full-app' : ''}`}>
           <Outlet />
-          <Footer />
+          {!isFullApp && <Footer />}
         </main>
       </div>
       <div

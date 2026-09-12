@@ -77,6 +77,8 @@
   gap: 12px;
   position: relative;
   z-index: 50;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .compiler-header-left {
@@ -1273,35 +1275,59 @@
 }
 
 @media (max-width: 900px) {
+  .compiler-scoped-container {
+    height: auto !important;
+    min-height: calc(100dvh - var(--topbar-h, 60px));
+    overflow-y: auto !important;
+  }
+
+  .main-container {
+    overflow: visible !important;
+  }
+
   .compiler-keyboard-hint {
     display: none;
   }
 
   .main-container.view-split {
     flex-direction: column;
+    height: auto !important;
   }
 
   .main-container.view-split .editor-pane-wrapper {
     width: 100% !important;
-    height: 52% !important;
+    height: 420px !important;
+    min-height: 360px !important;
+    flex-shrink: 0;
   }
 
   .main-container.view-split .resize-handle {
     width: 100%;
-    height: 5px;
+    height: 6px;
     cursor: row-resize;
+    flex-shrink: 0;
   }
 
   .main-container.view-split .output-pane-wrapper {
     width: 100% !important;
-    height: 48% !important;
+    height: 460px !important;
+    min-height: 380px !important;
+    flex-shrink: 0;
+  }
+
+  .main-container.view-editor {
+    height: calc(100dvh - var(--topbar-h, 60px) - var(--comp-header-h, 56px)) !important;
+  }
+
+  .main-container.view-output {
+    height: calc(100dvh - var(--topbar-h, 60px) - var(--comp-header-h, 56px)) !important;
   }
 }
 
 @media (max-width: 680px) {
   .compiler-header {
-    padding: 0 10px;
-    gap: 8px;
+    padding: 0 8px;
+    gap: 6px;
   }
 
   .compiler-brand-title,
@@ -1311,6 +1337,25 @@
 
   .compiler-header-separator {
     display: none;
+  }
+
+  .font-size-stepper,
+  .fullscreen-toggle-btn {
+    display: none !important;
+  }
+
+  .view-tab-btn span {
+    font-size: 0.73rem;
+  }
+
+  .view-tab-btn {
+    padding: 4px 8px;
+    gap: 4px;
+  }
+
+  .compiler-run-btn {
+    padding: 5px 12px;
+    font-size: 0.8rem;
   }
 
   .editor-tool-text {

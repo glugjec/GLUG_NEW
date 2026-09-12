@@ -70,6 +70,19 @@ body {
   flex-direction: column;
 }
 
+.main-content.is-full-app {
+  height: calc(100vh - var(--topbar-h, 60px));
+  overflow: hidden;
+}
+
+@media (max-width: 900px) {
+  .main-content.is-full-app {
+    height: auto !important;
+    min-height: calc(100dvh - var(--topbar-h, 60px));
+    overflow-y: auto !important;
+  }
+}
+
 .main-content-flush {
   display: flex;
   flex-direction: column;

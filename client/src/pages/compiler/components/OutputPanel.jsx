@@ -36,20 +36,20 @@ export default function OutputPanel({
   const [historyIndex, setHistoryIndex] = useState(-1);
 
   const inputRef = useRef(null);
-  const terminalBottomRef = useRef(null);
+  const streamRef = useRef(null);
 
   const hasError = (result && !result.success) || errorLines.length > 0;
   const errorCount = errorLines.length || (result && !result.success ? 1 : 0);
 
   useEffect(() => {
-    if (activeTab === 'terminal') {
-      terminalBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (activeTab === 'terminal' && streamRef.current) {
+      streamRef.current.scrollTop = streamRef.current.scrollHeight;
     }
   }, [terminalLogs, isWaitingForInput, activeTab]);
 
   useEffect(() => {
     if (isWaitingForInput && activeTab === 'terminal') {
-      inputRef.current?.focus();
+      inputRef.current?.focus({ preventScroll: true });
     }
   }, [isWaitingForInput, activeTab]);
 
@@ -210,7 +210,7 @@ export default function OutputPanel({
                 </div>
               </div>
             ) : (
-              <div className="terminal-stream">
+              <div className="terminal-stream" ref={streamRef}>
                 {terminalLogs.map((log) => (
                   <div key={log.id} className={`terminal-line terminal-line-${log.type}`}>
                     {log.type === 'stdin' && <span className="terminal-prompt-sym">❯ </span>}
@@ -241,8 +241,6 @@ export default function OutputPanel({
                     </div>
                   </div>
                 )}
-
-                <div ref={terminalBottomRef} />
               </div>
             )}
 
