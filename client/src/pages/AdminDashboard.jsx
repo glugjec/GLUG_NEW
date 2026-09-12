@@ -1,5 +1,34 @@
 import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import {
+  Shield,
+  Users,
+  BookOpen,
+  MessageSquare,
+  Search,
+  Trash2,
+  ExternalLink,
+  Lock,
+  Unlock,
+  Pin,
+  PinOff,
+  Check,
+  Copy,
+  Plus,
+  Edit3,
+  Activity,
+  Eye,
+  X,
+  AlertCircle,
+  Calendar,
+  Layers,
+  Server,
+  RefreshCw,
+  CheckCircle2,
+  TrendingUp,
+  UserCheck,
+  ShieldCheck,
+} from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { adminApi, resourcesApi } from "../api.js";
 import ConfirmDeleteModal from "../components/common/ConfirmDeleteModal.jsx";
@@ -8,26 +37,33 @@ import "./AdminDashboard.css";
 export default function AdminDashboard() {
   const { user, authLoading } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get("tab") || "users";
+  const activeTab = searchParams.get("tab") || "overview";
 
-  // Platform metrics
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalPosts: 0,
     totalComments: 0,
     totalResources: 0,
+    adminCount: 0,
+    todayPosts: 0,
   });
+  const [refreshingStats, setRefreshingStats] = useState(false);
 
-  // Users tab state
   const [users, setUsers] = useState([]);
   const [userSearch, setUserSearch] = useState("");
   const [userRoleFilter, setUserRoleFilter] = useState("all");
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
+  const [roleChangeTarget, setRoleChangeTarget] = useState(null);
+  const [isUpdatingRole, setIsUpdatingRole] = useState(false);
+  const [copiedEmail, setCopiedEmail] = useState(null);
 
-  // Resources tab state
   const [resources, setResources] = useState([]);
   const [resourceModalOpen, setResourceModalOpen] = useState(false);
   const [editingResource, setEditingResource] = useState(null);
+  const [resourceToDelete, setResourceToDelete] = useState(null);
+  const [isDeletingResource, setIsDeletingResource] = useState(false);
   const [resourceForm, setResourceForm] = useState({
     title: "",
     description: "",
@@ -35,14 +71,14 @@ export default function AdminDashboard() {
     items: "",
   });
 
-  // Moderation tab state
   const [posts, setPosts] = useState([]);
   const [postSearch, setPostSearch] = useState("");
+  const [postCategoryFilter, setPostCategoryFilter] = useState("all");
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [postToDelete, setPostToDelete] = useState(null);
   const [isDeletingAdminPost, setIsDeletingAdminPost] = useState(false);
+  const [previewingPost, setPreviewingPost] = useState(null);
 
-  // Toast notification
   const [toast, setToast] = useState(null);
 
   function showToast(msg, type = "success") {
@@ -50,20 +86,26 @@ export default function AdminDashboard() {
     setTimeout(() => setToast(null), 3500);
   }
 
-  // Load stats
-  useEffect(() => {
-    if (user && user.role === "admin") {
-      adminApi
-        .getStats()
-        .then((data) => setStats(data))
-        .catch((err) => console.error("Failed to load stats:", err));
+  async function loadStats() {
+    if (!user || user.role !== "admin") return;
+    setRefreshingStats(true);
+    try {
+      const data = await adminApi.getStats();
+      setStats(data);
+    } catch (err) {
+      showToast(err.message || "Failed to load dashboard metrics", "error");
+    } finally {
+      setRefreshingStats(false);
     }
+  }
+
+  useEffect(() => {
+    loadStats();
   }, [user]);
 
-  // Load users when tab is active or search/filter changes
   useEffect(() => {
     if (user && user.role === "admin" && activeTab === "users") {
-      setLoadingUsers(true);
+      if (users.length === 0) setLoadingUsers(true);
       const params = {};
       if (userSearch.trim()) params.q = userSearch.trim();
       if (userRoleFilter !== "all") params.role = userRoleFilter;
@@ -76,20 +118,18 @@ export default function AdminDashboard() {
     }
   }, [user, activeTab, userSearch, userRoleFilter]);
 
-  // Load resources
   useEffect(() => {
-    if (user && user.role === "admin" && activeTab === "resources") {
+    if (user && user.role === "admin") {
       resourcesApi
         .list()
         .then((data) => setResources(data || []))
         .catch((err) => showToast(err.message, "error"));
     }
-  }, [user, activeTab]);
+  }, [user]);
 
-  // Load moderation posts
   useEffect(() => {
     if (user && user.role === "admin" && activeTab === "moderation") {
-      setLoadingPosts(true);
+      if (posts.length === 0) setLoadingPosts(true);
       const params = {};
       if (postSearch.trim()) params.q = postSearch.trim();
 
@@ -101,79 +141,54 @@ export default function AdminDashboard() {
     }
   }, [user, activeTab, postSearch]);
 
-  if (authLoading) {
-    return (
-      <div className="admin-page">
-        <p style={{ color: "#8b949e" }}>Loading administrator console...</p>
-      </div>
-    );
+  function copyToClipboard(text, id) {
+    if (!navigator.clipboard) return;
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedEmail(id);
+      setTimeout(() => setCopiedEmail(null), 2000);
+      showToast("Email address copied to clipboard");
+    });
   }
 
-  if (!user || user.role !== "admin") {
-    return (
-      <div className="admin-page">
-        <div className="admin-denied">
-          <svg
-            className="admin-denied-icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-          </svg>
-          <h2>Administrator Access Required</h2>
-          <p>
-            You must be signed in with an administrator account to view the GLUG
-            administration console.
-          </p>
-          <Link to="/" className="admin-primary-btn" style={{ display: "inline-flex" }}>
-            Return to Home
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  // Role promotion / demotion handler
-  async function handleRoleChange(targetUser) {
-    const newRole = targetUser.role === "admin" ? "student" : "admin";
-    const confirmMsg = `Are you sure you want to change @${targetUser.username}'s role to ${newRole.toUpperCase()}?`;
-    if (!window.confirm(confirmMsg)) return;
-
+  async function confirmRoleChange() {
+    if (!roleChangeTarget) return;
+    const newRole = roleChangeTarget.role === "admin" ? "student" : "admin";
+    setIsUpdatingRole(true);
     try {
-      await adminApi.updateUserRole(targetUser.id, newRole);
+      await adminApi.updateUserRole(roleChangeTarget.id, newRole);
       setUsers((prev) =>
-        prev.map((u) => (u.id === targetUser.id ? { ...u, role: newRole } : u))
+        prev.map((u) => (u.id === roleChangeTarget.id ? { ...u, role: newRole } : u))
       );
-      showToast(`Updated @${targetUser.username} to ${newRole}`);
+      showToast(`Updated @${roleChangeTarget.username} to ${newRole}`);
+      setRoleChangeTarget(null);
+      loadStats();
     } catch (err) {
       showToast(err.message, "error");
+    } finally {
+      setIsUpdatingRole(false);
     }
   }
 
-  // Delete user handler
-  async function handleDeleteUser(targetUser) {
-    const confirmMsg = `Permanently delete @${targetUser.username} and all their posts and comments? This cannot be undone.`;
-    if (!window.confirm(confirmMsg)) return;
-
+  async function confirmDeleteUser() {
+    if (!userToDelete) return;
+    setIsDeletingUser(true);
     try {
-      await adminApi.deleteUser(targetUser.id);
-      setUsers((prev) => prev.filter((u) => u.id !== targetUser.id));
-      showToast(`User @${targetUser.username} deleted`);
+      await adminApi.deleteUser(userToDelete.id);
+      setUsers((prev) => prev.filter((u) => u.id !== userToDelete.id));
+      showToast(`User @${userToDelete.username} deleted`);
       setStats((prev) => ({ ...prev, totalUsers: Math.max(0, prev.totalUsers - 1) }));
+      setUserToDelete(null);
     } catch (err) {
       showToast(err.message, "error");
+    } finally {
+      setIsDeletingUser(false);
     }
   }
 
-  // Save / create resource handler
   async function handleSaveResource(e) {
     e.preventDefault();
     const itemArray = resourceForm.items
-      .split('\n')
+      .split("\n")
       .map((s) => s.trim())
       .filter(Boolean);
 
@@ -188,7 +203,7 @@ export default function AdminDashboard() {
         setResources((prev) =>
           prev.map((r) => (r.id === editingResource.id ? updated : r))
         );
-        showToast("Resource updated successfully");
+        showToast("Resource topic updated");
       } else {
         const created = await resourcesApi.create({
           title: resourceForm.title,
@@ -208,20 +223,22 @@ export default function AdminDashboard() {
     }
   }
 
-  // Delete resource handler
-  async function handleDeleteResource(resourceId) {
-    if (!window.confirm("Delete this learning resource topic?")) return;
+  async function confirmDeleteResource() {
+    if (!resourceToDelete) return;
+    setIsDeletingResource(true);
     try {
-      await resourcesApi.delete(resourceId);
-      setResources((prev) => prev.filter((r) => r.id !== resourceId));
-      showToast("Resource deleted");
+      await resourcesApi.delete(resourceToDelete.id);
+      setResources((prev) => prev.filter((r) => r.id !== resourceToDelete.id));
+      showToast("Resource topic deleted");
       setStats((prev) => ({ ...prev, totalResources: Math.max(0, prev.totalResources - 1) }));
+      setResourceToDelete(null);
     } catch (err) {
       showToast(err.message, "error");
+    } finally {
+      setIsDeletingResource(false);
     }
   }
 
-  // Moderation handlers
   async function handleTogglePin(post) {
     try {
       const res = await adminApi.togglePinPost(post.id);
@@ -252,7 +269,7 @@ export default function AdminDashboard() {
     try {
       await adminApi.deletePost(postToDelete.id);
       setPosts((prev) => prev.filter((p) => p.id !== postToDelete.id));
-      showToast("Post and comments deleted");
+      showToast("Post and associated comments removed");
       setStats((prev) => ({ ...prev, totalPosts: Math.max(0, prev.totalPosts - 1) }));
       setPostToDelete(null);
     } catch (err) {
@@ -262,197 +279,441 @@ export default function AdminDashboard() {
     }
   }
 
+  if (authLoading) {
+    return (
+      <div className="admin-page">
+        <div className="admin-loading-state">
+          <RefreshCw className="admin-spinner" size={28} />
+          <p>Verifying administrator credentials...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || user.role !== "admin") {
+    return (
+      <div className="admin-page">
+        <div className="admin-denied-card">
+          <div className="admin-denied-icon-wrap">
+            <AlertCircle size={44} />
+          </div>
+          <h2>Administrator Access Required</h2>
+          <p>
+            You must be signed in with an administrator account to view the GLUG
+            administration console.
+          </p>
+          <Link to="/" className="admin-primary-btn">
+            Return to Home
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const filteredPosts = posts.filter((p) => {
+    if (postCategoryFilter === "all") return true;
+    return (p.category || "").toLowerCase() === postCategoryFilter.toLowerCase();
+  });
+
+  const studentCount = Math.max(0, (stats.totalUsers || 0) - (stats.adminCount || 0));
+
   return (
     <section className="admin-page">
-      {/* Toast Feedback */}
       {toast && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: "24px",
-            right: "24px",
-            zIndex: 999,
-            background: toast.type === "error" ? "#da3633" : "#238636",
-            color: "#ffffff",
-            padding: "10px 18px",
-            borderRadius: "8px",
-            fontSize: "14px",
-            fontWeight: "500",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
-          }}
-        >
-          {toast.msg}
+        <div className={`admin-toast ${toast.type}`}>
+          {toast.type === "error" ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
+          <span>{toast.msg}</span>
         </div>
       )}
 
-      {/* Header */}
-      <div className="admin-header">
-        <div className="admin-title-row">
-          <svg className="admin-shield-icon" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4Zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8Z" />
-          </svg>
+      <header className="admin-header">
+        <div className="admin-header-main">
+          <div className="admin-title-badge">
+            <Shield className="admin-badge-icon" size={20} />
+            <span>Admin Control Panel</span>
+          </div>
           <h1 className="admin-title">GLUG Administration Console</h1>
+          <p className="admin-subtitle">
+            Manage student community members, curate learning curriculum, moderate discussions, and monitor platform activity.
+          </p>
         </div>
-        <p className="admin-subtitle">
-          Manage community members, publish dynamic learning resources, and moderate forum discussions.
-        </p>
-      </div>
 
-      {/* Stats Grid */}
+        <div className="admin-header-actions">
+          <button
+            type="button"
+            className="admin-secondary-btn"
+            onClick={loadStats}
+            disabled={refreshingStats}
+            title="Refresh dashboard metrics"
+          >
+            <RefreshCw size={15} className={refreshingStats ? "admin-spin" : ""} />
+            <span>Refresh Stats</span>
+          </button>
+          <Link to="/forum" className="admin-secondary-btn" title="Open Forum">
+            <ExternalLink size={15} />
+            <span>Open Forum</span>
+          </Link>
+        </div>
+      </header>
+
       <div className="admin-stats-grid">
         <div className="admin-stat-card">
-          <span className="admin-stat-label">Total Members</span>
-          <span className="admin-stat-value">{stats.totalUsers}</span>
+          <div className="admin-stat-header">
+            <span className="admin-stat-label">Total Members</span>
+            <div className="admin-stat-icon-wrap user-theme">
+              <Users size={18} />
+            </div>
+          </div>
+          <div className="admin-stat-body">
+            <span className="admin-stat-value">{stats.totalUsers}</span>
+            <span className="admin-stat-subtext">Registered accounts</span>
+          </div>
         </div>
+
         <div className="admin-stat-card">
-          <span className="admin-stat-label">Forum Posts</span>
-          <span className="admin-stat-value">{stats.totalPosts}</span>
+          <div className="admin-stat-header">
+            <span className="admin-stat-label">Forum Discussions</span>
+            <div className="admin-stat-icon-wrap post-theme">
+              <MessageSquare size={18} />
+            </div>
+          </div>
+          <div className="admin-stat-body">
+            <span className="admin-stat-value">{stats.totalPosts}</span>
+            <span className="admin-stat-subtext">
+              {stats.todayPosts || 0} created today
+            </span>
+          </div>
         </div>
+
         <div className="admin-stat-card">
-          <span className="admin-stat-label">Comments</span>
-          <span className="admin-stat-value">{stats.totalComments}</span>
+          <div className="admin-stat-header">
+            <span className="admin-stat-label">Total Comments</span>
+            <div className="admin-stat-icon-wrap comment-theme">
+              <Layers size={18} />
+            </div>
+          </div>
+          <div className="admin-stat-body">
+            <span className="admin-stat-value">{stats.totalComments}</span>
+            <span className="admin-stat-subtext">Community replies</span>
+          </div>
         </div>
+
         <div className="admin-stat-card">
-          <span className="admin-stat-label">Learning Resources</span>
-          <span className="admin-stat-value">{stats.totalResources}</span>
+          <div className="admin-stat-header">
+            <span className="admin-stat-label">Curated Resources</span>
+            <div className="admin-stat-icon-wrap resource-theme">
+              <BookOpen size={18} />
+            </div>
+          </div>
+          <div className="admin-stat-body">
+            <span className="admin-stat-value">{stats.totalResources}</span>
+            <span className="admin-stat-subtext">Published learning topics</span>
+          </div>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="admin-tabs">
-        <button
-          className={`admin-tab-btn ${activeTab === "users" ? "active" : ""}`}
-          onClick={() => setSearchParams({ tab: "users" })}
-        >
-          👥 User Management
-        </button>
-        <button
-          className={`admin-tab-btn ${activeTab === "resources" ? "active" : ""}`}
-          onClick={() => setSearchParams({ tab: "resources" })}
-        >
-          📚 Resource Manager
-        </button>
-        <button
-          className={`admin-tab-btn ${activeTab === "moderation" ? "active" : ""}`}
-          onClick={() => setSearchParams({ tab: "moderation" })}
-        >
-          🛡️ Forum Moderation
-        </button>
+      <div className="admin-tabs-nav">
+        <nav className="admin-tabs" aria-label="Admin Sections">
+          <button
+            type="button"
+            className={`admin-tab-btn ${activeTab === "overview" ? "active" : ""}`}
+            onClick={() => setSearchParams({ tab: "overview" })}
+          >
+            <TrendingUp size={16} />
+            <span>Overview</span>
+          </button>
+          <button
+            type="button"
+            className={`admin-tab-btn ${activeTab === "users" ? "active" : ""}`}
+            onClick={() => setSearchParams({ tab: "users" })}
+          >
+            <Users size={16} />
+            <span>Users</span>
+          </button>
+          <button
+            type="button"
+            className={`admin-tab-btn ${activeTab === "moderation" ? "active" : ""}`}
+            onClick={() => setSearchParams({ tab: "moderation" })}
+          >
+            <MessageSquare size={16} />
+            <span>Moderation</span>
+          </button>
+          <button
+            type="button"
+            className={`admin-tab-btn ${activeTab === "resources" ? "active" : ""}`}
+            onClick={() => setSearchParams({ tab: "resources" })}
+          >
+            <BookOpen size={16} />
+            <span>Resources</span>
+          </button>
+          <button
+            type="button"
+            className={`admin-tab-btn ${activeTab === "system" ? "active" : ""}`}
+            onClick={() => setSearchParams({ tab: "system" })}
+          >
+            <Server size={16} />
+            <span>System & Security</span>
+          </button>
+        </nav>
       </div>
 
-      {/* TAB 1: USERS */}
+      {activeTab === "overview" && (
+        <div className="admin-tab-content">
+          <div className="admin-overview-grid">
+            <div className="admin-card">
+              <div className="admin-card-header">
+                <h3 className="admin-card-title">
+                  <Activity size={18} />
+                  <span>Platform Distribution</span>
+                </h3>
+              </div>
+              <div className="admin-distribution-list">
+                <div className="admin-distribution-row">
+                  <div className="admin-distribution-info">
+                    <UserCheck size={16} className="text-blue" />
+                    <span>Students</span>
+                  </div>
+                  <div className="admin-distribution-bar-wrap">
+                    <div
+                      className="admin-distribution-bar student-bar"
+                      style={{
+                        width: stats.totalUsers > 0 ? `${(studentCount / stats.totalUsers) * 100}%` : "0%",
+                      }}
+                    />
+                  </div>
+                  <span className="admin-distribution-val">{studentCount}</span>
+                </div>
+
+                <div className="admin-distribution-row">
+                  <div className="admin-distribution-info">
+                    <ShieldCheck size={16} className="text-gold" />
+                    <span>Administrators</span>
+                  </div>
+                  <div className="admin-distribution-bar-wrap">
+                    <div
+                      className="admin-distribution-bar admin-bar"
+                      style={{
+                        width: stats.totalUsers > 0 ? `${((stats.adminCount || 0) / stats.totalUsers) * 100}%` : "0%",
+                      }}
+                    />
+                  </div>
+                  <span className="admin-distribution-val">{stats.adminCount || 0}</span>
+                </div>
+
+                <div className="admin-distribution-row">
+                  <div className="admin-distribution-info">
+                    <Calendar size={16} className="text-emerald" />
+                    <span>Today's Posts</span>
+                  </div>
+                  <div className="admin-distribution-bar-wrap">
+                    <div
+                      className="admin-distribution-bar today-bar"
+                      style={{
+                        width: stats.totalPosts > 0 ? `${Math.min(100, ((stats.todayPosts || 0) / stats.totalPosts) * 100)}%` : "0%",
+                      }}
+                    />
+                  </div>
+                  <span className="admin-distribution-val">{stats.todayPosts || 0}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="admin-card">
+              <div className="admin-card-header">
+                <h3 className="admin-card-title">
+                  <Shield size={18} />
+                  <span>Quick Administrative Actions</span>
+                </h3>
+              </div>
+              <div className="admin-quick-actions">
+                <button
+                  type="button"
+                  className="admin-quick-action-btn"
+                  onClick={() => setSearchParams({ tab: "users" })}
+                >
+                  <Users size={16} />
+                  <div className="admin-quick-action-text">
+                    <strong>Manage Users</strong>
+                    <span>Search members and update roles</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="admin-quick-action-btn"
+                  onClick={() => setSearchParams({ tab: "moderation" })}
+                >
+                  <MessageSquare size={16} />
+                  <div className="admin-quick-action-text">
+                    <strong>Moderate Forum</strong>
+                    <span>Pin, lock, or delete discussions</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="admin-quick-action-btn"
+                  onClick={() => {
+                    setSearchParams({ tab: "resources" });
+                    setEditingResource(null);
+                    setResourceForm({ title: "", description: "", category: "getting-started", items: "" });
+                    setResourceModalOpen(true);
+                  }}
+                >
+                  <Plus size={16} />
+                  <div className="admin-quick-action-text">
+                    <strong>Publish Resource Topic</strong>
+                    <span>Add curriculum learning guide</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeTab === "users" && (
-        <div>
+        <div className="admin-tab-content">
           <div className="admin-toolbar">
-            <input
-              type="text"
-              className="admin-search-input"
-              placeholder="Search by username or email..."
-              value={userSearch}
-              onChange={(e) => setUserSearch(e.target.value)}
-            />
-            <select
-              className="admin-select"
-              value={userRoleFilter}
-              onChange={(e) => setUserRoleFilter(e.target.value)}
-            >
-              <option value="all">All Roles</option>
-              <option value="student">Students</option>
-              <option value="admin">Administrators</option>
-            </select>
+            <div className="admin-search-wrap">
+              <Search className="admin-search-icon" size={16} />
+              <input
+                type="text"
+                className="admin-search-input"
+                placeholder="Search username or email..."
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+              />
+              {userSearch && (
+                <button
+                  type="button"
+                  className="admin-search-clear"
+                  onClick={() => setUserSearch("")}
+                  title="Clear search"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            <div className="admin-filter-group">
+              <select
+                className="admin-select"
+                value={userRoleFilter}
+                onChange={(e) => setUserRoleFilter(e.target.value)}
+              >
+                <option value="all">All Roles</option>
+                <option value="student">Students</option>
+                <option value="admin">Administrators</option>
+              </select>
+            </div>
           </div>
 
           <div className="admin-table-container">
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>User</th>
-                  <th>Email</th>
+                  <th>Member</th>
+                  <th>Contact</th>
                   <th>Role</th>
                   <th>Joined</th>
                   <th>Activity</th>
-                  <th>Actions</th>
+                  <th className="admin-th-actions">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {loadingUsers ? (
+                {loadingUsers && users.length === 0 ? (
                   <tr>
-                    <td colSpan="6" style={{ textAlign: "center", padding: "32px", color: "#8b949e" }}>
-                      Loading members...
+                    <td colSpan="6" className="admin-table-empty">
+                      <RefreshCw className="admin-spin" size={20} />
+                      <span>Loading community members...</span>
                     </td>
                   </tr>
                 ) : users.length === 0 ? (
                   <tr>
-                    <td colSpan="6" style={{ textAlign: "center", padding: "32px", color: "#8b949e" }}>
-                      No users match your criteria.
+                    <td colSpan="6" className="admin-table-empty">
+                      <AlertCircle size={22} />
+                      <span>No members match your criteria</span>
                     </td>
                   </tr>
                 ) : (
                   users.map((u) => (
                     <tr key={u.id}>
                       <td>
-                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                          <div
-                            style={{
-                              width: "28px",
-                              height: "28px",
-                              borderRadius: "50%",
-                              background: "#30363d",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              fontSize: "12px",
-                              fontWeight: "bold",
-                            }}
-                          >
-                            {u.username.slice(0, 2).toUpperCase()}
-                          </div>
-                          <div>
-                            <span style={{ fontWeight: 600, color: "#ffffff" }}>@{u.username}</span>
+                        <div className="admin-user-cell">
+                          {u.avatar ? (
+                            <img src={u.avatar} alt={u.username} className="admin-user-avatar" />
+                          ) : (
+                            <div className="admin-user-avatar fallback">
+                              {u.username.slice(0, 2).toUpperCase()}
+                            </div>
+                          )}
+                          <div className="admin-user-meta">
+                            <span className="admin-user-name">@{u.username}</span>
                             {u.isProtected && (
-                              <span
-                                style={{
-                                  marginLeft: "6px",
-                                  fontSize: "10px",
-                                  color: "#f2c94c",
-                                  border: "1px solid #f2c94c",
-                                  padding: "1px 4px",
-                                  borderRadius: "4px",
-                                }}
-                              >
-                                Primary
-                              </span>
+                              <span className="admin-shield-badge">Primary Admin</span>
                             )}
                           </div>
                         </div>
                       </td>
-                      <td>{u.email}</td>
                       <td>
-                        <span className={`admin-badge ${u.role}`}>{u.role}</span>
+                        <div className="admin-email-cell">
+                          <span className="admin-email-text">{u.email}</span>
+                          <button
+                            type="button"
+                            className="admin-icon-btn"
+                            onClick={() => copyToClipboard(u.email, u.id)}
+                            title="Copy email address"
+                          >
+                            {copiedEmail === u.id ? <Check size={13} className="text-emerald" /> : <Copy size={13} />}
+                          </button>
+                        </div>
                       </td>
-                      <td>{new Date(u.createdAt).toLocaleDateString()}</td>
                       <td>
-                        <span style={{ color: "#8b949e" }}>
-                          {u.stats.posts} posts · {u.stats.comments} comments
+                        <span className={`admin-badge ${u.role}`}>
+                          {u.role === "admin" ? <ShieldCheck size={12} /> : <UserCheck size={12} />}
+                          <span>{u.role}</span>
                         </span>
                       </td>
                       <td>
-                        <div className="admin-actions-cell">
+                        <span className="admin-date-text">
+                          {new Date(u.createdAt).toLocaleDateString(undefined, {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="admin-activity-chips">
+                          <span className="admin-count-chip" title="Discussions created">
+                            {u.stats?.posts || 0} posts
+                          </span>
+                          <span className="admin-count-chip" title="Replies posted">
+                            {u.stats?.comments || 0} comments
+                          </span>
+                        </div>
+                      </td>
+                      <td className="admin-td-actions">
+                        <div className="admin-actions-row">
                           {!u.isProtected && u.id !== user.id && (
                             <>
                               <button
+                                type="button"
                                 className="admin-action-btn"
-                                onClick={() => handleRoleChange(u)}
-                                title={u.role === "admin" ? "Demote to student" : "Promote to admin"}
+                                onClick={() => setRoleChangeTarget(u)}
+                                title={u.role === "admin" ? "Demote to student" : "Promote to administrator"}
                               >
                                 {u.role === "admin" ? "Demote" : "Make Admin"}
                               </button>
                               <button
+                                type="button"
                                 className="admin-action-btn danger"
-                                onClick={() => handleDeleteUser(u)}
-                                title="Permanently delete user"
+                                onClick={() => setUserToDelete(u)}
+                                title="Permanently delete user account"
                               >
-                                Delete
+                                <Trash2 size={13} />
+                                <span>Delete</span>
                               </button>
                             </>
                           )}
@@ -467,96 +728,44 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* TAB 2: RESOURCES */}
-      {activeTab === "resources" && (
-        <div>
-          <div className="admin-toolbar">
-            <div>
-              <p style={{ margin: 0, color: "#8b949e", fontSize: "14px" }}>
-                Curate curriculum topics that sync dynamically to the public <strong>/resources</strong> page.
-              </p>
-            </div>
-            <button
-              className="admin-primary-btn"
-              onClick={() => {
-                setEditingResource(null);
-                setResourceForm({ title: "", description: "", category: "getting-started", items: "" });
-                setResourceModalOpen(true);
-              }}
-            >
-              + Add Resource Topic
-            </button>
-          </div>
-
-          <div className="admin-resources-grid">
-            {resources.length === 0 ? (
-              <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "48px", color: "#8b949e" }}>
-                No custom resources found in database. The website is currently displaying the default 4 curriculum topics.
-              </div>
-            ) : (
-              resources.map((r) => (
-                <div className="admin-resource-card" key={r.id}>
-                  <div className="admin-resource-header">
-                    <div>
-                      <span className="admin-badge student" style={{ marginBottom: "6px" }}>
-                        {r.category}
-                      </span>
-                      <h3 className="admin-resource-title">{r.title}</h3>
-                    </div>
-                    <div className="admin-actions-cell">
-                      <button
-                        className="admin-action-btn"
-                        onClick={() => {
-                          setEditingResource(r);
-                          setResourceForm({
-                            title: r.title,
-                            description: r.description,
-                            category: r.category,
-                            items: (r.items || []).join('\n'),
-                          });
-                          setResourceModalOpen(true);
-                        }}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className="admin-action-btn danger"
-                        onClick={() => handleDeleteResource(r.id)}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-
-                  <p className="admin-resource-desc">{r.description}</p>
-
-                  {r.items && r.items.length > 0 && (
-                    <div className="admin-resource-items">
-                      {r.items.map((item, idx) => (
-                        <span className="admin-chip" key={idx}>
-                          {item}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: FORUM MODERATION */}
       {activeTab === "moderation" && (
-        <div>
+        <div className="admin-tab-content">
           <div className="admin-toolbar">
-            <input
-              type="text"
-              className="admin-search-input"
-              placeholder="Search discussions by title or content..."
-              value={postSearch}
-              onChange={(e) => setPostSearch(e.target.value)}
-            />
+            <div className="admin-search-wrap">
+              <Search className="admin-search-icon" size={16} />
+              <input
+                type="text"
+                className="admin-search-input"
+                placeholder="Search discussions by title or content..."
+                value={postSearch}
+                onChange={(e) => setPostSearch(e.target.value)}
+              />
+              {postSearch && (
+                <button
+                  type="button"
+                  className="admin-search-clear"
+                  onClick={() => setPostSearch("")}
+                  title="Clear search"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            <div className="admin-filter-group">
+              <select
+                className="admin-select"
+                value={postCategoryFilter}
+                onChange={(e) => setPostCategoryFilter(e.target.value)}
+              >
+                <option value="all">All Categories</option>
+                <option value="general">General</option>
+                <option value="projects">Projects</option>
+                <option value="help">Help & Questions</option>
+                <option value="events">Events</option>
+                <option value="announcements">Announcements</option>
+              </select>
+            </div>
           </div>
 
           <div className="admin-table-container">
@@ -566,73 +775,110 @@ export default function AdminDashboard() {
                   <th>Discussion</th>
                   <th>Author</th>
                   <th>Category</th>
-                  <th>Stats</th>
-                  <th>Status</th>
-                  <th>Actions</th>
+                  <th>Feedback</th>
+                  <th>Moderation Status</th>
+                  <th className="admin-th-actions">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {loadingPosts ? (
+                {loadingPosts && posts.length === 0 ? (
                   <tr>
-                    <td colSpan="6" style={{ textAlign: "center", padding: "32px", color: "#8b949e" }}>
-                      Loading discussions...
+                    <td colSpan="6" className="admin-table-empty">
+                      <RefreshCw className="admin-spin" size={20} />
+                      <span>Loading discussion topics...</span>
                     </td>
                   </tr>
-                ) : posts.length === 0 ? (
+                ) : filteredPosts.length === 0 ? (
                   <tr>
-                    <td colSpan="6" style={{ textAlign: "center", padding: "32px", color: "#8b949e" }}>
-                      No discussions found.
+                    <td colSpan="6" className="admin-table-empty">
+                      <AlertCircle size={22} />
+                      <span>No discussions found</span>
                     </td>
                   </tr>
                 ) : (
-                  posts.map((p) => (
+                  filteredPosts.map((p) => (
                     <tr key={p.id}>
-                      <td style={{ maxWidth: "280px" }}>
-                        <Link
-                          to={`/forum/posts/${p.id}`}
-                          style={{ color: "#ffffff", fontWeight: 600, textDecoration: "none" }}
-                        >
-                          {p.title}
-                        </Link>
-                      </td>
-                      <td>@{p.author?.username || "unknown"}</td>
-                      <td>
-                        <span className="admin-chip">#{p.category}</span>
-                      </td>
-                      <td>
-                        <span style={{ color: "#8b949e" }}>
-                          ▲ {p.voteScore} · 💬 {p.commentCount}
-                        </span>
-                      </td>
-                      <td>
-                        <div style={{ display: "flex", gap: "4px" }}>
-                          {p.isPinned && <span className="admin-badge pinned">📌 Pinned</span>}
-                          {p.isLocked && <span className="admin-badge locked">🔒 Locked</span>}
-                          {!p.isPinned && !p.isLocked && <span style={{ color: "#6e7681" }}>Normal</span>}
+                      <td className="admin-post-cell">
+                        <div className="admin-post-title-wrap">
+                          <Link to={`/forum/posts/${p.id}`} className="admin-post-title" target="_blank" rel="noopener noreferrer">
+                            {p.title}
+                          </Link>
+                          <span className="admin-date-subtext">
+                            {new Date(p.createdAt).toLocaleDateString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </span>
                         </div>
                       </td>
                       <td>
-                        <div className="admin-actions-cell">
+                        <span className="admin-author-text">
+                          @{p.author?.username || "unknown"}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="admin-category-pill">#{p.category || "general"}</span>
+                      </td>
+                      <td>
+                        <div className="admin-stats-row">
+                          <span title="Vote score">{p.voteScore} score</span>
+                          <span>•</span>
+                          <span title="Comments">{p.commentCount} replies</span>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="admin-status-badges">
+                          {p.isPinned && (
+                            <span className="admin-badge pinned">
+                              <Pin size={11} />
+                              <span>Pinned</span>
+                            </span>
+                          )}
+                          {p.isLocked && (
+                            <span className="admin-badge locked">
+                              <Lock size={11} />
+                              <span>Locked</span>
+                            </span>
+                          )}
+                          {!p.isPinned && !p.isLocked && (
+                            <span className="admin-badge neutral">Active</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="admin-td-actions">
+                        <div className="admin-actions-row">
                           <button
-                            className="admin-action-btn"
-                            onClick={() => handleTogglePin(p)}
-                            title={p.isPinned ? "Unpin post" : "Pin post to top"}
+                            type="button"
+                            className="admin-icon-btn secondary"
+                            onClick={() => setPreviewingPost(p)}
+                            title="Preview discussion body"
                           >
-                            {p.isPinned ? "Unpin" : "Pin"}
+                            <Eye size={14} />
                           </button>
                           <button
-                            className="admin-action-btn"
+                            type="button"
+                            className={`admin-icon-btn ${p.isPinned ? "active" : ""}`}
+                            onClick={() => handleTogglePin(p)}
+                            title={p.isPinned ? "Unpin discussion" : "Pin discussion to top"}
+                          >
+                            {p.isPinned ? <PinOff size={14} /> : <Pin size={14} />}
+                          </button>
+                          <button
+                            type="button"
+                            className={`admin-icon-btn ${p.isLocked ? "active" : ""}`}
                             onClick={() => handleToggleLock(p)}
                             title={p.isLocked ? "Unlock replies" : "Lock replies"}
                           >
-                            {p.isLocked ? "Unlock" : "Lock"}
+                            {p.isLocked ? <Unlock size={14} /> : <Lock size={14} />}
                           </button>
                           <button
-                            className="admin-action-btn danger"
+                            type="button"
+                            className="admin-icon-btn danger"
                             onClick={() => setPostToDelete(p)}
-                            title="Delete discussion"
+                            title="Delete discussion and comments"
                           >
-                            Delete
+                            <Trash2 size={14} />
                           </button>
                         </div>
                       </td>
@@ -645,22 +891,183 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Resource Modal Form */}
+      {activeTab === "resources" && (
+        <div className="admin-tab-content">
+          <div className="admin-toolbar">
+            <p className="admin-toolbar-desc">
+              Curate and publish curriculum guides that sync live to the public{" "}
+              <Link to="/resources" className="admin-link">
+                /resources
+              </Link>{" "}
+              learning page.
+            </p>
+
+            <button
+              type="button"
+              className="admin-primary-btn"
+              onClick={() => {
+                setEditingResource(null);
+                setResourceForm({
+                  title: "",
+                  description: "",
+                  category: "getting-started",
+                  items: "",
+                });
+                setResourceModalOpen(true);
+              }}
+            >
+              <Plus size={16} />
+              <span>Add Resource Topic</span>
+            </button>
+          </div>
+
+          <div className="admin-resources-grid">
+            {resources.length === 0 ? (
+              <div className="admin-empty-card">
+                <BookOpen size={36} />
+                <h3>No Custom Resources Found</h3>
+                <p>
+                  The platform is currently rendering the default curriculum tracks. Click above to add your first database resource.
+                </p>
+              </div>
+            ) : (
+              resources.map((r) => (
+                <article className="admin-resource-card" key={r.id}>
+                  <div className="admin-resource-top">
+                    <span className="admin-category-pill">#{r.category}</span>
+                    <div className="admin-card-actions">
+                      <button
+                        type="button"
+                        className="admin-icon-btn"
+                        onClick={() => {
+                          setEditingResource(r);
+                          setResourceForm({
+                            title: r.title,
+                            description: r.description,
+                            category: r.category,
+                            items: (r.items || []).join("\n"),
+                          });
+                          setResourceModalOpen(true);
+                        }}
+                        title="Edit resource"
+                      >
+                        <Edit3 size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-icon-btn danger"
+                        onClick={() => setResourceToDelete(r)}
+                        title="Delete resource"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <h3 className="admin-resource-heading">{r.title}</h3>
+                  <p className="admin-resource-summary">{r.description}</p>
+
+                  {r.items && r.items.length > 0 && (
+                    <div className="admin-resource-chips">
+                      {r.items.map((item, idx) => (
+                        <span className="admin-item-tag" key={idx}>
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </article>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === "system" && (
+        <div className="admin-tab-content">
+          <div className="admin-system-grid">
+            <div className="admin-card">
+              <div className="admin-card-header">
+                <h3 className="admin-card-title">
+                  <Server size={18} />
+                  <span>Platform & Infrastructure Health</span>
+                </h3>
+              </div>
+              <div className="admin-system-info-list">
+                <div className="admin-system-info-row">
+                  <span className="admin-sys-label">API Gateway Status</span>
+                  <span className="admin-sys-badge healthy">
+                    <CheckCircle2 size={12} />
+                    <span>Online</span>
+                  </span>
+                </div>
+                <div className="admin-system-info-row">
+                  <span className="admin-sys-label">Primary Database</span>
+                  <span className="admin-sys-badge healthy">
+                    <CheckCircle2 size={12} />
+                    <span>Connected (MongoDB)</span>
+                  </span>
+                </div>
+                <div className="admin-system-info-row">
+                  <span className="admin-sys-label">Node Runtime</span>
+                  <span className="admin-sys-val">ES Modules / Express 4</span>
+                </div>
+                <div className="admin-system-info-row">
+                  <span className="admin-sys-label">Client Build</span>
+                  <span className="admin-sys-val">React 19 / Vite</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="admin-card">
+              <div className="admin-card-header">
+                <h3 className="admin-card-title">
+                  <ShieldCheck size={18} />
+                  <span>Protected Super Administrators</span>
+                </h3>
+              </div>
+              <p className="admin-card-desc">
+                The following administrator accounts are protected by the backend authorization layer against accidental deletion or role demotion:
+              </p>
+              <div className="admin-protected-list">
+                <div className="admin-protected-item">
+                  <span className="admin-email-tag">glug.jec@gmail.com</span>
+                  <span className="admin-shield-badge">Protected</span>
+                </div>
+                <div className="admin-protected-item">
+                  <span className="admin-email-tag">admin@glug.dev</span>
+                  <span className="admin-shield-badge">Protected</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {resourceModalOpen && (
         <div className="admin-modal-overlay" onClick={() => setResourceModalOpen(false)}>
-          <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
-            <h2 className="admin-modal-title">
-              {editingResource ? "Edit Resource Topic" : "Add Resource Topic"}
-            </h2>
+          <div className="admin-modal-box" onClick={(e) => e.stopPropagation()}>
+            <div className="admin-modal-header">
+              <h2 className="admin-modal-title">
+                {editingResource ? "Edit Resource Topic" : "Publish Resource Topic"}
+              </h2>
+              <button
+                type="button"
+                className="admin-modal-close"
+                onClick={() => setResourceModalOpen(false)}
+              >
+                <X size={18} />
+              </button>
+            </div>
 
-            <form onSubmit={handleSaveResource} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            <form onSubmit={handleSaveResource} className="admin-modal-form">
               <div className="admin-form-group">
                 <label>Topic Title</label>
                 <input
                   type="text"
                   className="admin-form-input"
                   required
-                  placeholder="e.g. Linux Kernel & System Calls"
+                  placeholder="e.g. Linux Kernel Architecture"
                   value={resourceForm.title}
                   onChange={(e) => setResourceForm({ ...resourceForm, title: e.target.value })}
                 />
@@ -687,17 +1094,19 @@ export default function AdminDashboard() {
                 <textarea
                   className="admin-form-textarea"
                   required
-                  placeholder="Summary of what students will learn..."
+                  rows={3}
+                  placeholder="Summary of what members will learn in this topic..."
                   value={resourceForm.description}
                   onChange={(e) => setResourceForm({ ...resourceForm, description: e.target.value })}
                 />
               </div>
 
               <div className="admin-form-group">
-                <label>Curriculum Sub-topics (one per line)</label>
+                <label>Curriculum Sub-topics (one item per line)</label>
                 <textarea
                   className="admin-form-textarea"
-                  placeholder="Process scheduling&#10;Memory management&#10;Virtual filesystem"
+                  rows={4}
+                  placeholder="Virtual File System&#10;Process Scheduling&#10;Memory Pages"
                   value={resourceForm.items}
                   onChange={(e) => setResourceForm({ ...resourceForm, items: e.target.value })}
                 />
@@ -720,16 +1129,134 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {previewingPost && (
+        <div className="admin-modal-overlay" onClick={() => setPreviewingPost(null)}>
+          <div className="admin-modal-box preview" onClick={(e) => e.stopPropagation()}>
+            <div className="admin-modal-header">
+              <div className="admin-preview-title-wrap">
+                <span className="admin-category-pill">#{previewingPost.category}</span>
+                <h2 className="admin-modal-title">{previewingPost.title}</h2>
+              </div>
+              <button
+                type="button"
+                className="admin-modal-close"
+                onClick={() => setPreviewingPost(null)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="admin-preview-meta">
+              <span>Author: <strong>@{previewingPost.author?.username || "unknown"}</strong></span>
+              <span>•</span>
+              <span>Score: <strong>{previewingPost.voteScore}</strong></span>
+              <span>•</span>
+              <span>Comments: <strong>{previewingPost.commentCount}</strong></span>
+              <span>•</span>
+              <span>{new Date(previewingPost.createdAt).toLocaleString()}</span>
+            </div>
+
+            <div className="admin-preview-body">
+              {previewingPost.body ? (
+                <div dangerouslySetInnerHTML={{ __html: previewingPost.body }} />
+              ) : (
+                <p className="text-muted">No content in discussion body.</p>
+              )}
+            </div>
+
+            <div className="admin-modal-actions">
+              <Link
+                to={`/forum/posts/${previewingPost.id}`}
+                className="admin-secondary-btn"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <ExternalLink size={14} />
+                <span>Open in Forum</span>
+              </Link>
+              <button
+                type="button"
+                className="admin-cancel-btn"
+                onClick={() => setPreviewingPost(null)}
+              >
+                Close Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {roleChangeTarget && (
+        <div className="admin-modal-overlay" onClick={() => !isUpdatingRole && setRoleChangeTarget(null)}>
+          <div className="admin-modal-box alert" onClick={(e) => e.stopPropagation()}>
+            <div className="admin-modal-icon-alert">
+              <AlertCircle size={32} />
+            </div>
+            <h2 className="admin-modal-title">Confirm Role Change</h2>
+            <p className="admin-modal-desc">
+              Are you sure you want to change the role of <strong>@{roleChangeTarget.username}</strong> to{" "}
+              <strong>{roleChangeTarget.role === "admin" ? "Student" : "Administrator"}</strong>?
+            </p>
+            <div className="admin-modal-actions">
+              <button
+                type="button"
+                className="admin-cancel-btn"
+                disabled={isUpdatingRole}
+                onClick={() => setRoleChangeTarget(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="admin-primary-btn"
+                disabled={isUpdatingRole}
+                onClick={confirmRoleChange}
+              >
+                {isUpdatingRole ? "Updating..." : "Confirm Role Update"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(userToDelete)}
+        onClose={() => {
+          if (!isDeletingUser) setUserToDelete(null);
+        }}
+        onConfirm={confirmDeleteUser}
+        title="Delete Member Account"
+        description="Are you sure you want to permanently delete this member?"
+        itemTitle={userToDelete ? `@${userToDelete.username} (${userToDelete.email})` : ""}
+        warningNote="All posts, replies, and votes authored by this user will be permanently deleted from the database."
+        confirmText="Delete Account"
+        isDeleting={isDeletingUser}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(resourceToDelete)}
+        onClose={() => {
+          if (!isDeletingResource) setResourceToDelete(null);
+        }}
+        onConfirm={confirmDeleteResource}
+        title="Delete Resource Topic"
+        description="Are you sure you want to delete this curriculum topic?"
+        itemTitle={resourceToDelete?.title}
+        warningNote="This topic will be removed from the public resources directory immediately."
+        confirmText="Delete Topic"
+        isDeleting={isDeletingResource}
+      />
+
       <ConfirmDeleteModal
         isOpen={Boolean(postToDelete)}
         onClose={() => {
           if (!isDeletingAdminPost) setPostToDelete(null);
         }}
         onConfirm={confirmDeletePost}
-        title="Delete Discussion"
+        title="Delete Forum Discussion"
         description="Are you sure you want to delete this discussion?"
         itemTitle={postToDelete?.title}
-        warningNote="This action cannot be undone. All comments, replies, upvotes, and bookmarks associated with this discussion will be permanently removed."
+        warningNote="All comments, replies, upvotes, and bookmarks associated with this discussion will be permanently removed."
         confirmText="Delete Discussion"
         isDeleting={isDeletingAdminPost}
       />
