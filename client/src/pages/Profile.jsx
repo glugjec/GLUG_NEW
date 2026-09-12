@@ -146,6 +146,10 @@ export default function Profile() {
   )
   const currentUserId = user?.id || user?._id
 
+  const isViewerStaff = Boolean(user && (user.role === 'admin' || user.communityRole?.isMember))
+  const isTargetStaff = Boolean(profile && (profile.role === 'admin' || profile.communityRole?.isMember))
+  const canMessage = !isOwnProfile && (isViewerStaff || isTargetStaff)
+
   useEffect(() => {
     if (id && user && isOwnProfile) {
       navigate('/profile', { replace: true })
@@ -591,19 +595,21 @@ export default function Profile() {
                 </>
               ) : (
                 <>
-                  <button
-                    type="button"
-                    className="profile-btn-primary"
-                    onClick={() => {
-                      if (!user) {
-                        navigate('/login?redirect=/profile/' + (profile.username || id));
-                        return;
-                      }
-                      navigate(`/chat?with=${profile.id || profile._id}`);
-                    }}
-                  >
-                    <MessageSquare size={15} /> Message
-                  </button>
+                  {canMessage && (
+                    <button
+                      type="button"
+                      className="profile-btn-primary"
+                      onClick={() => {
+                        if (!user) {
+                          navigate('/login?redirect=/profile/' + (profile.username || id));
+                          return;
+                        }
+                        navigate(`/chat?with=${profile.id || profile._id}`);
+                      }}
+                    >
+                      <MessageSquare size={15} /> Message
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="profile-btn-secondary"

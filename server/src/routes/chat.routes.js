@@ -77,6 +77,16 @@ router.get('/conversations/with/:userId', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    const senderUser = await User.findById(req.user.id).select('role communityRole').lean();
+    const isSenderStaff = Boolean(senderUser && (senderUser.role === 'admin' || senderUser.communityRole?.isMember));
+    const isTargetStaff = Boolean(targetUser.role === 'admin' || targetUser.communityRole?.isMember);
+
+    if (!isSenderStaff && !isTargetStaff) {
+      return res.status(403).json({
+        error: 'Direct messaging is only available with community team members and administrators',
+      });
+    }
+
     let conversation = await Conversation.findOne({
       participants: { $all: [req.user.id, targetId] },
     }).populate('participants', 'username avatar role communityRole');
