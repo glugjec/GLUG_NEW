@@ -1,5 +1,16 @@
 import { useRef, useCallback, useEffect, useState } from 'react';
 import Editor from '@monaco-editor/react';
+import {
+  FileCode,
+  Copy,
+  Check,
+  RotateCcw,
+  Download,
+  Upload,
+  Sparkles,
+  Plus,
+  X
+} from 'lucide-react';
 import { LANGUAGES } from '../utils/languageConfig';
 
 export default function CodeEditor({
@@ -13,53 +24,58 @@ export default function CodeEditor({
   onActiveFileChange,
   onAddFile,
   onCloseFile,
+  fontSize = 14,
+  onResetCode,
+  onDownloadCode,
+  onUploadCode
 }) {
   const [isAdding, setIsAdding] = useState(false);
   const [newFileName, setNewFileName] = useState('');
+  const [copied, setCopied] = useState(false);
+  const fileInputRef = useRef(null);
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
   const decorationsRef = useRef([]);
 
-  const langConfig = LANGUAGES[language];
+  const langConfig = LANGUAGES[language] || { monacoLang: 'plaintext' };
 
   const handleEditorDidMount = useCallback((editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
 
-    // Define custom dark theme
-    monaco.editor.defineTheme('codeforge-dark', {
+    monaco.editor.defineTheme('glug-dark', {
       base: 'vs-dark',
       inherit: true,
       rules: [
-        { token: 'comment', foreground: '6a737d', fontStyle: 'italic' },
-        { token: 'keyword', foreground: 'ff7b72' },
-        { token: 'string', foreground: 'a5d6ff' },
-        { token: 'number', foreground: '79c0ff' },
-        { token: 'type', foreground: 'ffa657' },
-        { token: 'function', foreground: 'd2a8ff' },
-        { token: 'variable', foreground: 'ffa657' },
+        { token: 'comment', foreground: '64748b', fontStyle: 'italic' },
+        { token: 'keyword', foreground: '60a5fa', fontStyle: 'bold' },
+        { token: 'string', foreground: '38bdf8' },
+        { token: 'number', foreground: 'f472b6' },
+        { token: 'type', foreground: 'a78bfa' },
+        { token: 'function', foreground: '34d399' },
+        { token: 'variable', foreground: 'f1f5f9' },
+        { token: 'delimiter', foreground: '94a3b8' },
       ],
       colors: {
-        'editor.background': '#0d1117',
-        'editor.foreground': '#e6edf3',
-        'editor.lineHighlightBackground': '#161b2266',
-        'editor.selectionBackground': '#264f7844',
-        'editorLineNumber.foreground': '#484f58',
-        'editorLineNumber.activeForeground': '#8b949e',
-        'editorGutter.background': '#0d1117',
-        'editor.inactiveSelectionBackground': '#264f7822',
-        'editorIndentGuide.background': '#21262d',
-        'editorCursor.foreground': '#58a6ff',
-        'editorWhitespace.foreground': '#21262d',
-        'minimap.background': '#0d1117',
+        'editor.background': '#070b14',
+        'editor.foreground': '#f1f5f9',
+        'editor.lineHighlightBackground': '#0f172a88',
+        'editor.selectionBackground': '#1e3a8a66',
+        'editorLineNumber.foreground': '#475569',
+        'editorLineNumber.activeForeground': '#94a3b8',
+        'editorGutter.background': '#070b14',
+        'editor.inactiveSelectionBackground': '#1e293b44',
+        'editorIndentGuide.background': '#1e293b',
+        'editorIndentGuide.activeBackground': '#334155',
+        'editorCursor.foreground': '#60a5fa',
+        'minimap.background': '#070b14',
       },
     });
 
-    monaco.editor.setTheme('codeforge-dark');
+    monaco.editor.setTheme('glug-dark');
     editor.focus();
   }, []);
 
-  // Update error decorations when errorLines change
   useEffect(() => {
     const editor = editorRef.current;
     const monaco = monacoRef.current;
@@ -71,9 +87,9 @@ export default function CodeEditor({
         isWholeLine: true,
         className: 'error-line-decoration',
         glyphMarginClassName: 'error-line-glyph',
-        glyphMarginHoverMessage: { value: `⚠️ Error on line ${line}` },
+        glyphMarginHoverMessage: { value: `Error on line ${line}` },
         overviewRuler: {
-          color: '#f85149',
+          color: '#ef4444',
           position: monaco.editor.OverviewRulerLane.Full,
         },
       },
@@ -84,13 +100,11 @@ export default function CodeEditor({
       newDecorations
     );
 
-    // Scroll to first error line
     if (errorLines && errorLines.length > 0) {
       editor.revealLineInCenter(errorLines[0]);
     }
   }, [errorLines]);
 
-  // Ctrl+Enter to run
   useEffect(() => {
     const editor = editorRef.current;
     const monaco = monacoRef.current;
@@ -108,6 +122,47 @@ export default function CodeEditor({
     return () => actionId.dispose();
   }, [onRun]);
 
+  const handleFormatCode = () => {
+    if (editorRef.current) {
+      const action = editorRef.current.getAction('editor.action.formatDocument');
+      if (action) {
+        action.run();
+      }
+    }
+  };
+
+  const handleCopyCode = async () => {
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = code;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleFileInputChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result;
+      if (typeof content === 'string' && onUploadCode) {
+        onUploadCode(file.name, content);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
   return (
     <div className="editor-panel">
       <div className="editor-panel-header">
@@ -121,12 +176,15 @@ export default function CodeEditor({
                 className={`editor-tab ${isActive ? 'active' : ''}`}
                 onClick={() => onActiveFileChange && onActiveFileChange(file.name)}
               >
-                {fileLangConfig.logo && (
+                {fileLangConfig.logo ? (
                   <img src={fileLangConfig.logo} alt={fileLangConfig.name} className="tab-logo-img" />
+                ) : (
+                  <FileCode size={13} className="tab-file-icon" />
                 )}
-                <span>{file.name}</span>
+                <span className="tab-name-text">{file.name}</span>
                 {files.length > 1 && (
-                  <span
+                  <button
+                    type="button"
                     className="tab-close-btn"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -134,8 +192,8 @@ export default function CodeEditor({
                     }}
                     title="Close file"
                   >
-                    ×
-                  </span>
+                    <X size={12} />
+                  </button>
                 )}
               </div>
             );
@@ -164,6 +222,7 @@ export default function CodeEditor({
                 autoFocus
               />
               <button
+                type="button"
                 className="editor-add-tab-btnconfirm"
                 onClick={() => {
                   if (newFileName.trim()) {
@@ -173,29 +232,90 @@ export default function CodeEditor({
                   }
                 }}
               >
-                ✓
+                <Check size={11} />
               </button>
               <button
+                type="button"
                 className="editor-add-tab-btncancel"
                 onClick={() => {
                   setIsAdding(false);
                   setNewFileName('');
                 }}
               >
-                ×
+                <X size={11} />
               </button>
             </div>
           ) : (
             <button
+              type="button"
               className="editor-add-tab-btn"
               onClick={() => setIsAdding(true)}
-              title="Create new file"
+              title="Add new file"
             >
-              +
+              <Plus size={13} />
             </button>
           )}
         </div>
+
+        <div className="editor-toolbar-actions">
+          <button
+            type="button"
+            className="editor-tool-btn"
+            onClick={handleFormatCode}
+            title="Format Code"
+          >
+            <Sparkles size={13} />
+            <span className="editor-tool-text">Format</span>
+          </button>
+
+          <button
+            type="button"
+            className="editor-tool-btn"
+            onClick={handleCopyCode}
+            title="Copy Code"
+          >
+            {copied ? <Check size={13} className="text-emerald" /> : <Copy size={13} />}
+            <span className="editor-tool-text">{copied ? 'Copied' : 'Copy'}</span>
+          </button>
+
+          <button
+            type="button"
+            className="editor-tool-btn"
+            onClick={onDownloadCode}
+            title="Download File"
+          >
+            <Download size={13} />
+            <span className="editor-tool-text">Download</span>
+          </button>
+
+          <button
+            type="button"
+            className="editor-tool-btn"
+            onClick={() => fileInputRef.current?.click()}
+            title="Upload File"
+          >
+            <Upload size={13} />
+            <span className="editor-tool-text">Upload</span>
+          </button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            style={{ display: 'none' }}
+            onChange={handleFileInputChange}
+          />
+
+          <button
+            type="button"
+            className="editor-tool-btn"
+            onClick={onResetCode}
+            title="Reset to Template"
+          >
+            <RotateCcw size={13} />
+            <span className="editor-tool-text">Reset</span>
+          </button>
+        </div>
       </div>
+
       <div className="editor-wrapper">
         <Editor
           height="100%"
@@ -203,14 +323,14 @@ export default function CodeEditor({
           value={code}
           onChange={(value) => onChange(value || '')}
           onMount={handleEditorDidMount}
-          theme="codeforge-dark"
+          theme="glug-dark"
           options={{
-            fontSize: 19,
+            fontSize: Number(fontSize) || 14,
             fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
             fontLigatures: true,
-            lineHeight: 28,
+            lineHeight: Math.round((Number(fontSize) || 14) * 1.55),
             padding: { top: 12, bottom: 12 },
-            minimap: { enabled: true, scale: 1, renderCharacters: false },
+            minimap: { enabled: false },
             scrollBeyondLastLine: false,
             smoothScrolling: true,
             cursorBlinking: 'smooth',
@@ -223,7 +343,7 @@ export default function CodeEditor({
             autoClosingQuotes: 'always',
             tabSize: 4,
             insertSpaces: true,
-            wordWrap: 'off',
+            wordWrap: 'on',
             automaticLayout: true,
             suggest: {
               showKeywords: true,

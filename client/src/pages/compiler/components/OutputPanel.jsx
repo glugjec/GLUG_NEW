@@ -41,21 +41,18 @@ export default function OutputPanel({
   const hasError = (result && !result.success) || errorLines.length > 0;
   const errorCount = errorLines.length || (result && !result.success ? 1 : 0);
 
-  // Auto-scroll to bottom of terminal when new logs arrive or waiting for input
   useEffect(() => {
     if (activeTab === 'terminal') {
       terminalBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [terminalLogs, isWaitingForInput, activeTab]);
 
-  // Focus input automatically when program is waiting for input
   useEffect(() => {
     if (isWaitingForInput && activeTab === 'terminal') {
       inputRef.current?.focus();
     }
   }, [isWaitingForInput, activeTab]);
 
-  // Switch to errors tab if there's a compilation error and no logs
   useEffect(() => {
     if (hasError && terminalLogs.length === 0 && activeTab === 'terminal') {
       setActiveTab('errors');
@@ -65,8 +62,7 @@ export default function OutputPanel({
   const handleSendInput = (e) => {
     if (e) e.preventDefault();
     const trimmed = inputValue;
-    
-    // Add to history
+
     if (trimmed.trim()) {
       setInputHistory((prev) => [...prev, trimmed]);
     }
@@ -132,30 +128,32 @@ export default function OutputPanel({
 
   return (
     <div className="output-panel">
-      {/* Header Tabs & Quick Actions */}
       <div className="output-tabs-container">
         <div className="output-tabs">
           <button
+            type="button"
             className={`output-tab ${activeTab === 'terminal' ? 'active' : ''}`}
             onClick={() => setActiveTab('terminal')}
             id="terminal-tab-btn"
           >
             <TerminalIcon size={14} className="tab-icon" />
-            <span>Interactive Terminal</span>
+            <span>Terminal</span>
             {isWaitingForInput && <span className="tab-pulse-dot" title="Waiting for input" />}
           </button>
 
           <button
+            type="button"
             className={`output-tab ${activeTab === 'stdin' ? 'active' : ''}`}
             onClick={() => setActiveTab('stdin')}
             id="stdin-tab-btn"
           >
             <FileInput size={14} className="tab-icon" />
-            <span>Batch Input</span>
+            <span>Stdin</span>
             {stdin.trim() && <span className="tab-dot" />}
           </button>
 
           <button
+            type="button"
             className={`output-tab ${activeTab === 'errors' ? 'active' : ''}`}
             onClick={() => setActiveTab('errors')}
             id="errors-tab-btn"
@@ -169,6 +167,7 @@ export default function OutputPanel({
         <div className="terminal-actions">
           {activeTab === 'terminal' && terminalLogs.length > 0 && (
             <button
+              type="button"
               className="term-icon-btn"
               onClick={onClearTerminal}
               title="Clear Terminal"
@@ -180,34 +179,34 @@ export default function OutputPanel({
           )}
 
           <button
+            type="button"
             className="term-icon-btn"
             onClick={handleCopy}
             title="Copy Content"
             id="copy-output-btn"
           >
-            {copied ? <Check size={13} style={{ color: 'var(--accent-green)' }} /> : <Copy size={13} />}
+            {copied ? <Check size={13} className="text-emerald" /> : <Copy size={13} />}
             <span>{copied ? 'Copied' : 'Copy'}</span>
           </button>
         </div>
       </div>
 
-      {/* Main Tab Content */}
       <div className="output-content">
         {activeTab === 'terminal' ? (
           <div className="terminal-container">
             {terminalLogs.length === 0 && !isRunning && !isWaitingForInput ? (
               <div className="output-empty">
                 <div className="empty-icon-wrap">
-                  <TerminalIcon className="empty-icon" />
-                  <Sparkles className="empty-sparkle" size={16} />
+                  <TerminalIcon className="empty-icon" size={28} />
+                  <Sparkles className="empty-sparkle" size={14} />
                 </div>
-                <h3>Interactive Console</h3>
+                <h3>Console Ready</h3>
                 <p>
-                  Click <strong>Run Code</strong> or press <strong>Ctrl + Enter</strong> to execute.
+                  Press <strong>Run</strong> or hit <strong>Ctrl + Enter</strong> to compile and execute your code.
                 </p>
                 <div className="empty-hints">
-                  <span className="hint-pill">⚡ Interactive text input & prompts supported</span>
-                  <span className="hint-pill">⌨️ Type directly in terminal prompt below</span>
+                  <span className="hint-pill">Interactive inputs and prompts supported</span>
+                  <span className="hint-pill">Multi-language standard streams</span>
                 </div>
               </div>
             ) : (
@@ -222,7 +221,7 @@ export default function OutputPanel({
                 {isWaitingForInput && (
                   <div className="terminal-waiting-banner">
                     <span className="waiting-pulse" />
-                    <span>{inputPrompt ? `Waiting for input: "${inputPrompt}"` : 'Program is waiting for interactive input...'}</span>
+                    <span>{inputPrompt ? `Waiting for input: "${inputPrompt}"` : 'Program waiting for input...'}</span>
                   </div>
                 )}
 
@@ -237,8 +236,8 @@ export default function OutputPanel({
                   <div className="terminal-input-prompt-box">
                     <AlertTriangle size={14} className="input-missing-icon" />
                     <div>
-                      <strong>Standard input required:</strong> This program expects input via <code>{language === 'python' ? 'input()' : language === 'c' || language === 'cpp' ? 'scanf / cin' : 'Scanner'}</code>.
-                      <div className="input-missing-sub">Type your input in the bar below and press Enter to run with input.</div>
+                      <strong>Standard input required:</strong> This program expects input via stdin.
+                      <div className="input-missing-sub">Type your input below or configure the Batch Input tab.</div>
                     </div>
                   </div>
                 )}
@@ -247,7 +246,6 @@ export default function OutputPanel({
               </div>
             )}
 
-            {/* Interactive Terminal Input Prompt Bar */}
             <div className={`terminal-input-bar ${isWaitingForInput ? 'waiting' : ''}`}>
               <div className="prompt-indicator">
                 <span className="prompt-arrow">❯</span>
@@ -263,8 +261,8 @@ export default function OutputPanel({
                   isWaitingForInput
                     ? (inputPrompt ? `Enter value for: ${inputPrompt}` : 'Type input and press Enter...')
                     : isRunning
-                    ? 'Type input to send to running process...'
-                    : 'Type interactive input for your code...'
+                    ? 'Send input to process...'
+                    : 'Interactive input prompt...'
                 }
                 id="interactive-terminal-input"
                 autoComplete="off"
@@ -284,16 +282,15 @@ export default function OutputPanel({
             </div>
           </div>
         ) : activeTab === 'stdin' ? (
-          /* Batch Input Tab */
           <div className="batch-stdin-container">
             <div className="batch-stdin-header">
               <div>
                 <h4>Standard Input Buffer (stdin)</h4>
-                <p>Pre-fill multiline text input for competitive programming or bulk test cases.</p>
+                <p>Pre-fill multiline text input for competitive programming or test cases.</p>
               </div>
               {stdin && (
-                <button className="clear-link-btn" onClick={() => onStdinChange('')}>
-                  Clear input
+                <button type="button" className="clear-link-btn" onClick={() => onStdinChange('')}>
+                  Clear
                 </button>
               )}
             </div>
@@ -301,33 +298,34 @@ export default function OutputPanel({
               className="batch-stdin-textarea"
               value={stdin}
               onChange={(e) => onStdinChange(e.target.value)}
-              placeholder="Paste or type multi-line test inputs here...&#10;Line 1&#10;Line 2&#10;Line 3"
+              placeholder="Paste or type multiline inputs here...&#10;Line 1&#10;Line 2"
               id="batch-stdin-input"
+              spellCheck="false"
             />
             <div className="batch-stdin-footer">
               <span className="char-count">{stdin.length} characters • {stdin.split('\n').filter(Boolean).length} lines</span>
-              <span className="batch-hint">This input will be automatically fed to the program when executed.</span>
+              <span className="batch-hint">Supplied to the program on execution.</span>
             </div>
           </div>
         ) : (
-          /* Errors Tab */
           <div className="errors-container">
             {hasError ? (
               <div className="output-error">
                 <div className="error-header">
-                  <AlertTriangle className="error-icon" />
+                  <AlertTriangle className="error-icon" size={16} />
                   <span className="error-type">{result?.statusDescription || 'Execution Error'}</span>
                 </div>
-                <div className="error-body">{result?.error || 'Unknown error occurred.'}</div>
+                <div className="error-body">{result?.error || 'Execution encountered an error.'}</div>
                 {errorLines && errorLines.length > 0 && (
                   <div className="error-lines">
-                    <span className="error-lines-label">Jump to error line:</span>
+                    <span className="error-lines-label">Jump to line:</span>
                     {errorLines.map((line) => (
                       <button
+                        type="button"
                         key={line}
                         className="error-line-badge clickable"
                         onClick={() => onSelectErrorLine(line)}
-                        title={`Click to view line ${line} in editor`}
+                        title={`Jump to line ${line}`}
                       >
                         <CircleAlert size={12} />
                         Line {line}
@@ -338,16 +336,15 @@ export default function OutputPanel({
               </div>
             ) : (
               <div className="output-empty">
-                <CheckCircle2 className="empty-icon" style={{ color: 'var(--accent-green)', opacity: 1 }} />
+                <CheckCircle2 className="empty-icon text-emerald" size={28} />
                 <h3>No Errors</h3>
-                <p>Your code compiled and executed cleanly without syntax or runtime errors!</p>
+                <p>Program executed cleanly without syntax or runtime issues.</p>
               </div>
             )}
           </div>
         )}
       </div>
 
-      {/* Output Footer */}
       {result && !isRunning && (
         <div className="output-footer">
           <div className="output-meta">
@@ -364,13 +361,13 @@ export default function OutputPanel({
             </span>
             {result.time && (
               <span className="meta-item" title="Execution Time">
-                <Clock className="meta-icon" />
+                <Clock size={12} className="meta-icon" />
                 {result.time}
               </span>
             )}
             {result.memory && (
               <span className="meta-item" title="Memory Usage">
-                <HardDrive className="meta-icon" />
+                <HardDrive size={12} className="meta-icon" />
                 {result.memory}
               </span>
             )}

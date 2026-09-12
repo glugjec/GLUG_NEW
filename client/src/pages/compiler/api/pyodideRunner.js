@@ -1,22 +1,9 @@
-/**
- * Pyodide WebAssembly Runner for Interactive Python Execution
- *
- * Runs Python code locally in the browser with:
- * - Real-time streaming stdout / stderr
- * - True interactive input() support via async execution and Promise hooks
- * - Interruption / cancellation support
- * - Zero network latency and no API limits
- */
-
 let pyodideInstance = null;
 let pyodideLoadingPromise = null;
 let currentInputResolver = null;
 let currentInputRejector = null;
 let executionAborted = false;
 
-/**
- * Load and initialize the Pyodide WebAssembly runtime.
- */
 export async function getPyodide(onProgress) {
   if (pyodideInstance) {
     return pyodideInstance;
@@ -33,7 +20,6 @@ export async function getPyodide(onProgress) {
 
     if (onProgress) onProgress('Loading Python WebAssembly runtime...');
 
-    // Load Pyodide script from CDN if not already loaded
     if (!window.loadPyodide) {
       await new Promise((resolve, reject) => {
         const script = document.createElement('script');
@@ -51,7 +37,6 @@ export async function getPyodide(onProgress) {
       indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/',
     });
 
-    // Initialize custom AST transformer & async input bridge in Python
     await pyodide.runPythonAsync(`
 import builtins
 import asyncio
@@ -59,7 +44,6 @@ import ast
 import js
 import sys
 
-# Custom async input implementation
 async def __glug_async_input__(prompt=""):
     if prompt:
         js.__glug_term_write__(str(prompt), "stdout")
@@ -70,10 +54,8 @@ def __transform_for_interactive_input__(source_code):
     try:
         tree = ast.parse(source_code)
     except Exception:
-        # Syntax error will be reported naturally when run
         return source_code
 
-    # Find functions that call input or other async functions
     async_funcs = {'input', '__glug_async_input__'}
     changed = True
     while changed:
@@ -106,7 +88,6 @@ def __transform_for_interactive_input__(source_code):
             func_name = node.func.id if isinstance(node.func, ast.Name) else None
             if func_name in async_funcs:
                 if func_name == 'input':
-                    # Replace with __glug_async_input__ call
                     node.func = ast.Name(id='__glug_async_input__', ctx=ast.Load())
                 return ast.copy_location(ast.Await(value=node), node)
             return node
@@ -114,7 +95,6 @@ def __transform_for_interactive_input__(source_code):
     transformed = AsyncInputTransformer().visit(tree)
     ast.fix_missing_locations(transformed)
 
-    # Separate definitions from top-level execution statements
     top_level_stmts = []
     def_stmts = []
     for stmt in transformed.body:
@@ -126,7 +106,6 @@ def __transform_for_interactive_input__(source_code):
     if not top_level_stmts:
         return ast.unparse(transformed)
 
-    # Add global declarations for assigned top-level variables
     assigned_vars = set()
     for stmt in top_level_stmts:
         for n in ast.walk(stmt):
@@ -155,9 +134,6 @@ def __transform_for_interactive_input__(source_code):
   return pyodideLoadingPromise;
 }
 
-/**
- * Provide input when the running Python program is waiting for it.
- */
 export function sendInputToPyodide(text) {
   if (currentInputResolver) {
     const resolver = currentInputResolver;
@@ -169,9 +145,6 @@ export function sendInputToPyodide(text) {
   return false;
 }
 
-/**
- * Cancel/abort current input wait or execution.
- */
 export function abortPyodideExecution() {
   executionAborted = true;
   if (currentInputRejector) {
@@ -182,17 +155,6 @@ export function abortPyodideExecution() {
   }
 }
 
-/**
- * Run Python code interactively with Pyodide.
- *
- * @param {string} sourceCode - Python code to run
- * @param {Object} options
- * @param {Function} options.onStdout - Callback for stdout chunks: (text: string) => void
- * @param {Function} options.onStderr - Callback for stderr chunks: (text: string) => void
- * @param {Function} options.onRequestInput - Callback when input() is called: (prompt: string) => void
- * @param {Function} options.onStatusChange - Callback for status messages: (status: string) => void
- * @param {string} [options.prefilledStdin] - Optional newline-delimited pre-filled input
- */
 export async function runPythonInteractive(sourceCode, {
   onStdout = () => {},
   onStderr = () => {},
@@ -209,10 +171,8 @@ export async function runPythonInteractive(sourceCode, {
 
   onStatusChange('Running...');
 
-  // Handle prefilled stdin queue if provided
   const stdinQueue = prefilledStdin ? prefilledStdin.split('\n') : [];
 
-  // Register JS bridge functions for Pyodide
   window.__glug_term_write__ = (text, type = 'stdout') => {
     if (type === 'stderr') {
       onStderr(text);
@@ -226,15 +186,12 @@ export async function runPythonInteractive(sourceCode, {
       return Promise.reject(new Error('Execution interrupted by user.'));
     }
 
-    // If pre-filled input exists in queue, consume next line
     if (stdinQueue.length > 0) {
       const nextInput = stdinQueue.shift();
-      // Echo input to terminal
       onStdout(nextInput + '\n');
       return Promise.resolve(nextInput);
     }
 
-    // Request interactive input from user UI
     onRequestInput(prompt || '');
 
     return new Promise((resolve, reject) => {
@@ -243,7 +200,6 @@ export async function runPythonInteractive(sourceCode, {
     });
   };
 
-  // Configure stdout and stderr streams
   pyodide.setStdout({
     batched: (text) => {
       onStdout(text + '\n');
@@ -257,11 +213,9 @@ export async function runPythonInteractive(sourceCode, {
   });
 
   try {
-    // Transform code to support async input
     const transformPy = pyodide.globals.get('__transform_for_interactive_input__');
     const transformedCode = transformPy(sourceCode);
 
-    // Execute definitions and check if runner function was generated
     await pyodide.runPythonAsync(transformedCode);
 
     if (pyodide.globals.has('__glug_exec_runner__')) {
@@ -291,7 +245,6 @@ export async function runPythonInteractive(sourceCode, {
       };
     }
 
-    // Extract error line numbers from Python traceback
     const errorMsg = err.message || String(err);
     const lineMatches = Array.from(errorMsg.matchAll(/line (\d+)/g)).map((m) => parseInt(m[1], 10));
     const uniqueLines = Array.from(new Set(lineMatches));

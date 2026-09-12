@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import Header from './components/Header';
 import CodeEditor from './components/CodeEditor';
 import OutputPanel from './components/OutputPanel';
@@ -21,39 +21,72 @@ export default function Compiler() {
   const [terminalLogs, setTerminalLogs] = useState([]);
   const [activeTab, setActiveTab] = useState('terminal');
 
-  // Resizable panel width state
-  const [editorWidth, setEditorWidth] = useState(60);
+  const [editorWidth, setEditorWidth] = useState(58);
   const [isResizingWidth, setIsResizingWidth] = useState(false);
+  const [mobileView, setMobileView] = useState(() => (window.innerWidth < 900 ? 'editor' : 'split'));
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const [fontSize, setFontSize] = useState(
+    () => localStorage.getItem('glug_editor_font_size') || '14'
+  );
 
   const containerRef = useRef(null);
+  const mainContainerRef = useRef(null);
   const abortControllerRef = useRef(null);
 
   const activeFile = files.find(f => f.name === activeFileName) || files[0];
   const code = activeFile.content;
   const language = activeFile.language;
 
-  // Code editor onChange handler
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'glug_editor_font_size' && e.newValue) {
+        setFontSize(e.newValue);
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const handleFontSizeChange = useCallback((newSize) => {
+    setFontSize(newSize);
+    localStorage.setItem('glug_editor_font_size', String(newSize));
+  }, []);
+
+  const handleToggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  }, []);
+
   const handleCodeChange = useCallback((newCode) => {
     setFiles(prev => prev.map(f => f.name === activeFileName ? { ...f, content: newCode } : f));
   }, [activeFileName]);
 
-  // Tab change handler
   const handleActiveFileChange = useCallback((fileName) => {
     setActiveFileName(fileName);
     setResult(null);
     setErrorLines([]);
   }, []);
 
-  // Add new file/tab
   const handleAddFile = useCallback((fileName) => {
     if (files.some(f => f.name === fileName)) {
       alert(`File "${fileName}" already exists.`);
       return;
     }
 
-    // Determine language from file extension
     const ext = fileName.split('.').pop();
-    let lang = 'plaintext';
+    let lang = 'python';
     Object.keys(LANGUAGES).forEach((key) => {
       if (LANGUAGES[key].extension === `.${ext}`) {
         lang = key;
@@ -71,7 +104,6 @@ export default function Compiler() {
     setActiveFileName(fileName);
   }, [files]);
 
-  // Close tab
   const handleCloseFile = useCallback((fileName) => {
     if (files.length <= 1) return;
 
@@ -84,7 +116,6 @@ export default function Compiler() {
     });
   }, [files, activeFileName]);
 
-  // Handle header language dropdown change
   const handleLanguageChange = useCallback((newLang) => {
     const defaultExt = LANGUAGES[newLang].extension;
     const defaultName = `main${defaultExt}`;
@@ -105,7 +136,44 @@ export default function Compiler() {
     setErrorLines([]);
   }, [files]);
 
-  // Append new log to the terminal logs
+  const handleResetCode = useCallback(() => {
+    const defaultSnippet = LANGUAGES[language]?.defaultCode || '';
+    setFiles(prev =>
+      prev.map(f => (f.name === activeFileName ? { ...f, content: defaultSnippet } : f))
+    );
+    setResult(null);
+    setErrorLines([]);
+  }, [language, activeFileName]);
+
+  const handleDownloadCode = useCallback(() => {
+    const blob = new Blob([code], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = activeFileName || `code${LANGUAGES[language]?.extension || '.txt'}`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [code, activeFileName, language]);
+
+  const handleUploadCode = useCallback((fileName, fileContent) => {
+    const ext = fileName.split('.').pop();
+    let detectedLang = language;
+    Object.keys(LANGUAGES).forEach((key) => {
+      if (LANGUAGES[key].extension === `.${ext}`) {
+        detectedLang = key;
+      }
+    });
+
+    setFiles(prev => {
+      const exists = prev.find(f => f.name === fileName);
+      if (exists) {
+        return prev.map(f => (f.name === fileName ? { ...f, content: fileContent, language: detectedLang } : f));
+      }
+      return [...prev, { name: fileName, content: fileContent, language: detectedLang }];
+    });
+    setActiveFileName(fileName);
+  }, [language]);
+
   const addTerminalLog = useCallback((type, text) => {
     if (text === undefined || text === null) return;
     setTerminalLogs((prev) => [
@@ -118,14 +186,12 @@ export default function Compiler() {
     ]);
   }, []);
 
-  // Clear all terminal state
   const handleClearTerminal = useCallback(() => {
     setTerminalLogs([]);
     setResult(null);
     setErrorLines([]);
   }, []);
 
-  // Stop / interrupt code execution
   const handleStop = useCallback(() => {
     if (language === 'python') {
       abortPyodideExecution();
@@ -139,12 +205,10 @@ export default function Compiler() {
     addTerminalLog('system', '\n[Execution cancelled by user]\n');
   }, [language, addTerminalLog]);
 
-  // Handle inputs sent from the prompt bar
   const handleSendInput = useCallback((inputValue) => {
     const textToSend = inputValue;
 
     if (isWaitingForInput) {
-      // Echo input to the terminal log
       addTerminalLog('stdin', textToSend + '\n');
       setIsWaitingForInput(false);
       setInputPrompt('');
@@ -156,21 +220,23 @@ export default function Compiler() {
         }
       }
     } else {
-      // Direct stdin editing (simulates appending to stdin during idle)
       addTerminalLog('stdin', textToSend + '\n');
       setStdin((prev) => (prev ? `${prev}\n${textToSend}` : textToSend));
 
       if (result?.isInputMissing) {
         addTerminalLog(
           'system',
-          `[Input buffered: "${textToSend}". Click "Run Code" or press Ctrl+Enter to re-execute with new input]\n`
+          `[Input buffered: "${textToSend}". Re-run code to submit with buffer]\n`
         );
       }
     }
   }, [isWaitingForInput, language, addTerminalLog, result]);
 
-  // Internal execution method
   const runCode = async (fileToRun) => {
+    if (mobileView === 'editor') {
+      setMobileView(window.innerWidth < 900 ? 'output' : 'split');
+    }
+
     setIsRunning(true);
     setIsWaitingForInput(false);
     setInputPrompt('');
@@ -182,13 +248,12 @@ export default function Compiler() {
     const timestamp = new Date().toLocaleTimeString();
     addTerminalLog(
       'system',
-      `▶ [${timestamp}] Running ${langConfig?.name || fileToRun.language}...\n`
+      `> [${timestamp}] Running ${langConfig?.name || fileToRun.language}...\n`
     );
 
     abortControllerRef.current = new AbortController();
 
     if (fileToRun.language === 'python') {
-      // 🐍 Client-side interactive Python (WebAssembly/Pyodide)
       try {
         const execResult = await runPythonInteractive(fileToRun.content, {
           onStdout: (text) => addTerminalLog('stdout', text),
@@ -240,7 +305,6 @@ export default function Compiler() {
         abortControllerRef.current = null;
       }
     } else {
-      // ☁️ Judge0 execution for other languages
       try {
         const execResult = await executeCode(
           fileToRun.language,
@@ -271,7 +335,7 @@ export default function Compiler() {
         } else if (execResult.isInputMissing) {
           addTerminalLog(
             'system',
-            `\n[Program paused: missing standard input for ${langConfig.name}. Type input in the prompt bar below]\n`
+            `\n[Program paused: missing standard input for ${langConfig.name}]\n`
           );
         } else {
           addTerminalLog(
@@ -315,7 +379,6 @@ export default function Compiler() {
     setErrorLines([line]);
   }, []);
 
-  // Resize handler for split-screen panel
   const handleResizeStart = useCallback((e) => {
     e.preventDefault();
     setIsResizingWidth(true);
@@ -323,12 +386,12 @@ export default function Compiler() {
     document.body.style.userSelect = 'none';
 
     const handleResizeMove = (moveEvent) => {
-      if (!containerRef.current) return;
-      const container = containerRef.current;
+      if (!mainContainerRef.current) return;
+      const container = mainContainerRef.current;
       const rect = container.getBoundingClientRect();
       const x = moveEvent.clientX - rect.left;
       const percentage = (x / rect.width) * 100;
-      const clamped = Math.min(Math.max(percentage, 25), 80);
+      const clamped = Math.min(Math.max(percentage, 25), 75);
       setEditorWidth(clamped);
     };
 
@@ -345,17 +408,32 @@ export default function Compiler() {
   }, []);
 
   return (
-    <div className="compiler-scoped-container">
+    <div className={`compiler-scoped-container ${isFullscreen ? 'is-fullscreen' : ''}`} ref={containerRef}>
       <Header
         selectedLanguage={language}
         onLanguageChange={handleLanguageChange}
         onRun={handleRun}
         onStop={handleStop}
         isRunning={isRunning}
+        fontSize={fontSize}
+        onChangeFontSize={handleFontSizeChange}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={handleToggleFullscreen}
+        mobileView={mobileView}
+        onChangeMobileView={setMobileView}
       />
 
-      <div className="main-container" ref={containerRef}>
-        <div style={{ width: `${editorWidth}%`, display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0, overflow: 'hidden' }}>
+      <div
+        className={`main-container view-${mobileView}`}
+        ref={mainContainerRef}
+      >
+        <div
+          className="editor-pane-wrapper"
+          style={{
+            width: mobileView === 'split' ? `${editorWidth}%` : '100%',
+            display: mobileView === 'output' ? 'none' : 'flex',
+          }}
+        >
           <CodeEditor
             language={language}
             code={code}
@@ -367,15 +445,27 @@ export default function Compiler() {
             onActiveFileChange={handleActiveFileChange}
             onAddFile={handleAddFile}
             onCloseFile={handleCloseFile}
+            fontSize={fontSize}
+            onResetCode={handleResetCode}
+            onDownloadCode={handleDownloadCode}
+            onUploadCode={handleUploadCode}
           />
         </div>
 
-        <div
-          className={`resize-handle ${isResizingWidth ? 'active' : ''}`}
-          onMouseDown={handleResizeStart}
-        />
+        {mobileView === 'split' && (
+          <div
+            className={`resize-handle ${isResizingWidth ? 'active' : ''}`}
+            onMouseDown={handleResizeStart}
+          />
+        )}
 
-        <div style={{ width: `${100 - editorWidth}%`, height: '100%', minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div
+          className="output-pane-wrapper"
+          style={{
+            width: mobileView === 'split' ? `${100 - editorWidth}%` : '100%',
+            display: mobileView === 'editor' ? 'none' : 'flex',
+          }}
+        >
           <OutputPanel
             terminalLogs={terminalLogs}
             isRunning={isRunning}
@@ -395,7 +485,6 @@ export default function Compiler() {
         </div>
       </div>
 
-      {/* Resizing Overlay to capture mouse events and bypass Monaco */}
       {isResizingWidth && (
         <div
           style={{

@@ -1,51 +1,60 @@
-/**
- * Language configuration for the online compiler.
- * Maps each supported language to its Judge0 ID, Monaco editor language,
- * default boilerplate code, and error line extraction regex.
- */
-
 export const LANGUAGES = {
   python: {
     id: 'python',
     name: 'Python',
-    judge0Id: 71, // Python 3.8.1
+    judge0Id: 71,
     monacoLang: 'python',
     extension: '.py',
     color: '#3572A5',
     logo: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg',
-    defaultCode: `# Python 3 — Hello, World!
-def main():
-    print("Hello, World!")
+    defaultCode: `def main():
+    print("Hello from Python!")
 
 if __name__ == "__main__":
     main()
 `,
     extractErrorLine: (stderr) => {
-      // Python: "  File "<string>", line 5"
       const match = stderr.match(/line (\d+)/);
       return match ? parseInt(match[1], 10) : null;
     },
   },
 
-  c: {
-    id: 'c',
-    name: 'C',
-    judge0Id: 50, // C (GCC 9.2.0)
-    monacoLang: 'c',
-    extension: '.c',
-    color: '#555555',
-    logo: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/c/c-original.svg',
-    defaultCode: `// C — Hello, World!
-#include <stdio.h>
-
-int main() {
-    printf("Hello, World!\\n");
-    return 0;
+  javascript: {
+    id: 'javascript',
+    name: 'JavaScript',
+    judge0Id: 63,
+    monacoLang: 'javascript',
+    extension: '.js',
+    color: '#f7df1e',
+    logo: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/javascript/javascript-original.svg',
+    defaultCode: `function main() {
+  console.log("Hello from JavaScript!");
 }
+
+main();
 `,
     extractErrorLine: (stderr) => {
-      // GCC: "main.c:5:10: error: ..."
-      const match = stderr.match(/:(\d+):\d+:/);
+      const match = stderr.match(/:(\d+):\d+/);
+      return match ? parseInt(match[1], 10) : null;
+    },
+  },
+
+  typescript: {
+    id: 'typescript',
+    name: 'TypeScript',
+    judge0Id: 74,
+    monacoLang: 'typescript',
+    extension: '.ts',
+    color: '#3178c6',
+    logo: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/typescript/typescript-original.svg',
+    defaultCode: `function greet(name: string): void {
+  console.log(\`Hello, \${name} from TypeScript!\`);
+}
+
+greet("Developer");
+`,
+    extractErrorLine: (stderr) => {
+      const match = stderr.match(/\((\d+),\d+\)/);
       return match ? parseInt(match[1], 10) : null;
     },
   },
@@ -53,16 +62,36 @@ int main() {
   cpp: {
     id: 'cpp',
     name: 'C++',
-    judge0Id: 54, // C++ (GCC 9.2.0)
+    judge0Id: 54,
     monacoLang: 'cpp',
     extension: '.cpp',
     color: '#f34b7d',
     logo: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/cplusplus/cplusplus-original.svg',
-    defaultCode: `// C++ — Hello, World!
-#include <iostream>
+    defaultCode: `#include <iostream>
 
 int main() {
-    std::cout << "Hello, World!" << std::endl;
+    std::cout << "Hello from C++!" << std::endl;
+    return 0;
+}
+`,
+    extractErrorLine: (stderr) => {
+      const match = stderr.match(/:(\d+):\d+:/);
+      return match ? parseInt(match[1], 10) : null;
+    },
+  },
+
+  c: {
+    id: 'c',
+    name: 'C',
+    judge0Id: 50,
+    monacoLang: 'c',
+    extension: '.c',
+    color: '#555555',
+    logo: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/c/c-original.svg',
+    defaultCode: `#include <stdio.h>
+
+int main() {
+    printf("Hello from C!\\n");
     return 0;
 }
 `,
@@ -75,20 +104,18 @@ int main() {
   java: {
     id: 'java',
     name: 'Java',
-    judge0Id: 62, // Java (OpenJDK 13.0.1)
+    judge0Id: 62,
     monacoLang: 'java',
     extension: '.java',
     color: '#b07219',
     logo: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg',
-    defaultCode: `// Java — Hello, World!
-public class Main {
+    defaultCode: `public class Main {
     public static void main(String[] args) {
-        System.out.println("Hello, World!");
+        System.out.println("Hello from Java!");
     }
 }
 `,
     extractErrorLine: (stderr) => {
-      // javac: "Main.java:5: error: ..."
       const match = stderr.match(/\.java:(\d+):/);
       return match ? parseInt(match[1], 10) : null;
     },
@@ -97,59 +124,135 @@ public class Main {
   csharp: {
     id: 'csharp',
     name: 'C#',
-    judge0Id: 51, // C# (Mono 6.6.0.161)
+    judge0Id: 51,
     monacoLang: 'csharp',
     extension: '.cs',
     color: '#178600',
     logo: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/csharp/csharp-original.svg',
-    defaultCode: `// C# — Hello, World!
-using System;
+    defaultCode: `using System;
 
 class Program {
     static void Main(string[] args) {
-        Console.WriteLine("Hello, World!");
+        Console.WriteLine("Hello from C#!");
     }
 }
 `,
     extractErrorLine: (stderr) => {
-      // Mono/csc: "Program.cs(5,10): error CS..."
       const matchParen = stderr.match(/\((\d+),\d+\)/);
       if (matchParen) return parseInt(matchParen[1], 10);
-      // Alternative: "Program.cs:5 error..."
       const matchColon = stderr.match(/\.cs:(\d+)/);
       return matchColon ? parseInt(matchColon[1], 10) : null;
     },
   },
+
+  go: {
+    id: 'go',
+    name: 'Go',
+    judge0Id: 60,
+    monacoLang: 'go',
+    extension: '.go',
+    color: '#00add8',
+    logo: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/go/go-original.svg',
+    defaultCode: `package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Hello from Go!")
+}
+`,
+    extractErrorLine: (stderr) => {
+      const match = stderr.match(/:(\d+):\d+:/);
+      return match ? parseInt(match[1], 10) : null;
+    },
+  },
+
+  rust: {
+    id: 'rust',
+    name: 'Rust',
+    judge0Id: 73,
+    monacoLang: 'rust',
+    extension: '.rs',
+    color: '#dea584',
+    logo: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/rust/rust-original.svg',
+    defaultCode: `fn main() {
+    println!("Hello from Rust!");
+}
+`,
+    extractErrorLine: (stderr) => {
+      const match = stderr.match(/:(\d+):\d+/);
+      return match ? parseInt(match[1], 10) : null;
+    },
+  },
+
+  ruby: {
+    id: 'ruby',
+    name: 'Ruby',
+    judge0Id: 72,
+    monacoLang: 'ruby',
+    extension: '.rb',
+    color: '#701516',
+    logo: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/ruby/ruby-original.svg',
+    defaultCode: `def main
+  puts "Hello from Ruby!"
+end
+
+main
+`,
+    extractErrorLine: (stderr) => {
+      const match = stderr.match(/:(\d+):in/);
+      return match ? parseInt(match[1], 10) : null;
+    },
+  },
+
+  php: {
+    id: 'php',
+    name: 'PHP',
+    judge0Id: 68,
+    monacoLang: 'php',
+    extension: '.php',
+    color: '#4F5D95',
+    logo: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/php/php-original.svg',
+    defaultCode: `<?php
+echo "Hello from PHP!\\n";
+`,
+    extractErrorLine: (stderr) => {
+      const match = stderr.match(/on line (\d+)/i);
+      return match ? parseInt(match[1], 10) : null;
+    },
+  },
 };
 
-/** Ordered list for the language selector UI */
 export const LANGUAGE_LIST = [
   LANGUAGES.python,
-  LANGUAGES.c,
+  LANGUAGES.javascript,
+  LANGUAGES.typescript,
   LANGUAGES.cpp,
+  LANGUAGES.c,
   LANGUAGES.java,
   LANGUAGES.csharp,
+  LANGUAGES.go,
+  LANGUAGES.rust,
+  LANGUAGES.ruby,
+  LANGUAGES.php,
 ];
 
-/**
- * Parse all error lines from a stderr string for a given language.
- * Returns an array of unique line numbers.
- */
 export function extractAllErrorLines(languageId, stderr) {
   if (!stderr) return [];
 
-  const lang = LANGUAGES[languageId];
-  if (!lang) return [];
-
   const lines = new Set();
-
-  // Try to extract every line number mentioned
   const linePatterns = {
     python: /line (\d+)/g,
-    c: /:(\d+):\d+:/g,
+    javascript: /:(\d+):\d+/g,
+    typescript: /\((\d+),\d+\)/g,
     cpp: /:(\d+):\d+:/g,
+    c: /:(\d+):\d+:/g,
     java: /\.java:(\d+):/g,
     csharp: /\((\d+),\d+\)/g,
+    go: /:(\d+):\d+:/g,
+    rust: /:(\d+):\d+/g,
+    ruby: /:(\d+):in/g,
+    php: /on line (\d+)/gi,
   };
 
   const pattern = linePatterns[languageId];

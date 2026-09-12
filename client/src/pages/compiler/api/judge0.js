@@ -1,22 +1,9 @@
-/**
- * Judge0 CE API integration via RapidAPI.
- *
- * To use this, sign up at https://rapidapi.com/judge0-official/api/judge0-ce
- * and paste your X-RapidAPI-Key below (or set VITE_JUDGE0_API_KEY env var).
- */
 import axios from 'axios';
 import { LANGUAGES, extractAllErrorLines } from '../utils/languageConfig';
 
 const RAPIDAPI_BASE = 'https://judge0-ce.p.rapidapi.com';
 const PUBLIC_BASE = 'https://ce.judge0.com';
 
-/**
- * Status IDs from Judge0:
- * 1 = In Queue, 2 = Processing, 3 = Accepted,
- * 4 = Wrong Answer, 5 = Time Limit Exceeded,
- * 6 = Compilation Error, 7-12 = Runtime Errors,
- * 13 = Internal Error, 14 = Exec Format Error
- */
 const STATUS = {
   IN_QUEUE: 1,
   PROCESSING: 2,
@@ -34,10 +21,6 @@ const STATUS = {
   EXEC_FORMAT_ERROR: 14,
 };
 
-/**
- * Submit code for execution and wait for the result.
- * Uses ?wait=true for synchronous mode. Supports AbortSignal.
- */
 export async function executeCode(languageId, sourceCode, stdin = '', signal = null) {
   const lang = LANGUAGES[languageId];
   if (!lang) {
@@ -104,27 +87,27 @@ export async function executeCode(languageId, sourceCode, stdin = '', signal = n
   }
 }
 
-/**
- * Check if the code has standard input statements.
- */
 export function detectCodeNeedsInput(languageId, sourceCode) {
   if (!sourceCode) return false;
 
   const patterns = {
     python: /\b(input|sys\.stdin\.readline|sys\.stdin\.read)\b/,
+    javascript: /\b(readline|prompt|process\.stdin)\b/,
+    typescript: /\b(readline|prompt|process\.stdin)\b/,
     c: /\b(scanf|getchar|gets|fgets|cin)\b/,
     cpp: /\b(cin|scanf|getchar|getline)\b/,
     java: /\b(Scanner|BufferedReader|System\.in)\b/,
     csharp: /\b(Console\.ReadLine|Console\.Read)\b/,
+    go: /\b(Scan|Scanf|Scanln|bufio\.NewReader)\b/,
+    rust: /\b(stdin|read_line)\b/,
+    ruby: /\b(gets|readline)\b/,
+    php: /\b(readline|fgets|STDIN)\b/,
   };
 
   const pattern = patterns[languageId];
   return pattern ? pattern.test(sourceCode) : false;
 }
 
-/**
- * Check if an error was caused by missing standard input.
- */
 export function isMissingInputError(stderr = '', stdout = '') {
   const combined = (stderr + ' ' + stdout).toLowerCase();
   return (
@@ -137,9 +120,6 @@ export function isMissingInputError(stderr = '', stdout = '') {
   );
 }
 
-/**
- * Parse the Judge0 API response into a structured result.
- */
 function parseResponse(data, languageId, sourceCode = '', stdin = '') {
   const statusId = data.status?.id;
   const isError =
@@ -171,15 +151,9 @@ function parseResponse(data, languageId, sourceCode = '', stdin = '') {
   };
 }
 
-/**
- * Mock response for demo mode (when no API key is configured).
- * Simulates compilation and detects basic syntax errors.
- */
 function getMockResponse(languageId, sourceCode) {
   return new Promise((resolve) => {
-    // Simulate network delay
     setTimeout(() => {
-      // Simple mock: check for common syntax errors
       const hasError = detectMockError(languageId, sourceCode);
 
       if (hasError) {
@@ -197,13 +171,18 @@ function getMockResponse(languageId, sourceCode) {
           timeLimitExceeded: false,
         });
       } else {
-        // Simulate successful execution with Hello World output
         const outputs = {
-          python: 'Hello, World!\n',
-          c: 'Hello, World!\n',
-          cpp: 'Hello, World!\n',
-          java: 'Hello, World!\n',
-          csharp: 'Hello, World!\n',
+          python: 'Hello from Python!\n',
+          javascript: 'Hello from JavaScript!\n',
+          typescript: 'Hello from TypeScript!\n',
+          c: 'Hello from C!\n',
+          cpp: 'Hello from C++!\n',
+          java: 'Hello from Java!\n',
+          csharp: 'Hello from C#!\n',
+          go: 'Hello from Go!\n',
+          rust: 'Hello from Rust!\n',
+          ruby: 'Hello from Ruby!\n',
+          php: 'Hello from PHP!\n',
         };
         resolve({
           success: true,
@@ -223,9 +202,6 @@ function getMockResponse(languageId, sourceCode) {
   });
 }
 
-/**
- * Very basic mock error detection for demo purposes.
- */
 function detectMockError(languageId, sourceCode) {
   const lines = sourceCode.split('\n');
 
@@ -233,7 +209,6 @@ function detectMockError(languageId, sourceCode) {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
       if (line && !line.startsWith('#') && !line.startsWith('"""') && !line.startsWith("'''")) {
-        // Check for missing colons after def/if/for/while/class
         if (/^(def|if|for|while|class|elif|else|try|except|finally)\b/.test(line) && !line.endsWith(':') && !line.endsWith(':\\')) {
           return {
             type: 'Compilation Error',
@@ -248,7 +223,6 @@ function detectMockError(languageId, sourceCode) {
   if (['c', 'cpp'].includes(languageId)) {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
-      // Check for missing semicolons (very basic)
       if (line && !line.startsWith('//') && !line.startsWith('#') &&
           !line.startsWith('{') && !line.startsWith('}') &&
           !line.endsWith('{') && !line.endsWith('}') &&
