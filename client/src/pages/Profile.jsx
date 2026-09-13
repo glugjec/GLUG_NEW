@@ -678,24 +678,24 @@ export default function Profile() {
               <h1 className="profile-display-name">
                 {profile.username || 'Member'}
               </h1>
-              {profile.communityRole?.isMember && (
+              {profile.role === 'admin' ? (
+                <span className="profile-role-badge role-admin">
+                  <Shield size={12} />
+                  Administrator
+                </span>
+              ) : profile.role === 'moderator' ? (
+                <span className="profile-role-badge role-mod">
+                  <Shield size={12} />
+                  Moderator
+                </span>
+              ) : profile.communityRole?.isMember ? (
                 <span className="profile-team-badge">
                   <Crown size={13} />
                   <span>
-                    {profile.communityRole.positionTitle || profile.communityRole.category} • {profile.communityRole.teamDomain || 'Core'}
+                    {profile.communityRole.positionTitle || profile.communityRole.category || 'Member'} • {profile.communityRole.teamDomain || 'Core'}
                   </span>
                 </span>
-              )}
-              {profile.role && profile.role !== 'student' && (
-                <span
-                  className={`profile-role-badge ${
-                    profile.role === 'admin' ? 'role-admin' : 'role-mod'
-                  }`}
-                >
-                  <Shield size={12} />
-                  {profile.role === 'admin' ? 'Administrator' : 'Moderator'}
-                </span>
-              )}
+              ) : null}
             </div>
 
             <div className="profile-meta-row">

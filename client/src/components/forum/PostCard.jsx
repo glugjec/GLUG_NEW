@@ -4,9 +4,11 @@ import Chip from '../common/Chip.jsx'
 import VoteButtons from './VoteButtons.jsx'
 import { Pin, MessageSquare } from 'lucide-react'
 import { avatarInitials, avatarColor } from '../common/avatar.js'
+import { getAuthorBadge } from '../../utils/badgeHelper.js'
 
 export default function PostCard({ post, onTagClick }) {
   const authorName = post.author?.username || post.username || 'Anonymous'
+  const authorBadge = getAuthorBadge(post.author)
   const postDate = new Date(post.createdAt || post.created_at).toLocaleDateString(undefined, {
     month: 'short',
     day: 'numeric',
@@ -14,8 +16,8 @@ export default function PostCard({ post, onTagClick }) {
   })
 
   return (
-    <Card className={`post-card ${post.isPinned ? 'post-card-pinned' : ''}`}>
-      <div className="post-card-layout">
+    <Card className={`post-card ${post.isPinned ? 'pinned' : ''}`}>
+      <div className="post-card-inner">
         <VoteButtons
           postId={post.id || post._id}
           initialScore={post.voteScore || 0}
@@ -33,7 +35,11 @@ export default function PostCard({ post, onTagClick }) {
                 {avatarInitials(authorName)}
               </div>
               <span className="post-author-name">@{authorName}</span>
-              {post.author?.role === 'admin' && <span className="admin-badge">Admin</span>}
+              {authorBadge && (
+                <span className={authorBadge.type === 'admin' ? 'admin-badge' : 'admin-badge member-badge'}>
+                  {authorBadge.text}
+                </span>
+              )}
             </div>
 
             <div className="post-header-badges">

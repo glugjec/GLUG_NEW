@@ -3,6 +3,7 @@ import Card from '../common/Card.jsx'
 import { avatarInitials, avatarColor } from '../common/avatar.js'
 import { MessageSquare, Trash2, CornerDownRight } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext.jsx'
+import { getAuthorBadge } from '../../utils/badgeHelper.js'
 
 export default function CommentItem({ comment, replies = [], onReply, onDelete }) {
   const { user } = useAuth()
@@ -49,8 +50,10 @@ export default function CommentItem({ comment, replies = [], onReply, onDelete }
               {avatarInitials(authorName)}
             </div>
             <span className="comment-author-name">@{authorName}</span>
-            {comment.author?.role === 'admin' && (
-              <span className="admin-badge">Admin</span>
+            {getAuthorBadge(comment.author) && (
+              <span className={getAuthorBadge(comment.author).type === 'admin' ? 'admin-badge' : 'admin-badge member-badge'}>
+                {getAuthorBadge(comment.author).text}
+              </span>
             )}
             <span className="comment-dot">·</span>
             <span className="comment-date">{formattedDate}</span>
@@ -147,8 +150,10 @@ export default function CommentItem({ comment, replies = [], onReply, onDelete }
                         {avatarInitials(replyAuthor)}
                       </div>
                       <span className="comment-author-name">@{replyAuthor}</span>
-                      {reply.author?.role === 'admin' && (
-                        <span className="admin-badge">Admin</span>
+                      {getAuthorBadge(reply.author) && (
+                        <span className={getAuthorBadge(reply.author).type === 'admin' ? 'admin-badge' : 'admin-badge member-badge'}>
+                          {getAuthorBadge(reply.author).text}
+                        </span>
                       )}
                       <span className="comment-dot">·</span>
                       <span className="comment-date">{replyDate}</span>

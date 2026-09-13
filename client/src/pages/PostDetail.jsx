@@ -4,6 +4,7 @@ import { postsApi } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { avatarInitials, avatarColor } from '../components/common/avatar.js'
 import { formatRelativeTime } from '../utils/timeAgo.js'
+import { getAuthorBadge } from '../utils/badgeHelper.js'
 import { calculateNextVoteScore } from '../utils/voteCalculator.js'
 import MarkdownRenderer from '../components/common/MarkdownRenderer.jsx'
 import RichTextEditor from '../components/common/RichTextEditor.jsx'
@@ -105,7 +106,7 @@ function CommentThreadItem({
   if (!commentId) return null
 
   const rAuthor = comment.author?.username || 'member'
-  const rRole = comment.author?.role || 'Core Member'
+  const authorBadge = getAuthorBadge(comment.author)
   const rTime = formatRelativeTime(comment.createdAt)
   const isReplying = activeReplyId === commentId
 
@@ -141,15 +142,11 @@ function CommentThreadItem({
             <Link to={`/profile/${encodeURIComponent(rAuthor)}`} className="reply-username">
               {rAuthor}
             </Link>
-            <span
-              className={`role-badge ${
-                rRole.toLowerCase().includes('moderator')
-                  ? 'role-mod'
-                  : 'role-core-member'
-              }`}
-            >
-              {rRole}
-            </span>
+            {authorBadge && (
+              <span className={`role-badge ${authorBadge.className}`}>
+                {authorBadge.text}
+              </span>
+            )}
             <span className="reply-time">{rTime}</span>
           </div>
         </div>
@@ -277,7 +274,7 @@ function CommentThreadItem({
               {repliesToShow.map((reply) => {
                 const repId = String(reply.id || reply._id || '')
                 const repAuthor = reply.author?.username || 'member'
-                const repRole = reply.author?.role || 'Core Member'
+                const repBadge = getAuthorBadge(reply.author)
                 const repTime = formatRelativeTime(reply.createdAt)
                 const isRepReplying = activeReplyId === repId
                 const repBody = typeof reply.body === 'string' ? reply.body : String(reply.body || '')
@@ -302,15 +299,11 @@ function CommentThreadItem({
                               <span>@{reply.parentAuthor}</span>
                             </span>
                           )}
-                          <span
-                            className={`role-badge ${
-                              repRole.toLowerCase().includes('moderator')
-                                ? 'role-mod'
-                                : 'role-core-member'
-                            }`}
-                          >
-                            {repRole}
-                          </span>
+                          {repBadge && (
+                            <span className={`role-badge ${repBadge.className}`}>
+                              {repBadge.text}
+                            </span>
+                          )}
                           <span className="reply-time">{repTime}</span>
                         </div>
                       </div>
@@ -845,7 +838,9 @@ export default function PostDetail() {
       id: 'c_' + Date.now(),
       author: {
         username: authorUsername,
-        role: user?.role === 'admin' ? 'Community Moderator' : 'Member'
+        role: user?.role || 'student',
+        avatar: user?.avatar,
+        communityRole: user?.communityRole || {},
       },
       createdAt: 'Just now',
       body: text.trim(),
@@ -1126,6 +1121,11 @@ export default function PostDetail() {
                       {authorName}
                     </Link>
                     <span className="op-badge">Original Poster</span>
+                    {getAuthorBadge(activePost?.author) && (
+                      <span className={`role-badge ${getAuthorBadge(activePost.author).className}`}>
+                        {getAuthorBadge(activePost.author).text}
+                      </span>
+                    )}
                   </div>
                   <span className="author-time">{formattedCreatedTime}</span>
                 </div>

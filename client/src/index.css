@@ -1805,6 +1805,12 @@ input:focus, textarea:focus, select:focus {
   letter-spacing: 0.5px;
 }
 
+.admin-badge.member-badge {
+  background: rgba(59, 130, 246, 0.18);
+  color: #60a5fa;
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
 .student-badge {
   font-size: 0.72rem;
   color: var(--accent);

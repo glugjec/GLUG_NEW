@@ -73,7 +73,7 @@ router.get('/', optionalAuth, async (req, res) => {
         .sort(sortCriteria)
         .skip(skip)
         .limit(limit)
-        .populate('author', 'username role avatar')
+        .populate('author', 'username role avatar communityRole')
         .lean(),
       Post.countDocuments(filter),
     ]);
@@ -121,8 +121,9 @@ router.get('/', optionalAuth, async (req, res) => {
             username: p.author.username,
             role: p.author.role,
             avatar: p.author.avatar,
+            communityRole: p.author.communityRole || {},
           }
-        : { username: 'deleted', role: 'student' },
+        : { username: 'deleted', role: 'student', communityRole: {} },
       userVote: userVoteMap.get(p._id.toString()) || 0,
       isBookmarked: userBookmarkSet.has(p._id.toString()),
     }));
@@ -213,12 +214,12 @@ router.get('/feed', optionalAuth, async (req, res) => {
       Post.find({})
         .sort({ createdAt: -1 })
         .limit(poolSize)
-        .populate('author', 'username role avatar')
+        .populate('author', 'username role avatar communityRole')
         .lean(),
       Post.find({})
         .sort({ voteScore: -1, createdAt: -1 })
         .limit(poolSize)
-        .populate('author', 'username role avatar')
+        .populate('author', 'username role avatar communityRole')
         .lean(),
     ]);
 
@@ -289,8 +290,9 @@ router.get('/feed', optionalAuth, async (req, res) => {
               username: rest.author.username,
               role: rest.author.role,
               avatar: rest.author.avatar,
+              communityRole: rest.author.communityRole || {},
             }
-          : { username: 'deleted', role: 'student' },
+          : { username: 'deleted', role: 'student', communityRole: {} },
         userVote: userVoteMap.get(rest._id.toString()) || 0,
         isBookmarked: userBookmarkSet.has(rest._id.toString()),
       };
@@ -308,7 +310,7 @@ router.get('/feed', optionalAuth, async (req, res) => {
 router.get('/:id', optionalAuth, async (req, res) => {
   try {
     const post = await Post.findById(req.params.id)
-      .populate('author', 'username role avatar bio')
+      .populate('author', 'username role avatar bio communityRole')
       .lean();
 
     if (!post) {
@@ -317,7 +319,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
 
     const comments = await Comment.find({ post: post._id })
       .sort({ createdAt: 1 })
-      .populate('author', 'username role avatar')
+      .populate('author', 'username role avatar communityRole')
       .lean();
 
     let userVote = 0;
@@ -370,8 +372,9 @@ router.get('/:id', optionalAuth, async (req, res) => {
             role: post.author.role,
             avatar: post.author.avatar,
             bio: post.author.bio,
+            communityRole: post.author.communityRole || {},
           }
-        : { username: 'deleted', role: 'student' },
+        : { username: 'deleted', role: 'student', communityRole: {} },
       userVote,
       isBookmarked,
     };
@@ -396,8 +399,9 @@ router.get('/:id', optionalAuth, async (req, res) => {
               username: c.author.username,
               role: c.author.role,
               avatar: c.author.avatar,
+              communityRole: c.author.communityRole || {},
             }
-          : { username: 'deleted', role: 'student' },
+          : { username: 'deleted', role: 'student', communityRole: {} },
       };
     });
 
@@ -438,7 +442,7 @@ router.post('/', requireAuth, async (req, res) => {
       tags: cleanTags,
     });
 
-    const populated = await Post.findById(post._id).populate('author', 'username role avatar');
+    const populated = await Post.findById(post._id).populate('author', 'username role avatar communityRole');
 
     return res.status(201).json(populated.toJSON());
   } catch (err) {
@@ -470,7 +474,7 @@ router.put('/:id', requireAuth, async (req, res) => {
     }
 
     await post.save();
-    const updated = await Post.findById(post._id).populate('author', 'username role avatar');
+    const updated = await Post.findById(post._id).populate('author', 'username role avatar communityRole');
     return res.json(updated.toJSON());
   } catch (err) {
     console.error('[Update Post Error]', err);
@@ -691,7 +695,7 @@ router.post('/:id/comments', requireAuth, async (req, res) => {
 
     const populated = await Comment.findById(comment._id).populate(
       'author',
-      'username role avatar'
+      'username role avatar communityRole'
     );
 
     return res.status(201).json({
@@ -706,8 +710,9 @@ router.post('/:id/comments', requireAuth, async (req, res) => {
             username: populated.author.username,
             role: populated.author.role,
             avatar: populated.author.avatar,
+            communityRole: populated.author.communityRole || {},
           }
-        : { username: 'deleted', role: 'student' },
+        : { username: 'deleted', role: 'student', communityRole: {} },
     });
   } catch (err) {
     console.error('[Add Comment Error]', err);

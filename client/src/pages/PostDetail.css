@@ -565,6 +565,12 @@
   border: 1px solid rgba(99, 102, 241, 0.25);
 }
 
+.role-admin {
+  background: rgba(235, 69, 158, 0.18);
+  color: #f472b6;
+  border: 1px solid rgba(235, 69, 158, 0.35);
+}
+
 .reply-time {
   font-size: 0.78rem;
   color: var(--text-muted);
