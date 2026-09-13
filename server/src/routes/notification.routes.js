@@ -8,8 +8,9 @@ const router = Router();
 router.get('/', requireAuth, async (req, res) => {
   try {
     const notifications = await Notification.find({ recipient: req.user.id })
+      .select('type message isRead createdAt sender post comment')
       .sort({ createdAt: -1 })
-      .limit(50)
+      .limit(30)
       .populate('sender', 'username avatar role')
       .populate('post', 'title')
       .lean();

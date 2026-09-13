@@ -15,6 +15,12 @@ function formatRelativeTime(date) {
   return new Date(date).toLocaleDateString()
 }
 
+let notificationsCache = {
+  userId: null,
+  data: [],
+  timestamp: 0,
+}
+
 function TopBarAvatar({ src, username, email, size = 30, className = '' }) {
   const [error, setError] = useState(false)
   const name = username || email || 'User'
@@ -88,7 +94,9 @@ export default function TopBar() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [unreadNotifCount, setUnreadNotifCount] = useState(0)
-  const [notifications, setNotifications] = useState([])
+  const [notifications, setNotifications] = useState(() => {
+    return notificationsCache.data || []
+  })
   const [notifLoading, setNotifLoading] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const inputRef = useRef(null)
@@ -98,9 +106,15 @@ export default function TopBar() {
 
   useEffect(() => {
     if (!user) {
+      notificationsCache = { userId: null, data: [], timestamp: 0 }
       setUnreadNotifCount(0)
       setNotifications([])
       return
+    }
+
+    const currentUserId = user.id || user._id
+    if (notificationsCache.userId === currentUserId && notificationsCache.data.length > 0) {
+      setNotifications(notificationsCache.data)
     }
 
     let isMounted = true
@@ -115,7 +129,25 @@ export default function TopBar() {
       }
     }
 
+    const prefetchNotifications = async () => {
+      try {
+        const res = await notificationsApi.list()
+        if (isMounted && res?.notifications) {
+          notificationsCache = {
+            userId: currentUserId,
+            data: res.notifications,
+            timestamp: Date.now(),
+          }
+          setNotifications(res.notifications)
+        }
+      } catch (err) {
+        // silent
+      }
+    }
+
     fetchUnread()
+    prefetchNotifications()
+
     const interval = setInterval(fetchUnread, 30000)
     return () => {
       isMounted = false
@@ -125,12 +157,34 @@ export default function TopBar() {
 
   useEffect(() => {
     if (!notifOpen || !user) return
+    const currentUserId = user.id || user._id
+    const hasCached =
+      notificationsCache.userId === currentUserId &&
+      notificationsCache.data &&
+      notificationsCache.data.length > 0
+
+    if (hasCached) {
+      setNotifications(notificationsCache.data)
+    }
+
+    if (!hasCached && notifications.length === 0) {
+      setNotifLoading(true)
+    }
+
+    if (hasCached && Date.now() - notificationsCache.timestamp < 8000) {
+      return
+    }
+
     let isMounted = true
-    setNotifLoading(true)
     notificationsApi
       .list()
       .then((res) => {
         if (isMounted && res?.notifications) {
+          notificationsCache = {
+            userId: currentUserId,
+            data: res.notifications,
+            timestamp: Date.now(),
+          }
           setNotifications(res.notifications)
         }
       })
@@ -140,16 +194,39 @@ export default function TopBar() {
       .finally(() => {
         if (isMounted) setNotifLoading(false)
       })
+
     return () => {
       isMounted = false
     }
   }, [notifOpen, user])
 
+  const handleBellHover = () => {
+    if (!user) return
+    const currentUserId = user.id || user._id
+    if (Date.now() - notificationsCache.timestamp > 15000) {
+      notificationsApi
+        .list()
+        .then((res) => {
+          if (res?.notifications) {
+            notificationsCache = {
+              userId: currentUserId,
+              data: res.notifications,
+              timestamp: Date.now(),
+            }
+            setNotifications(res.notifications)
+          }
+        })
+        .catch(() => {})
+    }
+  }
+
   const handleMarkAllRead = async () => {
     try {
-      await notificationsApi.markAllRead()
+      notificationsApi.markAllRead().catch(() => {})
       setUnreadNotifCount(0)
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
+      const updated = notifications.map((n) => ({ ...n, isRead: true }))
+      setNotifications(updated)
+      notificationsCache.data = updated
     } catch (err) {
       console.error('[Mark All Read Error]', err)
     }
@@ -157,11 +234,14 @@ export default function TopBar() {
 
   const handleNotificationClick = async (notif) => {
     if (!notif.isRead) {
-      notificationsApi.markRead(notif.id || notif._id).catch(() => {})
+      const notifId = notif.id || notif._id
+      notificationsApi.markRead(notifId).catch(() => {})
       setUnreadNotifCount((prev) => Math.max(0, prev - 1))
-      setNotifications((prev) =>
-        prev.map((n) => ((n.id === notif.id || n._id === notif._id) ? { ...n, isRead: true } : n))
+      const updated = notifications.map((n) =>
+        n.id === notifId || n._id === notifId ? { ...n, isRead: true } : n
       )
+      setNotifications(updated)
+      notificationsCache.data = updated
     }
     setNotifOpen(false)
     const targetPostId = notif.post?.id || notif.post?._id || notif.post
@@ -305,6 +385,7 @@ export default function TopBar() {
             type="button"
             className="topbar-icon-btn"
             onClick={() => setNotifOpen(!notifOpen)}
+            onMouseEnter={handleBellHover}
             aria-label="Notifications"
           >
             <Bell size={19} />
