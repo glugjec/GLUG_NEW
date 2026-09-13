@@ -1,4 +1,8 @@
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { postsApi } from '../api.js'
+import { discussionsCache } from '../utils/discussionsCache.js'
+import { formatStatCount } from '../utils/statHelper.js'
 import {
   Terminal,
   Code2,
@@ -24,8 +28,6 @@ const CATEGORIES_DATA = [
     id: 'linux',
     name: 'Linux',
     desc: 'Discussions about Linux distributions, usage, customization, and more.',
-    discussions: '1.2K',
-    members: '5.6K',
     color: '#eab308',
     borderColor: 'rgba(234, 179, 8, 0.4)',
     bgGlow: 'rgba(234, 179, 8, 0.1)',
@@ -35,8 +37,6 @@ const CATEGORIES_DATA = [
     id: 'command-line',
     name: 'Command Line',
     desc: 'Tips, tricks, and help with the terminal and shell scripting.',
-    discussions: '952',
-    members: '4.1K',
     color: '#10b981',
     borderColor: 'rgba(16, 185, 129, 0.4)',
     bgGlow: 'rgba(16, 185, 129, 0.1)',
@@ -46,8 +46,6 @@ const CATEGORIES_DATA = [
     id: 'programming',
     name: 'Programming',
     desc: 'Discuss programming languages, projects, and development.',
-    discussions: '780',
-    members: '3.8K',
     color: '#a855f7',
     borderColor: 'rgba(168, 85, 247, 0.4)',
     bgGlow: 'rgba(168, 85, 247, 0.1)',
@@ -57,8 +55,6 @@ const CATEGORIES_DATA = [
     id: 'installation',
     name: 'Installation',
     desc: 'Get help with installing Linux, dual booting, and setup.',
-    discussions: '860',
-    members: '4.2K',
     color: '#3b82f6',
     borderColor: 'rgba(59, 130, 246, 0.4)',
     bgGlow: 'rgba(59, 130, 246, 0.1)',
@@ -68,8 +64,6 @@ const CATEGORIES_DATA = [
     id: 'open-source',
     name: 'Open Source',
     desc: 'Talk about open source projects, contributions, and communities.',
-    discussions: '640',
-    members: '3.1K',
     color: '#f43f5e',
     borderColor: 'rgba(244, 63, 94, 0.4)',
     bgGlow: 'rgba(244, 63, 94, 0.1)',
@@ -79,8 +73,6 @@ const CATEGORIES_DATA = [
     id: 'tools-apps',
     name: 'Tools & Apps',
     desc: 'Discuss useful tools, applications, and productivity setups.',
-    discussions: '520',
-    members: '2.9K',
     color: '#06b6d4',
     borderColor: 'rgba(6, 182, 212, 0.4)',
     bgGlow: 'rgba(6, 182, 212, 0.1)',
@@ -90,8 +82,6 @@ const CATEGORIES_DATA = [
     id: 'learning-resources',
     name: 'Learning Resources',
     desc: 'Share and discover tutorials, courses, books, and guides.',
-    discussions: '430',
-    members: '2.6K',
     color: '#f97316',
     borderColor: 'rgba(249, 115, 22, 0.4)',
     bgGlow: 'rgba(249, 115, 22, 0.1)',
@@ -101,8 +91,6 @@ const CATEGORIES_DATA = [
     id: 'general',
     name: 'General Discussion',
     desc: 'Off-topic discussions, introductions, and casual chats.',
-    discussions: '470',
-    members: '3.0K',
     color: '#8b5cf6',
     borderColor: 'rgba(139, 92, 246, 0.4)',
     bgGlow: 'rgba(139, 92, 246, 0.1)',
@@ -112,8 +100,6 @@ const CATEGORIES_DATA = [
     id: 'help',
     name: 'Help & Support',
     desc: 'Stuck? Get help from the community here.',
-    discussions: '690',
-    members: '4.5K',
     color: '#22c55e',
     borderColor: 'rgba(34, 197, 94, 0.4)',
     bgGlow: 'rgba(34, 197, 94, 0.1)',
@@ -123,8 +109,6 @@ const CATEGORIES_DATA = [
     id: 'events',
     name: 'Events',
     desc: 'Updates, announcements, and discussions about GLUG events.',
-    discussions: '340',
-    members: '2.2K',
     color: '#ef4444',
     borderColor: 'rgba(239, 68, 68, 0.4)',
     bgGlow: 'rgba(239, 68, 68, 0.1)',
@@ -134,8 +118,6 @@ const CATEGORIES_DATA = [
     id: 'projects',
     name: 'Project Showcase',
     desc: "Share your projects, ideas, and what you're building.",
-    discussions: '280',
-    members: '1.9K',
     color: '#38bdf8',
     borderColor: 'rgba(56, 189, 248, 0.4)',
     bgGlow: 'rgba(56, 189, 248, 0.1)',
@@ -145,8 +127,6 @@ const CATEGORIES_DATA = [
     id: 'careers',
     name: 'Career & Opportunities',
     desc: 'Internships, jobs, GSoC, and other opportunities.',
-    discussions: '310',
-    members: '2.0K',
     color: '#ec4899',
     borderColor: 'rgba(236, 72, 153, 0.4)',
     bgGlow: 'rgba(236, 72, 153, 0.1)',
@@ -155,11 +135,11 @@ const CATEGORIES_DATA = [
 ]
 
 const POPULAR_CATEGORIES = [
-  { name: 'Linux', count: '1.2K', color: '#eab308', icon: 'tux', id: 'linux' },
-  { name: 'Installation', count: '860', color: '#3b82f6', icon: 'settings', id: 'installation' },
-  { name: 'Command Line', count: '952', color: '#10b981', icon: 'terminal', id: 'command-line' },
-  { name: 'Programming', count: '780', color: '#a855f7', icon: 'code', id: 'programming' },
-  { name: 'Help & Support', count: '690', color: '#22c55e', icon: 'help', id: 'help' },
+  { name: 'Linux', color: '#eab308', icon: 'tux', id: 'linux' },
+  { name: 'Installation', color: '#3b82f6', icon: 'settings', id: 'installation' },
+  { name: 'Command Line', color: '#10b981', icon: 'terminal', id: 'command-line' },
+  { name: 'Programming', color: '#a855f7', icon: 'code', id: 'programming' },
+  { name: 'Help & Support', color: '#22c55e', icon: 'help', id: 'help' },
 ]
 
 function renderCategoryIcon(type, color) {
@@ -186,6 +166,20 @@ function renderCategoryIcon(type, color) {
 
 export default function Categories() {
   const navigate = useNavigate()
+  const cachedStats = discussionsCache.get('community_stats')
+  const [stats, setStats] = useState(() => cachedStats?.data || null)
+
+  useEffect(() => {
+    let isMounted = true
+    postsApi.getStats().then((data) => {
+      if (!isMounted || !data) return
+      discussionsCache.set('community_stats', data, 60000)
+      setStats(data)
+    }).catch(() => {})
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   const handleCategoryClick = (category) => {
     navigate(`/forum?category=${category.id}`)
@@ -212,51 +206,57 @@ export default function Categories() {
         </div>
 
         <div className="cat-cards-grid">
-          {CATEGORIES_DATA.map((item) => (
-            <div
-              key={item.id}
-              className="cat-card"
-              style={{
-                '--cat-color': item.color,
-                '--cat-border': item.borderColor,
-                '--cat-glow': item.bgGlow,
-              }}
-              onClick={() => handleCategoryClick(item)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleCategoryClick(item)
-              }}
-            >
-              <div className="cat-card-top">
-                <div className="cat-card-icon" style={{ background: item.bgGlow, color: item.color, borderColor: item.borderColor }}>
-                  {renderCategoryIcon(item.iconType, item.color)}
+          {CATEGORIES_DATA.map((item) => {
+            const catKey = item.id === 'learning-resources' ? 'resources' : item.id
+            const catStat = stats?.categories?.[catKey]
+            const discussionsCount = formatStatCount(catStat?.discussions ?? 0)
+            const membersCount = formatStatCount(catStat?.members ?? 0)
+
+            return (
+              <div
+                key={item.id}
+                className="cat-card"
+                style={{
+                  '--cat-color': item.color,
+                  '--cat-border': item.borderColor,
+                  '--cat-glow': item.bgGlow,
+                }}
+                onClick={() => handleCategoryClick(item)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleCategoryClick(item)
+                }}
+              >
+                <div className="cat-card-top">
+                  <div className="cat-card-icon" style={{ background: item.bgGlow, color: item.color, borderColor: item.borderColor }}>
+                    {renderCategoryIcon(item.iconType, item.color)}
+                  </div>
+                  <div className="cat-card-title-row">
+                    <h3 className="cat-card-name">{item.name}</h3>
+                  </div>
+                  <ChevronRight size={18} className="cat-card-arrow" />
                 </div>
-                <div className="cat-card-title-row">
-                  <h3 className="cat-card-name">{item.name}</h3>
+
+                <p className="cat-card-desc">{item.desc}</p>
+
+                <div className="cat-card-footer">
+                  <span className="cat-stat">
+                    <MessageSquare size={13} />
+                    <span>
+                      <strong className="cat-stat-num">{discussionsCount}</strong> discussions
+                    </span>
+                  </span>
+                  <span className="cat-stat">
+                    <Users size={13} />
+                    <span>
+                      <strong className="cat-stat-num">{membersCount}</strong> members
+                    </span>
+                  </span>
                 </div>
-                <ChevronRight size={18} className="cat-card-arrow" />
               </div>
-
-              <p className="cat-card-desc">{item.desc}</p>
-
-
-              <div className="cat-card-footer">
-                <span className="cat-stat">
-                  <MessageSquare size={13} />
-                  <span>
-                    <strong className="cat-stat-num">{item.discussions}</strong> discussions
-                  </span>
-                </span>
-                <span className="cat-stat">
-                  <Users size={13} />
-                  <span>
-                    <strong className="cat-stat-num">{item.members}</strong> members
-                  </span>
-                </span>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 
@@ -266,22 +266,30 @@ export default function Categories() {
           <div className="cat-stats-grid">
             <div className="cat-stat-box">
               <Users size={18} className="cat-stat-icon icon-blue" />
-              <span className="cat-stat-val">1.2K</span>
+              <span className="cat-stat-val">
+                {stats ? formatStatCount(stats.members) : '1.2K'}
+              </span>
               <span className="cat-stat-lbl">Members</span>
             </div>
             <div className="cat-stat-box">
               <FileText size={18} className="cat-stat-icon icon-cyan" />
-              <span className="cat-stat-val">450</span>
+              <span className="cat-stat-val">
+                {stats ? formatStatCount(stats.discussions) : '450'}
+              </span>
               <span className="cat-stat-lbl">Discussions</span>
             </div>
             <div className="cat-stat-box">
               <Layers size={18} className="cat-stat-icon icon-indigo" />
-              <span className="cat-stat-val">12</span>
+              <span className="cat-stat-val">
+                {CATEGORIES_DATA.length}
+              </span>
               <span className="cat-stat-lbl">Categories</span>
             </div>
             <div className="cat-stat-box">
               <Calendar size={18} className="cat-stat-icon icon-purple" />
-              <span className="cat-stat-val">25</span>
+              <span className="cat-stat-val">
+                {stats?.categories?.events ? formatStatCount(stats.categories.events.discussions) : '25'}
+              </span>
               <span className="cat-stat-lbl">Events</span>
             </div>
           </div>
@@ -311,21 +319,25 @@ export default function Categories() {
         <div className="cat-widget-card popular-widget">
           <h4 className="cat-widget-title">Popular Categories</h4>
           <div className="popular-list">
-            {POPULAR_CATEGORIES.map((cat) => (
-              <Link
-                key={cat.name}
-                to={`/forum?category=${cat.id}`}
-                className="popular-item"
-              >
-                <div className="popular-item-left">
-                  <span className="popular-bullet" style={{ color: cat.color }}>
-                    {renderCategoryIcon(cat.icon, cat.color)}
-                  </span>
-                  <span className="popular-name">{cat.name}</span>
-                </div>
-                <span className="popular-count">{cat.count}</span>
-              </Link>
-            ))}
+            {POPULAR_CATEGORIES.map((cat) => {
+              const catStat = stats?.categories?.[cat.id]
+              const displayCount = formatStatCount(catStat?.discussions ?? 0)
+              return (
+                <Link
+                  key={cat.name}
+                  to={`/forum?category=${cat.id}`}
+                  className="popular-item"
+                >
+                  <div className="popular-item-left">
+                    <span className="popular-bullet" style={{ color: cat.color }}>
+                      {renderCategoryIcon(cat.icon, cat.color)}
+                    </span>
+                    <span className="popular-name">{cat.name}</span>
+                  </div>
+                  <span className="popular-count">{displayCount}</span>
+                </Link>
+              )
+            })}
           </div>
         </div>
 

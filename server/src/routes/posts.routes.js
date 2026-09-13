@@ -4,6 +4,8 @@ import { Post } from '../models/Post.js';
 import { Comment } from '../models/Comment.js';
 import { Vote } from '../models/Vote.js';
 import { Bookmark } from '../models/Bookmark.js';
+import { User } from '../models/User.js';
+import { Resource } from '../models/Resource.js';
 import { requireAuth, optionalAuth, requireAdmin } from '../middleware/auth.js';
 import { calculateNextVoteScore } from '../utils/voteCalculator.js';
 import { createNotification } from '../utils/notificationService.js';
@@ -338,6 +340,71 @@ router.get('/feed', optionalAuth, async (req, res) => {
   }
 });
 
+router.get('/meta/stats', async (req, res) => {
+  try {
+    const [totalMembers, totalPosts, categoryCounts, categoryMembers, totalResources] = await Promise.all([
+      User.countDocuments(),
+      Post.countDocuments(),
+      Post.aggregate([
+        { $group: { _id: '$category', count: { $sum: 1 } } },
+      ]),
+      Post.aggregate([
+        { $group: { _id: { category: '$category', author: '$author' } } },
+        { $group: { _id: '$_id.category', members: { $sum: 1 } } },
+      ]),
+      Resource.countDocuments(),
+    ]);
+
+    const validCategories = [
+      'general',
+      'help',
+      'linux',
+      'installation',
+      'command-line',
+      'programming',
+      'open-source',
+      'tools-apps',
+      'projects',
+      'events',
+      'resources',
+      'careers',
+    ];
+
+    const categories = {};
+    validCategories.forEach((cat) => {
+      categories[cat] = { discussions: 0, members: 0 };
+    });
+
+    categoryCounts.forEach((c) => {
+      if (c._id) {
+        if (!categories[c._id]) {
+          categories[c._id] = { discussions: 0, members: 0 };
+        }
+        categories[c._id].discussions = c.count;
+      }
+    });
+
+    categoryMembers.forEach((m) => {
+      if (m._id) {
+        if (!categories[m._id]) {
+          categories[m._id] = { discussions: 0, members: 0 };
+        }
+        categories[m._id].members = m.members;
+      }
+    });
+
+    return res.json({
+      members: totalMembers,
+      discussions: totalPosts,
+      resources: totalResources,
+      categories,
+    });
+  } catch (err) {
+    console.error('[Stats Error]', err);
+    return res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+});
+
 // @route   GET /api/posts/:id
 // @desc    Get single post detail with comments and user vote
 router.get('/:id', optionalAuth, async (req, res) => {
@@ -457,7 +524,20 @@ router.post('/', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'Title and body are required' });
   }
 
-  const validCategories = ['general', 'help', 'linux', 'events', 'projects', 'resources'];
+  const validCategories = [
+    'general',
+    'help',
+    'linux',
+    'installation',
+    'command-line',
+    'programming',
+    'open-source',
+    'tools-apps',
+    'projects',
+    'events',
+    'resources',
+    'careers',
+  ];
   const safeCategory = validCategories.includes(category?.toLowerCase())
     ? category.toLowerCase()
     : 'general';

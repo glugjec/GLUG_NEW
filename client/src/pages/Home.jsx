@@ -5,6 +5,7 @@ import { postsApi } from '../api.js'
 import { discussionsCache } from '../utils/discussionsCache.js'
 import { avatarInitials, avatarColor } from '../components/common/avatar.js'
 import { formatRelativeTime } from '../utils/timeAgo.js'
+import { formatStatCount } from '../utils/statHelper.js'
 import {
   ArrowRight,
   MessageSquare,
@@ -281,6 +282,20 @@ export default function Home() {
   const cachedRecent = discussionsCache.get('home_recent_5')
   const [discussions, setDiscussions] = useState(() => cachedRecent?.data || [])
   const [loadingDiscussions, setLoadingDiscussions] = useState(() => !cachedRecent?.data?.length)
+  const cachedStats = discussionsCache.get('community_stats')
+  const [stats, setStats] = useState(() => cachedStats?.data || null)
+
+  useEffect(() => {
+    let isMounted = true
+    postsApi.getStats().then((data) => {
+      if (!isMounted || !data) return
+      discussionsCache.set('community_stats', data, 60000)
+      setStats(data)
+    }).catch(() => {})
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   const handlePrefetch = useCallback((postId) => {
     if (!postId) return
@@ -512,22 +527,30 @@ export default function Home() {
           <div className="home-stats-2x2">
             <div className="home-stat-tile">
               <Users size={18} className="stat-tile-icon icon-blue" />
-              <span className="stat-tile-number">1.2K</span>
+              <span className="stat-tile-number">
+                {stats ? formatStatCount(stats.members) : '1.2K'}
+              </span>
               <span className="stat-tile-label">Members</span>
             </div>
             <div className="home-stat-tile">
               <FileText size={18} className="stat-tile-icon icon-cyan" />
-              <span className="stat-tile-number">450</span>
+              <span className="stat-tile-number">
+                {stats ? formatStatCount(stats.discussions) : '450'}
+              </span>
               <span className="stat-tile-label">Discussions</span>
             </div>
             <div className="home-stat-tile">
               <Calendar size={18} className="stat-tile-icon icon-indigo" />
-              <span className="stat-tile-number">25</span>
+              <span className="stat-tile-number">
+                {stats?.categories?.events ? formatStatCount(stats.categories.events.discussions) : '25'}
+              </span>
               <span className="stat-tile-label">Events</span>
             </div>
             <div className="home-stat-tile">
               <BookOpen size={18} className="stat-tile-icon icon-purple" />
-              <span className="stat-tile-number">120</span>
+              <span className="stat-tile-number">
+                {stats ? formatStatCount(stats.resources) : '120'}
+              </span>
               <span className="stat-tile-label">Resources</span>
             </div>
           </div>

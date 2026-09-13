@@ -58,6 +58,7 @@ export const authApi = {
 export const postsApi = {
   list: (params = {}) => client.get('/posts', { params }),
   feed: (params = {}) => client.get('/posts/feed', { params }),
+  getStats: () => client.get('/posts/meta/stats'),
   get: (id) => client.get(`/posts/${id}`),
   create: async (data) => {
     const res = await client.post('/posts', data);

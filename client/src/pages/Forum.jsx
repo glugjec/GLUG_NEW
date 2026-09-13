@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { avatarInitials, avatarColor } from '../components/common/avatar.js'
 import { formatRelativeTime } from '../utils/timeAgo.js'
 import { calculateNextVoteScore } from '../utils/voteCalculator.js'
+import { formatStatCount } from '../utils/statHelper.js'
 import MarkdownRenderer from '../components/common/MarkdownRenderer.jsx'
 import RichTextEditor from '../components/common/RichTextEditor.jsx'
 import {
@@ -36,15 +37,15 @@ import {
 import './Forum.css'
 
 const CATEGORIES_LIST = [
-  { id: 'linux', name: 'Linux', count: 120, icon: 'tux', color: '#eab308' },
-  { id: 'installation', name: 'Installation', count: 86, icon: 'settings', color: '#3b82f6' },
-  { id: 'command-line', name: 'Command Line', count: 95, icon: 'terminal', color: '#10b981' },
-  { id: 'programming', name: 'Programming', count: 78, icon: 'code', color: '#a855f7' },
-  { id: 'open-source', name: 'Open Source', count: 64, icon: 'git-fork', color: '#f43f5e' },
-  { id: 'tools-apps', name: 'Tools & Apps', count: 52, icon: 'box', color: '#06b6d4' },
-  { id: 'events', name: 'Events', count: 34, icon: 'calendar', color: '#ef4444' },
-  { id: 'general', name: 'General Discussion', count: 47, icon: 'users', color: '#8b5cf6' },
-  { id: 'help', name: 'Help & Support', count: 90, icon: 'help', color: '#22c55e' },
+  { id: 'linux', name: 'Linux', icon: 'tux', color: '#eab308' },
+  { id: 'installation', name: 'Installation', icon: 'settings', color: '#3b82f6' },
+  { id: 'command-line', name: 'Command Line', icon: 'terminal', color: '#10b981' },
+  { id: 'programming', name: 'Programming', icon: 'code', color: '#a855f7' },
+  { id: 'open-source', name: 'Open Source', icon: 'git-fork', color: '#f43f5e' },
+  { id: 'tools-apps', name: 'Tools & Apps', icon: 'box', color: '#06b6d4' },
+  { id: 'events', name: 'Events', icon: 'calendar', color: '#ef4444' },
+  { id: 'general', name: 'General Discussion', icon: 'users', color: '#8b5cf6' },
+  { id: 'help', name: 'Help & Support', icon: 'help', color: '#22c55e' },
 ]
 
 const TRENDING_TOPICS = [
@@ -326,6 +327,20 @@ export default function Forum() {
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
+  const cachedStats = discussionsCache.get('community_stats')
+  const [stats, setStats] = useState(() => cachedStats?.data || null)
+
+  useEffect(() => {
+    let isMounted = true
+    postsApi.getStats().then((data) => {
+      if (!isMounted || !data) return
+      discussionsCache.set('community_stats', data, 60000)
+      setStats(data)
+    }).catch(() => {})
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   const [showModal, setShowModal] = useState(false)
   const [newTitle, setNewTitle] = useState('')
@@ -873,28 +888,31 @@ export default function Forum() {
           </div>
 
           <div className="cat-sidebar-list">
-            {CATEGORIES_LIST.map((c) => (
-              <button
-                type="button"
-                key={c.id}
-                className={`cat-sidebar-item ${selectedCategory === c.id ? 'is-selected' : ''}`}
-                onClick={() => handleSelectCategory(c.id)}
-              >
-                <div className="cat-item-left">
-                  <span className="cat-bullet" style={{ color: c.color }}>
-                    {c.icon === 'tux' ? (
-                      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                        <path d="M12 2C9.24 2 7 4.24 7 7v4c0 .35.04.7.1 1.03C5.3 12.67 4 14.67 4 17c0 2.2 1.8 4 4 4h8c2.2 0 4-1.8 4-4 0-2.33-1.3-4.33-3.1-4.97.06-.33.1-.68.1-1.03V7c0-2.76-2.24-5-5-5zm-2 6c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm4 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-2 2.5c1.1 0 2 .45 2 1h-4c0-.55.9-1 2-1z" />
-                      </svg>
-                    ) : (
-                      <Layers size={15} />
-                    )}
-                  </span>
-                  <span className="cat-item-name">{c.name}</span>
-                </div>
-                <span className="cat-item-count">{c.count}</span>
-              </button>
-            ))}
+            {CATEGORIES_LIST.map((c) => {
+              const displayCount = formatStatCount(stats?.categories?.[c.id]?.discussions ?? 0)
+              return (
+                <button
+                  type="button"
+                  key={c.id}
+                  className={`cat-sidebar-item ${selectedCategory === c.id ? 'is-selected' : ''}`}
+                  onClick={() => handleSelectCategory(c.id)}
+                >
+                  <div className="cat-item-left">
+                    <span className="cat-bullet" style={{ color: c.color }}>
+                      {c.icon === 'tux' ? (
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                          <path d="M12 2C9.24 2 7 4.24 7 7v4c0 .35.04.7.1 1.03C5.3 12.67 4 14.67 4 17c0 2.2 1.8 4 4 4h8c2.2 0 4-1.8 4-4 0-2.33-1.3-4.33-3.1-4.97.06-.33.1-.68.1-1.03V7c0-2.76-2.24-5-5-5zm-2 6c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm4 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-2 2.5c1.1 0 2 .45 2 1h-4c0-.55.9-1 2-1z" />
+                        </svg>
+                      ) : (
+                        <Layers size={15} />
+                      )}
+                    </span>
+                    <span className="cat-item-name">{c.name}</span>
+                  </div>
+                  <span className="cat-item-count">{displayCount}</span>
+                </button>
+              )
+            })}
           </div>
         </div>
 
