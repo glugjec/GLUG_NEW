@@ -1,7 +1,8 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { postsApi } from '../api.js'
+import { discussionsCache } from '../utils/discussionsCache.js'
 import { avatarInitials, avatarColor } from '../components/common/avatar.js'
 import { formatRelativeTime } from '../utils/timeAgo.js'
 import {
@@ -277,15 +278,56 @@ function HomeDiscTags({ tags }) {
 export default function Home() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [discussions, setDiscussions] = useState([])
-  const [loadingDiscussions, setLoadingDiscussions] = useState(true)
+  const cachedRecent = discussionsCache.get('home_recent_5')
+  const [discussions, setDiscussions] = useState(() => cachedRecent?.data || [])
+  const [loadingDiscussions, setLoadingDiscussions] = useState(() => !cachedRecent?.data?.length)
+
+  const handlePrefetch = useCallback((postId) => {
+    if (!postId) return
+    const cacheKey = `post_detail_${postId}_${user?.id || 'anon'}`
+    if (!discussionsCache.get(cacheKey)) {
+      postsApi.get(postId).then((res) => {
+        if (res?.post) {
+          discussionsCache.set(cacheKey, { post: res.post, comments: res.comments || [] }, 60000)
+        }
+      }).catch(() => {})
+    }
+  }, [user?.id])
 
   useEffect(() => {
+    const idleId = typeof window !== 'undefined' && window.requestIdleCallback
+      ? window.requestIdleCallback(() => {
+          postsApi.list({ limit: 20, sort: 'new' }).then((res) => {
+            if (res?.posts) {
+              discussionsCache.set(`forum_latest_all_${user?.id || 'anon'}`, res.posts, 45000)
+            }
+          }).catch(() => {})
+        })
+      : setTimeout(() => {
+          postsApi.list({ limit: 20, sort: 'new' }).then((res) => {
+            if (res?.posts) {
+              discussionsCache.set(`forum_latest_all_${user?.id || 'anon'}`, res.posts, 45000)
+            }
+          }).catch(() => {})
+        }, 1200)
+
+    return () => {
+      if (typeof window !== 'undefined' && window.cancelIdleCallback && typeof idleId === 'number') {
+        window.cancelIdleCallback(idleId)
+      } else {
+        clearTimeout(idleId)
+      }
+    }
+  }, [user?.id])
+
+  useEffect(() => {
+    let isMounted = true
     async function fetchRecent() {
       try {
         const data = await postsApi.list({ limit: 5, sort: 'new' })
+        if (!isMounted) return
         if (data?.posts && data.posts.length > 0) {
-          const formatted = data.posts.map((post, idx) => {
+          const formatted = data.posts.map((post) => {
             const timeAgo = formatRelativeTime(post.createdAt)
             return {
               id: post._id || post.id,
@@ -308,17 +350,23 @@ export default function Home() {
               avatarBg: avatarColor(post.author?.username)
             }
           })
+          discussionsCache.set('home_recent_5', formatted, 60000)
           setDiscussions(formatted)
         } else {
           setDiscussions(DEFAULT_DISCUSSIONS)
         }
       } catch {
-        setDiscussions(DEFAULT_DISCUSSIONS)
+        if (!cachedRecent?.data?.length) {
+          setDiscussions(DEFAULT_DISCUSSIONS)
+        }
       } finally {
-        setLoadingDiscussions(false)
+        if (isMounted) {
+          setLoadingDiscussions(false)
+        }
       }
     }
     fetchRecent()
+    return () => { isMounted = false }
   }, [])
 
   return (
@@ -381,6 +429,8 @@ export default function Home() {
                   key={item.id}
                   className="discussion-card-row"
                   onClick={() => navigate(`/forum/posts/${item.id}`)}
+                  onMouseEnter={() => handlePrefetch(item.id)}
+                  onFocus={() => handlePrefetch(item.id)}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { postsApi } from '../api.js'
+import { discussionsCache } from '../utils/discussionsCache.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { avatarInitials, avatarColor } from '../components/common/avatar.js'
 import { formatRelativeTime } from '../utils/timeAgo.js'
@@ -574,11 +575,14 @@ export default function PostDetail() {
   const navigate = useNavigate()
   const { user } = useAuth()
 
-  const [post, setPost] = useState(null)
-  const [comments, setComments] = useState([])
-  const [loading, setLoading] = useState(true)
+  const detailCacheKey = id ? `post_detail_${id}_${user?.id || 'anon'}` : ''
+  const cachedDetail = detailCacheKey ? discussionsCache.get(detailCacheKey) : null
+
+  const [post, setPost] = useState(() => cachedDetail?.data?.post || null)
+  const [comments, setComments] = useState(() => cachedDetail?.data?.comments || [])
+  const [loading, setLoading] = useState(() => !cachedDetail?.data?.post)
   const [activeReplyId, setActiveReplyId] = useState(null)
-  const [bookmarked, setBookmarked] = useState(false)
+  const [bookmarked, setBookmarked] = useState(() => Boolean(cachedDetail?.data?.post?.isBookmarked))
   const [showMoreMenu, setShowMoreMenu] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
   const [sortBy, setSortBy] = useState('best')
@@ -601,22 +605,38 @@ export default function PostDetail() {
       setLoading(false)
       return
     }
-    setLoading(true)
+
+    const key = `post_detail_${id}_${user?.id || 'anon'}`
+    const cached = discussionsCache.get(key)
+    if (cached?.data?.post) {
+      setPost(cached.data.post)
+      setComments(cached.data.comments || [])
+      setBookmarked(Boolean(cached.data.post.isBookmarked))
+      setLoading(false)
+    } else {
+      setLoading(true)
+    }
     setNotFound(false)
+
     try {
       const res = await postsApi.get(id)
       if (res && res.post) {
+        discussionsCache.set(key, { post: res.post, comments: res.comments || [] }, 60000)
         setPost(res.post)
         setComments(res.comments || [])
-        setBookmarked(!!res.post.isBookmarked)
+        setBookmarked(Boolean(res.post.isBookmarked))
         setNotFound(false)
       } else {
+        if (!cached?.data?.post) {
+          setPost(null)
+          setNotFound(true)
+        }
+      }
+    } catch {
+      if (!cached?.data?.post) {
         setPost(null)
         setNotFound(true)
       }
-    } catch {
-      setPost(null)
-      setNotFound(true)
     } finally {
       setLoading(false)
     }

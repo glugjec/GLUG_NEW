@@ -68,6 +68,8 @@ const postSchema = new mongoose.Schema(
 postSchema.index({ category: 1, createdAt: -1 });
 postSchema.index({ voteScore: -1, createdAt: -1 });
 postSchema.index({ isPinned: -1, createdAt: -1 });
+postSchema.index({ isPinned: -1, voteScore: -1, createdAt: -1 });
+postSchema.index({ createdAt: -1 });
 
 export const Post = mongoose.model('Post', postSchema);
 

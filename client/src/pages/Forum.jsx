@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { postsApi } from '../api.js'
+import { discussionsCache } from '../utils/discussionsCache.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { avatarInitials, avatarColor } from '../components/common/avatar.js'
 import { formatRelativeTime } from '../utils/timeAgo.js'
@@ -315,8 +316,12 @@ export default function Forum() {
 
   const [activeTab, setActiveTab] = useState('latest')
   const selectedCategory = searchParams.get('category') || ''
-  const [posts, setPosts] = useState([])
-  const [loading, setLoading] = useState(true)
+
+  const initialCacheKey = `forum_${activeTab}_${selectedCategory || 'all'}_${user?.id || 'anon'}`
+  const initialCached = discussionsCache.get(initialCacheKey)
+
+  const [posts, setPosts] = useState(() => initialCached?.data || [])
+  const [loading, setLoading] = useState(() => !initialCached?.data?.length)
   const [showModal, setShowModal] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [newCategory, setNewCategory] = useState('linux')
@@ -327,9 +332,30 @@ export default function Forum() {
   const [imageUploading, setImageUploading] = useState(false)
   const votingPostsRef = useRef(new Set())
 
+  const handlePrefetchPost = useCallback((postId) => {
+    if (!postId) return
+    const cacheKey = `post_detail_${postId}_${user?.id || 'anon'}`
+    if (!discussionsCache.get(cacheKey)) {
+      postsApi.get(postId).then((res) => {
+        if (res?.post) {
+          discussionsCache.set(cacheKey, { post: res.post, comments: res.comments || [] }, 60000)
+        }
+      }).catch(() => {})
+    }
+  }, [user?.id])
+
   const loadPosts = useCallback(
     async (catToFetch) => {
-      setLoading(true)
+      const cacheKey = `forum_${activeTab}_${catToFetch || 'all'}_${user?.id || 'anon'}`
+      const cached = discussionsCache.get(cacheKey)
+
+      if (cached?.data && cached.data.length > 0) {
+        setPosts(cached.data)
+        setLoading(false)
+      } else {
+        setLoading(true)
+      }
+
       try {
         const params = { limit: 20 }
         if (catToFetch) params.category = catToFetch
@@ -377,6 +403,7 @@ export default function Forum() {
             iconBg: ['#422006', '#022c22', '#3b0764', '#1e3a8a', '#1e1b4b'][idx % 5],
             iconColor: ['#facc15', '#34d399', '#c084fc', '#60a5fa', '#818cf8'][idx % 5]
           }))
+          discussionsCache.set(cacheKey, mapped, 45000)
           setPosts(mapped)
         } else if (!catToFetch && activeTab === 'latest' && (!res?.posts || res.posts.length === 0)) {
           setPosts(DEFAULT_POSTS)
@@ -384,10 +411,12 @@ export default function Forum() {
           setPosts([])
         }
       } catch {
-        if (!catToFetch && activeTab === 'latest') {
-          setPosts(DEFAULT_POSTS)
-        } else {
-          setPosts([])
+        if (!cached?.data?.length) {
+          if (!catToFetch && activeTab === 'latest') {
+            setPosts(DEFAULT_POSTS)
+          } else {
+            setPosts([])
+          }
         }
       } finally {
         setLoading(false)
@@ -702,6 +731,8 @@ export default function Forum() {
                 key={post.id}
                 className={`forum-post-row ${post.isPinned ? 'is-pinned-row' : ''}`}
                 onClick={() => navigate(`/forum/posts/${post.id}`)}
+                onMouseEnter={() => handlePrefetchPost(post.id)}
+                onFocus={() => handlePrefetchPost(post.id)}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {

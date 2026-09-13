@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { discussionsCache } from './utils/discussionsCache.js';
 
 const client = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
@@ -58,15 +59,72 @@ export const postsApi = {
   list: (params = {}) => client.get('/posts', { params }),
   feed: (params = {}) => client.get('/posts/feed', { params }),
   get: (id) => client.get(`/posts/${id}`),
-  create: (data) => client.post('/posts', data),
-  update: (id, data) => client.put(`/posts/${id}`, data),
-  delete: (id) => client.delete(`/posts/${id}`),
-  vote: (id, value) => client.post(`/posts/${id}/vote`, { value }),
-  bookmark: (id) => client.post(`/posts/${id}/bookmark`),
-  pin: (id) => client.put(`/posts/${id}/pin`),
-  lock: (id) => client.put(`/posts/${id}/lock`),
-  addComment: (id, data) => client.post(`/posts/${id}/comments`, data),
-  deleteComment: (postId, commentId) => client.delete(`/posts/${postId}/comments/${commentId}`),
+  create: async (data) => {
+    const res = await client.post('/posts', data);
+    discussionsCache.invalidate();
+    return res;
+  },
+  update: async (id, data) => {
+    const res = await client.put(`/posts/${id}`, data);
+    discussionsCache.invalidate();
+    return res;
+  },
+  delete: async (id) => {
+    const res = await client.delete(`/posts/${id}`);
+    discussionsCache.invalidate();
+    return res;
+  },
+  vote: async (id, value) => {
+    const res = await client.post(`/posts/${id}/vote`, { value });
+    if (res?.post) {
+      discussionsCache.updatePostInCaches(id, (p) => ({
+        ...p,
+        voteScore: res.post.voteScore,
+        userVote: res.userVote,
+      }));
+    } else {
+      discussionsCache.invalidate();
+    }
+    return res;
+  },
+  bookmark: async (id) => {
+    const res = await client.post(`/posts/${id}/bookmark`);
+    if (typeof res?.isBookmarked === 'boolean') {
+      discussionsCache.updatePostInCaches(id, (p) => ({
+        ...p,
+        isBookmarked: res.isBookmarked,
+      }));
+    } else {
+      discussionsCache.invalidate();
+    }
+    return res;
+  },
+  pin: async (id) => {
+    const res = await client.put(`/posts/${id}/pin`);
+    discussionsCache.invalidate();
+    return res;
+  },
+  lock: async (id) => {
+    const res = await client.put(`/posts/${id}/lock`);
+    discussionsCache.invalidate();
+    return res;
+  },
+  addComment: async (id, data) => {
+    const res = await client.post(`/posts/${id}/comments`, data);
+    discussionsCache.updatePostInCaches(id, (p) => ({
+      ...p,
+      commentCount: (p.commentCount || 0) + 1,
+    }));
+    return res;
+  },
+  deleteComment: async (postId, commentId) => {
+    const res = await client.delete(`/posts/${postId}/comments/${commentId}`);
+    discussionsCache.updatePostInCaches(postId, (p) => ({
+      ...p,
+      commentCount: Math.max(0, (p.commentCount || 1) - 1),
+    }));
+    return res;
+  },
   voteComment: (postId, commentId, value) => client.post(`/posts/${postId}/comments/${commentId}/vote`, { value }),
 };
 

@@ -10,6 +10,11 @@ import { createNotification } from '../utils/notificationService.js';
 
 const router = Router();
 const recentViews = new Map();
+const serverPostsCache = new Map();
+
+function clearServerPostsCache() {
+  serverPostsCache.clear();
+}
 
 // @route   GET /api/posts
 // @desc    Get list of posts with filtering, sorting, pagination, and user vote status
@@ -68,15 +73,31 @@ router.get('/', optionalAuth, async (req, res) => {
       sortCriteria.createdAt = -1;
     }
 
-    const [posts, total] = await Promise.all([
-      Post.find(filter)
-        .sort(sortCriteria)
-        .skip(skip)
-        .limit(limit)
-        .populate('author', 'username role avatar communityRole')
-        .lean(),
-      Post.countDocuments(filter),
-    ]);
+    const canCache = tab !== 'my-posts' && tab !== 'bookmarks' && !search;
+    const cacheKey = canCache
+      ? `${category || ''}:${tag || ''}:${tab || ''}:${sort}:${page}:${limit}`
+      : null;
+
+    let posts, total;
+    const cached = cacheKey ? serverPostsCache.get(cacheKey) : null;
+    if (cached && Date.now() - cached.timestamp < 15000) {
+      posts = cached.posts;
+      total = cached.total;
+    } else {
+      [posts, total] = await Promise.all([
+        Post.find(filter)
+          .sort(sortCriteria)
+          .skip(skip)
+          .limit(limit)
+          .populate('author', 'username role avatar communityRole')
+          .lean(),
+        Post.countDocuments(filter),
+      ]);
+      if (canCache) {
+        if (serverPostsCache.size > 150) serverPostsCache.clear();
+        serverPostsCache.set(cacheKey, { posts, total, timestamp: Date.now() });
+      }
+    }
 
     let userVoteMap = new Map();
     let userBookmarkSet = new Set();
@@ -443,7 +464,7 @@ router.post('/', requireAuth, async (req, res) => {
     });
 
     const populated = await Post.findById(post._id).populate('author', 'username role avatar communityRole');
-
+    clearServerPostsCache();
     return res.status(201).json(populated.toJSON());
   } catch (err) {
     console.error('[Create Post Error]', err);
@@ -474,6 +495,7 @@ router.put('/:id', requireAuth, async (req, res) => {
     }
 
     await post.save();
+    clearServerPostsCache();
     const updated = await Post.findById(post._id).populate('author', 'username role avatar communityRole');
     return res.json(updated.toJSON());
   } catch (err) {
@@ -502,6 +524,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
       Bookmark.deleteMany({ post: post._id }),
     ]);
 
+    clearServerPostsCache();
     return res.json({ message: 'Post and associated comments deleted successfully' });
   } catch (err) {
     console.error('[Delete Post Error]', err);
@@ -609,6 +632,7 @@ router.post('/:id/vote', requireAuth, async (req, res) => {
 
     post.voteScore = trueScore;
     await post.save();
+    clearServerPostsCache();
 
     return res.json({
       voteScore: trueScore,
@@ -698,6 +722,7 @@ router.post('/:id/comments', requireAuth, async (req, res) => {
       'username role avatar communityRole'
     );
 
+    clearServerPostsCache();
     return res.status(201).json({
       id: populated._id.toString(),
       _id: populated._id.toString(),
@@ -764,6 +789,7 @@ router.delete('/:id/comments/:commentId', requireAuth, async (req, res) => {
 
     const remainingCount = await Comment.countDocuments({ post: post._id });
     await Post.findByIdAndUpdate(post._id, { commentCount: remainingCount });
+    clearServerPostsCache();
 
     return res.json({ message: 'Comment removed successfully', deletedCount: allIds.length, remainingCount });
   } catch (err) {
@@ -783,6 +809,7 @@ router.put('/:id/pin', requireAuth, requireAdmin, async (req, res) => {
 
     post.isPinned = !post.isPinned;
     await post.save();
+    clearServerPostsCache();
 
     return res.json({ isPinned: post.isPinned, message: post.isPinned ? 'Post pinned' : 'Post unpinned' });
   } catch (err) {
@@ -807,6 +834,7 @@ router.put('/:id/lock', requireAuth, async (req, res) => {
 
     post.isLocked = !post.isLocked;
     await post.save();
+    clearServerPostsCache();
 
     return res.json({
       success: true,
