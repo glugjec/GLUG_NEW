@@ -119,7 +119,15 @@
   align-items: center;
   gap: 0.6rem;
   overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   padding-bottom: 0.25rem;
+}
+
+.forum-filter-tabs::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .forum-tab-btn {
@@ -1251,6 +1259,14 @@
   .forum-filter-tabs {
     gap: 0.45rem;
     padding-bottom: 0.35rem;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .forum-filter-tabs::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
   }
 
   .forum-tab-btn {
