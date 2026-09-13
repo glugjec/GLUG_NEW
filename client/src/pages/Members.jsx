@@ -272,7 +272,6 @@ export default function Members() {
         <div className="member-card-top">
           <div className="member-avatar-wrap">
             <MemberAvatar src={m.avatar} username={m.username} />
-            <span className="member-status-dot" title="Active Community Member" />
           </div>
 
           <div className="member-tier-pill-wrap">

@@ -336,17 +336,6 @@
   font-size: 1.15rem;
 }
 
-.member-status-dot {
-  position: absolute;
-  bottom: 2px;
-  right: 2px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #10b981;
-  border: 2px solid var(--bg-card, #0f172a);
-}
-
 .member-tier-pill-wrap {
   display: flex;
   justify-content: flex-end;
@@ -650,11 +639,6 @@
 
   .member-card-avatar.fallback {
     font-size: 1rem;
-  }
-
-  .member-status-dot {
-    width: 10px;
-    height: 10px;
   }
 
   .member-name {
