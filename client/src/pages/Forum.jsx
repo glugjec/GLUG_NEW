@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { postsApi } from '../api.js'
 import { discussionsCache } from '../utils/discussionsCache.js'
+import { useInfiniteScroll } from '../hooks/useInfiniteScroll.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { avatarInitials, avatarColor } from '../components/common/avatar.js'
 import { formatRelativeTime } from '../utils/timeAgo.js'
@@ -322,6 +323,10 @@ export default function Forum() {
 
   const [posts, setPosts] = useState(() => initialCached?.data || [])
   const [loading, setLoading] = useState(() => !initialCached?.data?.length)
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+
   const [showModal, setShowModal] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [newCategory, setNewCategory] = useState('linux')
@@ -345,19 +350,23 @@ export default function Forum() {
   }, [user?.id])
 
   const loadPosts = useCallback(
-    async (catToFetch) => {
+    async (catToFetch, targetPage = 1, isAppending = false) => {
       const cacheKey = `forum_${activeTab}_${catToFetch || 'all'}_${user?.id || 'anon'}`
-      const cached = discussionsCache.get(cacheKey)
 
-      if (cached?.data && cached.data.length > 0) {
-        setPosts(cached.data)
-        setLoading(false)
+      if (isAppending) {
+        setLoadingMore(true)
       } else {
-        setLoading(true)
+        const cached = discussionsCache.get(cacheKey)
+        if (cached?.data && cached.data.length > 0) {
+          setPosts(cached.data)
+          setLoading(false)
+        } else {
+          setLoading(true)
+        }
       }
 
       try {
-        const params = { limit: 20 }
+        const params = { limit: 20, page: targetPage }
         if (catToFetch) params.category = catToFetch
         if (activeTab === 'latest') params.sort = 'new'
         if (activeTab === 'trending') params.sort = 'hot'
@@ -366,6 +375,8 @@ export default function Forum() {
           if (!user) {
             setPosts([])
             setLoading(false)
+            setLoadingMore(false)
+            setHasMore(false)
             return
           }
           params.tab = 'my-posts'
@@ -374,6 +385,8 @@ export default function Forum() {
           if (!user) {
             setPosts([])
             setLoading(false)
+            setLoadingMore(false)
+            setHasMore(false)
             return
           }
           params.tab = 'bookmarks'
@@ -403,27 +416,58 @@ export default function Forum() {
             iconBg: ['#422006', '#022c22', '#3b0764', '#1e3a8a', '#1e1b4b'][idx % 5],
             iconColor: ['#facc15', '#34d399', '#c084fc', '#60a5fa', '#818cf8'][idx % 5]
           }))
-          discussionsCache.set(cacheKey, mapped, 45000)
-          setPosts(mapped)
-        } else if (!catToFetch && activeTab === 'latest' && (!res?.posts || res.posts.length === 0)) {
+
+          if (isAppending) {
+            setPosts((prev) => {
+              const existingIds = new Set(prev.map((p) => p.id))
+              const fresh = mapped.filter((p) => !existingIds.has(p.id))
+              return [...prev, ...fresh]
+            })
+            setPage(targetPage)
+          } else {
+            discussionsCache.set(cacheKey, mapped, 45000)
+            setPosts(mapped)
+            setPage(1)
+          }
+
+          setHasMore(Boolean(res?.pagination?.hasMore))
+        } else if (!catToFetch && activeTab === 'latest' && (!res?.posts || res.posts.length === 0) && !isAppending) {
           setPosts(DEFAULT_POSTS)
+          setHasMore(false)
         } else {
-          setPosts([])
+          if (!isAppending) {
+            setPosts([])
+          }
+          setHasMore(false)
         }
       } catch {
-        if (!cached?.data?.length) {
-          if (!catToFetch && activeTab === 'latest') {
-            setPosts(DEFAULT_POSTS)
-          } else {
-            setPosts([])
+        if (!isAppending) {
+          const cached = discussionsCache.get(cacheKey)
+          if (!cached?.data?.length) {
+            if (!catToFetch && activeTab === 'latest') {
+              setPosts(DEFAULT_POSTS)
+            } else {
+              setPosts([])
+            }
           }
         }
       } finally {
         setLoading(false)
+        setLoadingMore(false)
       }
     },
     [activeTab, user]
   )
+
+  const sentinelRef = useInfiniteScroll({
+    hasMore,
+    isLoading: loading || loadingMore,
+    onLoadMore: () => {
+      if (!loading && !loadingMore && hasMore) {
+        loadPosts(selectedCategory, page + 1, true)
+      }
+    },
+  })
 
   const handleClearCategory = useCallback(() => {
     setSearchParams({})
@@ -455,7 +499,9 @@ export default function Forum() {
   )
 
   useEffect(() => {
-    loadPosts(selectedCategory)
+    setPage(1)
+    setHasMore(true)
+    loadPosts(selectedCategory, 1, false)
   }, [selectedCategory, activeTab, loadPosts])
 
   const handleVote = async (e, post) => {
@@ -796,6 +842,23 @@ export default function Forum() {
                 </div>
               </div>
             ))
+          )}
+
+          {hasMore && (
+            <div ref={sentinelRef} className="forum-infinite-sentinel">
+              {loadingMore && (
+                <div className="forum-infinite-loader">
+                  <div className="infinite-spinner" />
+                  <span>Loading more discussions...</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {!hasMore && posts.length > 5 && (
+            <div className="forum-end-notice">
+              <span>You've reached the end of discussions</span>
+            </div>
           )}
         </div>
       </div>

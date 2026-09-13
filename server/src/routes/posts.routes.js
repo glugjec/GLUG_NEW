@@ -167,7 +167,8 @@ router.get('/', optionalAuth, async (req, res) => {
 
 router.get('/feed', optionalAuth, async (req, res) => {
   try {
-    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 25));
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+    const page = Math.max(1, parseInt(req.query.page) || 1);
     const seed = parseInt(req.query.seed) || Date.now();
 
     const seededRandom = (s) => {
@@ -229,7 +230,7 @@ router.get('/feed', optionalAuth, async (req, res) => {
       }
     }
 
-    const poolSize = Math.min(limit * 4, 100);
+    const poolSize = Math.min(Math.max(limit * page * 3, 100), 300);
 
     const [recentPosts, topPosts] = await Promise.all([
       Post.find({})
@@ -275,7 +276,8 @@ router.get('/feed', optionalAuth, async (req, res) => {
       allPosts = [...pinned, ...shuffle(unpinned, seed)];
     }
 
-    const feedPosts = allPosts.slice(0, limit);
+    const skip = (page - 1) * limit;
+    const feedPosts = allPosts.slice(skip, skip + limit);
 
     let userVoteMap = new Map();
     let userBookmarkSet = new Set();
@@ -319,7 +321,17 @@ router.get('/feed', optionalAuth, async (req, res) => {
       };
     });
 
-    return res.json({ posts: formatted, seed });
+    return res.json({
+      posts: formatted,
+      seed,
+      pagination: {
+        total: allPosts.length,
+        page,
+        limit,
+        totalPages: Math.ceil(allPosts.length / limit) || 1,
+        hasMore: skip + feedPosts.length < allPosts.length,
+      },
+    });
   } catch (err) {
     console.error('[Feed Error]', err);
     return res.status(500).json({ error: 'Failed to load feed' });

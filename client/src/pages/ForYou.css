@@ -455,3 +455,41 @@
     max-height: 300px;
   }
 }
+
+.foryou-infinite-sentinel {
+  width: 100%;
+  min-height: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem 0;
+}
+
+.foryou-infinite-loader {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.foryou-infinite-loader .infinite-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: inf-spin 0.6s linear infinite;
+}
+
+.foryou-end-notice {
+  text-align: center;
+  padding: 1.5rem 1rem;
+  color: var(--text-dim);
+  font-size: 0.82rem;
+  font-weight: 500;
+  border-top: 1px dashed var(--border);
+  margin-top: 0.5rem;
+}
+

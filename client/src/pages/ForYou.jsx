@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { postsApi } from '../api.js'
+import { useInfiniteScroll } from '../hooks/useInfiniteScroll.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { avatarInitials, avatarColor } from '../components/common/avatar.js'
 import { formatRelativeTime } from '../utils/timeAgo.js'
@@ -89,6 +90,9 @@ export default function ForYou() {
   const [feedTab, setFeedTab] = useState('for-you')
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [toastText, setToastText] = useState('')
   const [bookmarkedMap, setBookmarkedMap] = useState({})
   const [feedSeed, setFeedSeed] = useState(() => Math.floor(Math.random() * 1000000))
@@ -98,15 +102,21 @@ export default function ForYou() {
     setTimeout(() => setToastText(''), 2500)
   }
 
-  const loadFeed = useCallback(async (tab, seed) => {
-    setLoading(true)
+  const loadFeed = useCallback(async (tab, seed, targetPage = 1, isAppending = false) => {
+    if (isAppending) {
+      setLoadingMore(true)
+    } else {
+      setLoading(true)
+    }
+
     try {
       let res
+      const limit = 20
 
       if (tab === 'for-you') {
-        res = await postsApi.feed({ limit: 25, seed })
+        res = await postsApi.feed({ limit, page: targetPage, seed })
       } else {
-        let params = { limit: 25 }
+        let params = { limit, page: targetPage }
         if (tab === 'trending') {
           params.sort = 'hot'
         } else if (tab === 'latest') {
@@ -118,25 +128,62 @@ export default function ForYou() {
       }
 
       if (res && Array.isArray(res.posts)) {
-        setPosts(res.posts)
-        const initialBookmarks = {}
-        res.posts.forEach((p) => {
-          const pid = p._id || p.id
-          if (p.isBookmarked) initialBookmarks[pid] = true
+        if (isAppending) {
+          setPosts((prev) => {
+            const existingIds = new Set(prev.map((p) => p._id || p.id))
+            const unique = res.posts.filter((p) => !existingIds.has(p._id || p.id))
+            return [...prev, ...unique]
+          })
+          setPage(targetPage)
+        } else {
+          setPosts(res.posts)
+          setPage(1)
+        }
+
+        setBookmarkedMap((prev) => {
+          const next = isAppending ? { ...prev } : {}
+          res.posts.forEach((p) => {
+            const pid = p._id || p.id
+            if (p.isBookmarked) next[pid] = true
+          })
+          return next
         })
-        setBookmarkedMap(initialBookmarks)
+
+        const hasMoreFlag = res.pagination?.hasMore !== undefined
+          ? Boolean(res.pagination.hasMore)
+          : res.posts.length >= limit
+        setHasMore(hasMoreFlag)
       } else {
-        setPosts([])
+        if (!isAppending) {
+          setPosts([])
+        }
+        setHasMore(false)
       }
     } catch {
-      setPosts([])
+      if (!isAppending) {
+        setPosts([])
+      }
+      setHasMore(false)
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
   }, [])
 
+  const sentinelRef = useInfiniteScroll({
+    hasMore,
+    isLoading: loading || loadingMore,
+    onLoadMore: () => {
+      if (!loading && !loadingMore && hasMore) {
+        loadFeed(feedTab, feedSeed, page + 1, true)
+      }
+    },
+  })
+
   useEffect(() => {
-    loadFeed(feedTab, feedSeed)
+    setPage(1)
+    setHasMore(true)
+    loadFeed(feedTab, feedSeed, 1, false)
   }, [feedTab, feedSeed, loadFeed])
 
   const handleShare = async (e, postId) => {
@@ -358,6 +405,23 @@ export default function ForYou() {
               </article>
             )
           })
+        )}
+
+        {hasMore && (
+          <div ref={sentinelRef} className="foryou-infinite-sentinel">
+            {loadingMore && (
+              <div className="foryou-infinite-loader">
+                <div className="infinite-spinner" />
+                <span>Loading more stories...</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {!hasMore && posts.length > 5 && (
+          <div className="foryou-end-notice">
+            <span>You've reached the end of the feed</span>
+          </div>
         )}
       </div>
 
