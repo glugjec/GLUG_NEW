@@ -6,6 +6,7 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  overflow-x: hidden;
 }
 
 .profile-hero-card {
@@ -361,9 +362,22 @@
 
 .profile-grid-2col {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   gap: 1.5rem;
   align-items: flex-start;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.profile-col-main,
+.profile-col-side {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .profile-content-card {
@@ -372,6 +386,11 @@
   border-radius: 18px;
   padding: 1.5rem;
   box-shadow: var(--shadow-card);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .profile-card-title {
@@ -382,6 +401,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  min-width: 0;
 }
 
 .profile-skills-wrap {
@@ -389,6 +409,9 @@
   flex-wrap: wrap;
   gap: 0.5rem;
   margin-bottom: 1.25rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .profile-skill-badge {
@@ -402,12 +425,20 @@
   color: var(--text);
   font-size: 0.85rem;
   font-weight: 500;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-sizing: border-box;
 }
 
 .profile-socials-list {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .profile-social-link {
@@ -423,12 +454,47 @@
   font-size: 0.88rem;
   font-weight: 500;
   transition: all 0.15s ease;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.profile-social-link svg {
+  flex-shrink: 0;
+}
+
+.profile-social-link span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .profile-social-link:hover {
   background: var(--bg-hover);
   border-color: var(--border-subtle);
   color: #3b82f6;
+}
+
+.profile-terminal-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.profile-terminal-info-box {
+  background: var(--bg-card-subtle);
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  min-width: 0;
+  overflow: hidden;
 }
 
 .profile-social-empty {
@@ -845,17 +911,23 @@
 
 @media (max-width: 900px) {
   .profile-grid-2col {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    max-width: 100%;
   }
 
   .profile-stats-strip {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 600px) {
   .profile-page-container {
-    padding: 1rem;
+    padding: 1rem 0.75rem;
+  }
+
+  .profile-content-card {
+    padding: 1.15rem 0.85rem;
   }
 
   .profile-avatar-row {
@@ -874,6 +946,10 @@
   }
 
   .profile-stats-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-terminal-info-grid {
     grid-template-columns: 1fr;
   }
 

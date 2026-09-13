@@ -297,9 +297,6 @@ cd server
 npm run seed
 ```
 
-**Default Seeded Accounts**:
-- **Admin Account**: `admin@glug.org` / Password: `password123`
-- **Student Account**: `student@glug.org` / Password: `password123`
 
 ---
 

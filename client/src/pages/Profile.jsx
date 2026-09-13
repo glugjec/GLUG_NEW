@@ -65,6 +65,48 @@ function TwitterIcon({ size = 16, style = {} }) {
   )
 }
 
+function getDomain(url) {
+  if (!url) return ''
+  try {
+    const validUrl = url.startsWith('http://') || url.startsWith('https://') ? url : `https://${url}`
+    const parsed = new URL(validUrl)
+    return (parsed.host || parsed.hostname).replace(/^www\./, '')
+  } catch {
+    return url.replace(/^(https?:\/\/)?(www\.)?/, '').split(/[/?#]/)[0]
+  }
+}
+
+function getCleanHandle(val, platform) {
+  if (!val) return ''
+  let str = val.trim()
+  if (platform === 'github') {
+    str = str.replace(/^(https?:\/\/)?(www\.)?github\.com\//i, '')
+  } else if (platform === 'linkedin') {
+    str = str.replace(/^(https?:\/\/)?(www\.)?linkedin\.com\/(in\/)?/i, '')
+  } else if (platform === 'twitter') {
+    str = str.replace(/^(https?:\/\/)?(www\.)?(twitter|x)\.com\//i, '')
+  }
+  return str.split(/[?#]/)[0].replace(/\/$/, '')
+}
+
+function getSocialHref(val, platform) {
+  if (!val) return '#'
+  const clean = val.trim()
+  if (clean.startsWith('http://') || clean.startsWith('https://')) {
+    return clean
+  }
+  if (platform === 'github') {
+    return `https://github.com/${clean.replace(/^(www\.)?github\.com\//i, '')}`
+  }
+  if (platform === 'linkedin') {
+    return `https://linkedin.com/in/${clean.replace(/^(www\.)?linkedin\.com\/(in\/)?/i, '')}`
+  }
+  if (platform === 'twitter') {
+    return `https://twitter.com/${clean.replace(/^(www\.)?(twitter|x)\.com\//i, '')}`
+  }
+  return `https://${clean}`
+}
+
 function UserAvatar({ src, username, size = 96, className = '' }) {
   const [error, setError] = useState(false)
 
@@ -731,7 +773,7 @@ export default function Profile() {
 
       {activeTab === 'overview' && (
         <div className="profile-grid-2col">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div className="profile-col-main">
             <div className="profile-content-card">
               <h2 className="profile-card-title">
                 <Code2 size={18} color="#3b82f6" /> Skills &amp; Tech Stack
@@ -741,7 +783,7 @@ export default function Profile() {
                   ? profile.skills
                   : ['Linux', 'Git', 'Bash', 'Docker', 'Open Source']
                 ).map((s) => (
-                  <span key={s} className="profile-skill-badge">
+                  <span key={s} className="profile-skill-badge" title={s}>
                     {s}
                   </span>
                 ))}
@@ -752,12 +794,12 @@ export default function Profile() {
               <h2 className="profile-card-title">
                 <Terminal size={18} color="#10b981" /> Terminal &amp; Systems
               </h2>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
-                <div style={{ background: 'var(--bg-card-subtle)', padding: '0.85rem 1rem', borderRadius: 12, border: '1px solid var(--border)' }}>
+              <div className="profile-terminal-info-grid">
+                <div className="profile-terminal-info-box">
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', display: 'block', marginBottom: '0.2rem' }}>Default Shell</span>
                   <span style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text)' }}>zsh / bash</span>
                 </div>
-                <div style={{ background: 'var(--bg-card-subtle)', padding: '0.85rem 1rem', borderRadius: 12, border: '1px solid var(--border)' }}>
+                <div className="profile-terminal-info-box">
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', display: 'block', marginBottom: '0.2rem' }}>GLUG Terminal Status</span>
                   <span style={{ fontSize: '0.92rem', fontWeight: 700, color: '#10b981' }}>Active</span>
                 </div>
@@ -765,7 +807,7 @@ export default function Profile() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div className="profile-col-side">
             <div className="profile-content-card">
               <h2 className="profile-card-title">
                 <Globe size={18} color="#a855f7" /> Connect &amp; Socials
@@ -773,50 +815,54 @@ export default function Profile() {
               <div className="profile-socials-list">
                 {profile.socials?.github && (
                   <a
-                    href={profile.socials.github.startsWith('http') ? profile.socials.github : `https://github.com/${profile.socials.github}`}
+                    href={getSocialHref(profile.socials.github, 'github')}
                     target="_blank"
                     rel="noreferrer"
                     className="profile-social-link"
+                    title={profile.socials.github}
                   >
                     <GithubIcon size={16} />
-                    <span>{profile.socials.github.replace(/^https?:\/\/(www\.)?github\.com\//, '')}</span>
-                    <ExternalLink size={12} style={{ marginLeft: 'auto', opacity: 0.6 }} />
+                    <span>{getCleanHandle(profile.socials.github, 'github')}</span>
+                    <ExternalLink size={12} style={{ marginLeft: 'auto', opacity: 0.6, flexShrink: 0 }} />
                   </a>
                 )}
                 {profile.socials?.linkedin && (
                   <a
-                    href={profile.socials.linkedin.startsWith('http') ? profile.socials.linkedin : `https://linkedin.com/in/${profile.socials.linkedin}`}
+                    href={getSocialHref(profile.socials.linkedin, 'linkedin')}
                     target="_blank"
                     rel="noreferrer"
                     className="profile-social-link"
+                    title={profile.socials.linkedin}
                   >
                     <LinkedinIcon size={16} />
-                    <span>{profile.socials.linkedin.replace(/^https?:\/\/(www\.)?linkedin\.com\/in\//, '')}</span>
-                    <ExternalLink size={12} style={{ marginLeft: 'auto', opacity: 0.6 }} />
+                    <span>{getCleanHandle(profile.socials.linkedin, 'linkedin')}</span>
+                    <ExternalLink size={12} style={{ marginLeft: 'auto', opacity: 0.6, flexShrink: 0 }} />
                   </a>
                 )}
                 {profile.socials?.twitter && (
                   <a
-                    href={profile.socials.twitter.startsWith('http') ? profile.socials.twitter : `https://twitter.com/${profile.socials.twitter}`}
+                    href={getSocialHref(profile.socials.twitter, 'twitter')}
                     target="_blank"
                     rel="noreferrer"
                     className="profile-social-link"
+                    title={profile.socials.twitter}
                   >
                     <TwitterIcon size={16} />
-                    <span>{profile.socials.twitter.replace(/^https?:\/\/(www\.)?twitter\.com\//, '')}</span>
-                    <ExternalLink size={12} style={{ marginLeft: 'auto', opacity: 0.6 }} />
+                    <span>{getCleanHandle(profile.socials.twitter, 'twitter')}</span>
+                    <ExternalLink size={12} style={{ marginLeft: 'auto', opacity: 0.6, flexShrink: 0 }} />
                   </a>
                 )}
                 {profile.socials?.website && (
                   <a
-                    href={profile.socials.website.startsWith('http') ? profile.socials.website : `https://${profile.socials.website}`}
+                    href={getSocialHref(profile.socials.website, 'website')}
                     target="_blank"
                     rel="noreferrer"
                     className="profile-social-link"
+                    title={profile.socials.website}
                   >
                     <Globe size={16} />
-                    <span>{profile.socials.website.replace(/^https?:\/\//, '')}</span>
-                    <ExternalLink size={12} style={{ marginLeft: 'auto', opacity: 0.6 }} />
+                    <span>{getDomain(profile.socials.website)}</span>
+                    <ExternalLink size={12} style={{ marginLeft: 'auto', opacity: 0.6, flexShrink: 0 }} />
                   </a>
                 )}
                 {!profile.socials?.github && !profile.socials?.linkedin && !profile.socials?.twitter && !profile.socials?.website && (
