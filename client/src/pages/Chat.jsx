@@ -103,6 +103,8 @@ export default function Chat() {
   const messagesEndRef = useRef(null);
   const pollIntervalRef = useRef(null);
   const activeConvRef = useRef(null);
+  const messagesCacheRef = useRef({});
+  const currentFetchIdRef = useRef(null);
 
   useEffect(() => {
     activeConvRef.current = activeConversation;
@@ -119,16 +121,20 @@ export default function Chat() {
   }, [user, authLoading, navigate]);
 
   useEffect(() => {
-    if (withUserId && user) {
-      initializeDirectChat(withUserId);
+    if (!withUserId || !user) return;
+    if (activeConversation?.otherUser?.id === withUserId) return;
+
+    const existing = conversations.find((c) => c.otherUser?.id === withUserId);
+    if (existing) {
+      selectConversation(existing);
+      return;
     }
-  }, [withUserId, user]);
+
+    initializeDirectChat(withUserId);
+  }, [withUserId, user, conversations.length]);
 
   useEffect(() => {
     if (activeConversation?.id) {
-      loadMessages(activeConversation.id);
-      setMobilePane('chat');
-
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
       pollIntervalRef.current = setInterval(() => {
         if (activeConvRef.current?.id) {
@@ -148,6 +154,33 @@ export default function Chat() {
     }
   }, [messages]);
 
+  const selectConversation = (conv) => {
+    if (!conv) return;
+    if (activeConversation?.id === conv.id) {
+      setMobilePane('chat');
+      return;
+    }
+
+    currentFetchIdRef.current = conv.id;
+    setActiveConversation(conv);
+    setMobilePane('chat');
+
+    if (conv.otherUser?.id && searchParams.get('with') !== conv.otherUser.id) {
+      setSearchParams({ with: conv.otherUser.id }, { replace: true });
+    }
+
+    const cached = messagesCacheRef.current[conv.id];
+    if (cached) {
+      setMessages(cached);
+      setLoadingMessages(false);
+    } else {
+      setMessages([]);
+      setLoadingMessages(true);
+    }
+
+    loadMessages(conv.id);
+  };
+
   const loadConversations = async () => {
     try {
       setLoadingConversations(true);
@@ -162,11 +195,15 @@ export default function Chat() {
 
   const initializeDirectChat = async (targetId) => {
     try {
+      const existing = conversations.find((c) => c.otherUser?.id === targetId);
+      if (existing) {
+        selectConversation(existing);
+        return;
+      }
+
       setLoadingMessages(true);
       const res = await chatApi.getOrCreateWithUser(targetId);
       if (res.conversation) {
-        setActiveConversation(res.conversation);
-        setMobilePane('chat');
         setConversations((prev) => {
           const exists = prev.some((c) => c.id === res.conversation.id);
           if (exists) {
@@ -174,26 +211,38 @@ export default function Chat() {
           }
           return [res.conversation, ...prev];
         });
+        selectConversation(res.conversation);
       }
     } catch (err) {
       console.error('[Initialize Direct Chat Error]', err);
-    } finally {
       setLoadingMessages(false);
     }
   };
 
   const loadMessages = async (convId) => {
-    try {
+    currentFetchIdRef.current = convId;
+    const isCached = Boolean(messagesCacheRef.current[convId]);
+    if (!isCached) {
       setLoadingMessages(true);
+    }
+
+    try {
       const res = await chatApi.getMessages(convId);
-      setMessages(res.messages || []);
-      setConversations((prev) =>
-        prev.map((c) => (c.id === convId ? { ...c, unreadCount: 0 } : c))
-      );
+      const fetched = res.messages || [];
+      messagesCacheRef.current[convId] = fetched;
+
+      if (currentFetchIdRef.current === convId) {
+        setMessages(fetched);
+        setConversations((prev) =>
+          prev.map((c) => (c.id === convId ? { ...c, unreadCount: 0 } : c))
+        );
+      }
     } catch (err) {
       console.error('[Load Messages Error]', err);
     } finally {
-      setLoadingMessages(false);
+      if (currentFetchIdRef.current === convId) {
+        setLoadingMessages(false);
+      }
     }
   };
 
@@ -201,22 +250,20 @@ export default function Chat() {
     try {
       const res = await chatApi.getMessages(convId);
       const latestMessages = res.messages || [];
-      setMessages((prev) => {
-        if (
-          latestMessages.length !== prev.length ||
-          latestMessages[latestMessages.length - 1]?.id !== prev[prev.length - 1]?.id
-        ) {
-          return latestMessages;
-        }
-        return prev;
-      });
 
-      const convRes = await chatApi.getConversations();
-      if (convRes.conversations) {
-        setConversations(convRes.conversations);
+      if (currentFetchIdRef.current === convId) {
+        messagesCacheRef.current[convId] = latestMessages;
+        setMessages((prev) => {
+          if (
+            latestMessages.length !== prev.length ||
+            latestMessages[latestMessages.length - 1]?.id !== prev[prev.length - 1]?.id
+          ) {
+            return latestMessages;
+          }
+          return prev;
+        });
       }
-    } catch {
-    }
+    } catch {}
   };
 
   const handleSendMessage = async (e) => {
@@ -224,12 +271,13 @@ export default function Chat() {
     if (!messageText.trim() || !activeConversation?.id || sending) return;
 
     const outgoingText = messageText.trim();
+    const convId = activeConversation.id;
     setMessageText('');
 
     const optimisticId = `temp-${Date.now()}`;
     const optimisticMsg = {
       id: optimisticId,
-      conversationId: activeConversation.id,
+      conversationId: convId,
       sender: user.id,
       recipient: activeConversation.otherUser?.id,
       text: outgoingText,
@@ -237,11 +285,15 @@ export default function Chat() {
       createdAt: new Date().toISOString(),
     };
 
-    setMessages((prev) => [...prev, optimisticMsg]);
+    setMessages((prev) => {
+      const updated = [...prev, optimisticMsg];
+      messagesCacheRef.current[convId] = updated;
+      return updated;
+    });
 
     setConversations((prev) =>
       prev.map((c) =>
-        c.id === activeConversation.id
+        c.id === convId
           ? {
               ...c,
               lastMessage: {
@@ -256,13 +308,19 @@ export default function Chat() {
 
     try {
       setSending(true);
-      const res = await chatApi.sendMessage(activeConversation.id, outgoingText);
-      setMessages((prev) =>
-        prev.map((m) => (m.id === optimisticId ? res.message : m))
-      );
+      const res = await chatApi.sendMessage(convId, outgoingText);
+      setMessages((prev) => {
+        const updated = prev.map((m) => (m.id === optimisticId ? res.message : m));
+        messagesCacheRef.current[convId] = updated;
+        return updated;
+      });
     } catch (err) {
       console.error('[Send Message Error]', err);
-      setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
+      setMessages((prev) => {
+        const updated = prev.filter((m) => m.id !== optimisticId);
+        messagesCacheRef.current[convId] = updated;
+        return updated;
+      });
       setMessageText(outgoingText);
     } finally {
       setSending(false);
@@ -353,11 +411,7 @@ export default function Chat() {
                   key={conv.id}
                   type="button"
                   className={`chat-conv-item ${isActive ? 'active' : ''} ${hasUnread ? 'unread' : ''}`}
-                  onClick={() => {
-                    setActiveConversation(conv);
-                    setMobilePane('chat');
-                    setSearchParams({ with: other?.id }, { replace: true });
-                  }}
+                  onClick={() => selectConversation(conv)}
                 >
                   <div className="chat-conv-avatar-wrap">
                     <ChatAvatar src={other?.avatar} username={other?.username} size={44} />
@@ -405,6 +459,7 @@ export default function Chat() {
                 className="chat-back-mobile-btn"
                 onClick={() => {
                   setActiveConversation(null);
+                  setMessages([]);
                   setMobilePane('list');
                   setSearchParams({}, { replace: true });
                 }}

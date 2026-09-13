@@ -135,32 +135,29 @@ router.get('/conversations/:conversationId/messages', async (req, res) => {
       return res.status(400).json({ error: 'Invalid conversation ID' });
     }
 
-    const conversation = await Conversation.findById(conversationId);
+    const conversation = await Conversation.findOne({
+      _id: conversationId,
+      participants: req.user.id,
+    }).select('_id').lean();
+
     if (!conversation) {
-      return res.status(404).json({ error: 'Conversation not found' });
+      return res.status(404).json({ error: 'Conversation not found or access denied' });
     }
 
-    const isParticipant = conversation.participants.some(
-      (p) => p.toString() === req.user.id.toString()
-    );
-    if (!isParticipant) {
-      return res.status(403).json({ error: 'Access denied' });
-    }
-
-    const messages = await Message.find({ conversationId })
-      .sort({ createdAt: 1 })
-      .limit(100)
-      .lean();
-
-    await Message.updateMany(
-      { conversationId, recipient: req.user.id, read: false },
-      { $set: { read: true } }
-    );
-
-    if (conversation.unreadCounts) {
-      conversation.unreadCounts.set(req.user.id.toString(), 0);
-      await conversation.save();
-    }
+    const [messages] = await Promise.all([
+      Message.find({ conversationId })
+        .sort({ createdAt: 1 })
+        .limit(100)
+        .lean(),
+      Message.updateMany(
+        { conversationId, recipient: req.user.id, read: false },
+        { $set: { read: true } }
+      ),
+      Conversation.updateOne(
+        { _id: conversationId },
+        { $set: { [`unreadCounts.${req.user.id}`]: 0 } }
+      ),
+    ]);
 
     return res.json({
       messages: messages.map((m) => ({
