@@ -634,7 +634,9 @@ export default function Forum() {
                           <span className="people-result-role-badge admin">Admin</span>
                         )}
                       </div>
-                      {person.bio ? (
+                      {person.email && searchQuery && person.email.toLowerCase().includes(searchQuery.toLowerCase()) ? (
+                        <p className="people-result-bio">{person.email}</p>
+                      ) : person.bio ? (
                         <p className="people-result-bio">{person.bio}</p>
                       ) : person.skills?.length > 0 ? (
                         <div className="people-result-skills">
@@ -643,7 +645,7 @@ export default function Forum() {
                           ))}
                         </div>
                       ) : (
-                        <span className="people-result-subtext">GLUG Member</span>
+                        <span className="people-result-subtext">{person.email || 'GLUG Member'}</span>
                       )}
                     </div>
                   </div>

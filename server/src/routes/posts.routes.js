@@ -39,7 +39,11 @@ router.get('/', optionalAuth, async (req, res) => {
       const q = String(search).trim();
       const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const matchingUsers = await User.find({
-        username: { $regex: escaped, $options: 'i' },
+        $or: [
+          { username: { $regex: escaped, $options: 'i' } },
+          { email: { $regex: escaped, $options: 'i' } },
+          { name: { $regex: escaped, $options: 'i' } },
+        ],
       }).select('_id').lean();
       const userIds = matchingUsers.map((u) => u._id);
 

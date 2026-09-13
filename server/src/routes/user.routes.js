@@ -96,10 +96,11 @@ router.get('/search', async (req, res) => {
     const users = await User.find({
       $or: [
         { username: { $regex: regex } },
+        { email: { $regex: regex } },
         { name: { $regex: regex } },
       ],
     })
-      .select('name username role avatar bio skills communityRole createdAt')
+      .select('name username email role avatar bio skills communityRole createdAt')
       .limit(6)
       .lean();
 
@@ -107,6 +108,7 @@ router.get('/search', async (req, res) => {
       id: u._id.toString(),
       name: u.name || '',
       username: u.username,
+      email: u.email || '',
       role: u.role,
       avatar: u.avatar || '',
       bio: u.bio || '',
