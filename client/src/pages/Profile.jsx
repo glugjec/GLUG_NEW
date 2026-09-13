@@ -686,22 +686,16 @@ export default function Profile() {
                   </span>
                 </span>
               )}
-              <span
-                className={`profile-role-badge ${
-                  profile.role === 'admin'
-                    ? 'role-admin'
-                    : profile.role === 'moderator'
-                    ? 'role-mod'
-                    : 'role-student'
-                }`}
-              >
-                <Shield size={12} />
-                {profile.role === 'admin'
-                  ? 'Administrator'
-                  : profile.role === 'moderator'
-                  ? 'Moderator'
-                  : 'Student Member'}
-              </span>
+              {profile.role && profile.role !== 'student' && (
+                <span
+                  className={`profile-role-badge ${
+                    profile.role === 'admin' ? 'role-admin' : 'role-mod'
+                  }`}
+                >
+                  <Shield size={12} />
+                  {profile.role === 'admin' ? 'Administrator' : 'Moderator'}
+                </span>
+              )}
             </div>
 
             <div className="profile-meta-row">
