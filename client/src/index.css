@@ -3214,6 +3214,91 @@ body.glug-mobile-search-open .sidebar-hamburger {
   gap: 0.5rem;
 }
 
+.notif-auth-box {
+  padding: 2rem 1.25rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.notif-auth-icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--accent-subtle);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  margin-bottom: 0.25rem;
+}
+
+.notif-auth-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+.notif-auth-desc {
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  line-height: 1.45;
+  margin: 0 0 0.5rem 0;
+  max-width: 250px;
+}
+
+.notif-auth-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  justify-content: center;
+}
+
+.notif-auth-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 1.2rem;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #ffffff !important;
+  text-decoration: none !important;
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
+.notif-auth-btn:hover {
+  background: var(--accent-hover, #1d4ed8);
+  transform: translateY(-1px);
+}
+
+.notif-auth-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 1rem;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text) !important;
+  text-decoration: none !important;
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.notif-auth-btn-outline:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-hover, #334155);
+}
+
 .notif-loading {
   padding: 2rem 1rem;
   text-align: center;

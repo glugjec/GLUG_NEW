@@ -337,23 +337,40 @@ export default function TopBar() {
 
               <div className="notif-list">
                 {!user ? (
-                  <div className="notif-empty">
-                    <p>Please sign in to view your notifications.</p>
-                    <Link
-                      to="/login"
-                      className="topbar-btn-signin"
-                      style={{ marginTop: '0.4rem' }}
-                      onClick={() => setNotifOpen(false)}
-                    >
-                      Sign In
-                    </Link>
+                  <div className="notif-auth-box">
+                    <div className="notif-auth-icon-wrap">
+                      <Bell size={20} />
+                    </div>
+                    <h4 className="notif-auth-title">Stay in the loop</h4>
+                    <p className="notif-auth-desc">
+                      Sign in to see replies, comments on your posts, and community alerts.
+                    </p>
+                    <div className="notif-auth-actions">
+                      <Link
+                        to="/login"
+                        className="notif-auth-btn"
+                        onClick={() => setNotifOpen(false)}
+                      >
+                        Log In
+                      </Link>
+                      <Link
+                        to="/register"
+                        className="notif-auth-btn-outline"
+                        onClick={() => setNotifOpen(false)}
+                      >
+                        Sign Up
+                      </Link>
+                    </div>
                   </div>
                 ) : notifLoading ? (
                   <div className="notif-loading">Loading notifications...</div>
                 ) : notifications.length === 0 ? (
                   <div className="notif-empty">
-                    <Bell size={24} style={{ opacity: 0.35, marginBottom: '4px' }} />
-                    <p>No notifications yet</p>
+                    <Bell size={26} style={{ opacity: 0.3, marginBottom: '2px' }} />
+                    <p style={{ margin: 0, fontWeight: 600, color: 'var(--text)' }}>No notifications yet</p>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-dim)' }}>
+                      We will notify you when someone comments or replies to you.
+                    </span>
                   </div>
                 ) : (
                   notifications.map((notif) => (

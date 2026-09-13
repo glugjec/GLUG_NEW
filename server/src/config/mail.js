@@ -214,6 +214,27 @@ function getClientBaseUrl() {
   return 'http://localhost:5173';
 }
 
+function formatCommentPreview(raw) {
+  if (!raw) return '';
+  let str = String(raw);
+  str = str.replace(/<\s*br\s*\/?>/gi, '\n');
+  str = str.replace(/<\s*\/(p|div|li|h[1-6])\s*>/gi, '\n');
+  str = str.replace(/<[^>]+>/g, '');
+  str = str
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'");
+  str = str.replace(/\n\s*\n+/g, '\n\n').trim();
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br/>');
+}
+
 export async function sendNotificationMail({
   to,
   recipientUsername,
@@ -234,11 +255,8 @@ export async function sendNotificationMail({
     ? `${senderUsername} replied to your comment on "${postTitle}"`
     : `${senderUsername} commented on "${postTitle}"`;
 
-  const cleanBody = String(commentBody || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/\n/g, '<br/>');
+  const cleanBody = formatCommentPreview(commentBody);
+  const cleanRecipient = String(recipientUsername || 'user').trim();
 
   const html = `
     <!DOCTYPE html>
@@ -274,7 +292,7 @@ export async function sendNotificationMail({
                     </table>
 
                     <div style="font-size: 15px; color: #f1f5f9; margin-bottom: 12px; font-weight: 500;">
-                      Hello <span style="color: #60a5fa; font-weight: 700;">@${recipientUsername || 'user'}</span>,
+                      Hello <span style="color: #60a5fa; font-weight: 700;">@${cleanRecipient},</span>
                     </div>
 
                     <div style="font-size: 13.5px; color: #94a3b8; line-height: 1.5; margin-bottom: 12px;">
