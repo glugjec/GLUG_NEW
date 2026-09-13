@@ -678,24 +678,26 @@ export default function Profile() {
               <h1 className="profile-display-name">
                 {profile.username || 'Member'}
               </h1>
-              {profile.role === 'admin' ? (
+              {profile.role === 'admin' && (
                 <span className="profile-role-badge role-admin">
                   <Shield size={12} />
                   Administrator
                 </span>
-              ) : profile.role === 'moderator' ? (
+              )}
+              {profile.role === 'moderator' && (
                 <span className="profile-role-badge role-mod">
                   <Shield size={12} />
                   Moderator
                 </span>
-              ) : profile.communityRole?.isMember ? (
+              )}
+              {profile.communityRole?.isMember && (
                 <span className="profile-team-badge">
                   <Crown size={13} />
                   <span>
-                    {profile.communityRole.positionTitle || profile.communityRole.category || 'Member'} • {profile.communityRole.teamDomain || 'Core'}
+                    {profile.communityRole.positionTitle || profile.communityRole.category || 'Member'}
                   </span>
                 </span>
-              ) : null}
+              )}
             </div>
 
             <div className="profile-meta-row">
