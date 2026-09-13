@@ -2892,7 +2892,7 @@ input:focus, textarea:focus, select:focus {
   background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 0 4rem 0 2.75rem;
+  padding: 0 2.5rem 0 2.75rem;
   color: var(--text);
   font-size: 0.9rem;
   outline: none;
@@ -2905,19 +2905,26 @@ input:focus, textarea:focus, select:focus {
   box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
-.topbar-search-shortcut {
+.topbar-search-clear {
   position: absolute;
   right: 0.85rem;
   top: 50%;
   transform: translateY(-50%);
-  padding: 0.2rem 0.45rem;
-  background: var(--bg-card-subtle);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 0.72rem;
-  font-weight: 600;
+  background: transparent;
+  border: none;
   color: var(--text-dim);
-  pointer-events: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.topbar-search-clear:hover {
+  color: var(--text);
+  background: var(--bg-hover);
 }
 
 .topbar-icon-btn.topbar-mobile-search-trigger {

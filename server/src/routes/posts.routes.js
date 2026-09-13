@@ -35,10 +35,20 @@ router.get('/', optionalAuth, async (req, res) => {
     if (tag) {
       filter.tags = tag;
     }
-    if (search) {
+    if (search && String(search).trim()) {
+      const q = String(search).trim();
+      const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const matchingUsers = await User.find({
+        username: { $regex: escaped, $options: 'i' },
+      }).select('_id').lean();
+      const userIds = matchingUsers.map((u) => u._id);
+
       filter.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { body: { $regex: search, $options: 'i' } },
+        { title: { $regex: escaped, $options: 'i' } },
+        { body: { $regex: escaped, $options: 'i' } },
+        { tags: { $regex: escaped, $options: 'i' } },
+        { category: { $regex: escaped, $options: 'i' } },
+        ...(userIds.length > 0 ? [{ author: { $in: userIds } }] : []),
       ];
     }
 

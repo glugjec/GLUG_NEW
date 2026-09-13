@@ -33,6 +33,7 @@ import {
   Sparkles,
   Tag,
   AlertCircle,
+  Search,
 } from 'lucide-react'
 import './Forum.css'
 
@@ -54,169 +55,6 @@ const TRENDING_TOPICS = [
   { id: 'gluginit-plan', rank: 3, title: 'Planning GLUGINIT', replies: 18 },
   { id: 'dual-boot', rank: 4, title: 'Dual boot Ubuntu with Windows 11', replies: 8 },
   { id: 'os-alts', rank: 5, title: 'Open source alternatives', replies: 9 },
-]
-
-const DEFAULT_POSTS = [
-  {
-    id: 'welcome-glug',
-    isPinned: true,
-    title: 'Welcome to GLUG! 👏',
-    body: 'Introduce yourself, read community guidelines, and start your open source journey with us...',
-    category: 'announcement',
-    tags: ['Announcement'],
-    voteScore: 56,
-    commentCount: 24,
-    views: '1.2K',
-    author: { username: 'admin' },
-    timeAgo: '2 days ago',
-    iconType: 'pin',
-    iconBg: '#1e3a8a',
-    iconColor: '#60a5fa'
-  },
-  {
-    id: 'distro-2025',
-    isPinned: false,
-    title: 'Best Linux distro for beginners in 2025?',
-    body: "I'm new to Linux. Which distro would you recommend for a student user with minimal terminal experience?",
-    category: 'linux',
-    tags: ['Linux', 'Beginner'],
-    voteScore: 32,
-    commentCount: 12,
-    views: '245',
-    author: { username: 'ananya' },
-    timeAgo: '5 min ago',
-    iconType: 'tux',
-    iconBg: '#422006',
-    iconColor: '#facc15'
-  },
-  {
-    id: 'dual-boot',
-    isPinned: false,
-    title: 'How to dual boot Ubuntu with Windows 11?',
-    body: 'Stuck at GRUB screen. Need help with EFI partitioning and secure boot setup on my ThinkPad.',
-    category: 'installation',
-    tags: ['Installation', 'Support'],
-    voteScore: 18,
-    commentCount: 8,
-    views: '160',
-    author: { username: 'rishabh' },
-    timeAgo: '1 hour ago',
-    iconType: 'terminal',
-    iconBg: '#022c22',
-    iconColor: '#34d399'
-  },
-  {
-    id: 'useful-cmds',
-    isPinned: false,
-    title: 'Useful terminal commands everyone should know',
-    body: 'Let\'s compile a list of must-know terminal commands for daily development, file management, and networking.',
-    category: 'command-line',
-    tags: ['Tips & Tricks', 'Command Line'],
-    voteScore: 45,
-    commentCount: 24,
-    views: '398',
-    author: { username: 'devansh' },
-    timeAgo: '3 hours ago',
-    iconType: 'code',
-    iconBg: '#3b0764',
-    iconColor: '#c084fc'
-  },
-  {
-    id: 'sys-prog',
-    isPinned: false,
-    title: 'Resources to learn system programming',
-    body: 'Share your favorite books, courses, and resources for learning system programming with C and Linux internals.',
-    category: 'programming',
-    tags: ['Programming', 'Resources'],
-    voteScore: 27,
-    commentCount: 15,
-    views: '312',
-    author: { username: 'kaustubh' },
-    timeAgo: 'by isha ago',
-    iconType: 'settings',
-    iconBg: '#1e3a8a',
-    iconColor: '#60a5fa'
-  },
-  {
-    id: 'dev-env',
-    isPinned: false,
-    title: 'Setting up a development environment on Linux',
-    body: 'What tools and configurations do you use for a smooth development experience on Debian / Arch?',
-    category: 'programming',
-    tags: ['Development', 'Setup'],
-    voteScore: 19,
-    commentCount: 11,
-    views: '210',
-    author: { username: 'isha' },
-    timeAgo: '6 hours ago',
-    iconType: 'screen',
-    iconBg: '#1e1b4b',
-    iconColor: '#818cf8'
-  },
-  {
-    id: 'os-alts',
-    isPinned: false,
-    title: 'Best open source alternatives for popular apps',
-    body: 'Share your favorite open source replacements for daily software tools like Photoshop, Office, and Notion.',
-    category: 'tools-apps',
-    tags: ['Applications', 'Discussion'],
-    voteScore: 14,
-    commentCount: 9,
-    views: '189',
-    author: { username: 'tarun' },
-    timeAgo: '8 hours ago',
-    iconType: 'game',
-    iconBg: '#064e3b',
-    iconColor: '#10b981'
-  },
-  {
-    id: 'gluginit-plan',
-    isPinned: false,
-    title: 'Planning GLUGINIT – Linux Installation Drive',
-    body: 'Let\'s discuss preparations, volunteers, distro flash drives, and the schedule for the annual installation drive.',
-    category: 'events',
-    tags: ['Events', 'GLUG'],
-    voteScore: 21,
-    commentCount: 18,
-    views: '521',
-    author: { username: 'team-glug' },
-    timeAgo: '1 day ago',
-    iconType: 'users',
-    iconBg: '#1d4ed8',
-    iconColor: '#93c5fd'
-  },
-  {
-    id: 'beginner-projects',
-    isPinned: false,
-    title: 'Cool projects to contribute to as a beginner',
-    body: 'Looking for beginner-friendly open source projects with "good-first-issue" tags. Any suggestions?',
-    category: 'projects',
-    tags: ['Open Source', 'Projects'],
-    voteScore: 17,
-    commentCount: 13,
-    views: '276',
-    author: { username: 'meera' },
-    timeAgo: '1 day ago',
-    iconType: 'bulb',
-    iconBg: '#78350f',
-    iconColor: '#f59e0b'
-  },
-  {
-    id: 'kernel-processes',
-    isPinned: false,
-    title: 'How does the Linux kernel handle processes?',
-    body: 'I\'m trying to understand process scheduling in the Linux kernel. Can anyone share insights on CFS?',
-    category: 'help',
-    tags: ['Kernel', 'Discussion'],
-    voteScore: 11,
-    commentCount: 7,
-    views: '143',
-    author: { username: 'arjun' },
-    timeAgo: '1 day ago',
-    iconType: 'help',
-    iconBg: '#1e3a8a',
-    iconColor: '#60a5fa'
-  }
 ]
 
 function renderPostIcon(type) {
@@ -318,8 +156,10 @@ export default function Forum() {
 
   const [activeTab, setActiveTab] = useState('latest')
   const selectedCategory = searchParams.get('category') || ''
+  const searchQuery = searchParams.get('search') || ''
+  const tagQuery = searchParams.get('tag') || ''
 
-  const initialCacheKey = `forum_${activeTab}_${selectedCategory || 'all'}_${user?.id || 'anon'}`
+  const initialCacheKey = `forum_${activeTab}_${selectedCategory || 'all'}_${searchQuery || ''}_${tagQuery || ''}_${user?.id || 'anon'}`
   const initialCached = discussionsCache.get(initialCacheKey)
 
   const [posts, setPosts] = useState(() => initialCached?.data || [])
@@ -366,13 +206,13 @@ export default function Forum() {
 
   const loadPosts = useCallback(
     async (catToFetch, targetPage = 1, isAppending = false) => {
-      const cacheKey = `forum_${activeTab}_${catToFetch || 'all'}_${user?.id || 'anon'}`
+      const cacheKey = `forum_${activeTab}_${catToFetch || 'all'}_${searchQuery || ''}_${tagQuery || ''}_${user?.id || 'anon'}`
 
       if (isAppending) {
         setLoadingMore(true)
       } else {
         const cached = discussionsCache.get(cacheKey)
-        if (cached?.data && cached.data.length > 0) {
+        if (cached && Array.isArray(cached.data)) {
           setPosts(cached.data)
           setLoading(false)
         } else {
@@ -383,6 +223,8 @@ export default function Forum() {
       try {
         const params = { limit: 20, page: targetPage }
         if (catToFetch) params.category = catToFetch
+        if (searchQuery) params.search = searchQuery
+        if (tagQuery) params.tag = tagQuery
         if (activeTab === 'latest') params.sort = 'new'
         if (activeTab === 'trending') params.sort = 'hot'
         if (activeTab === 'unanswered') params.tab = 'unanswered'
@@ -446,24 +288,21 @@ export default function Forum() {
           }
 
           setHasMore(Boolean(res?.pagination?.hasMore))
-        } else if (!catToFetch && activeTab === 'latest' && (!res?.posts || res.posts.length === 0) && !isAppending) {
-          setPosts(DEFAULT_POSTS)
-          setHasMore(false)
         } else {
           if (!isAppending) {
+            discussionsCache.set(cacheKey, [], 45000)
             setPosts([])
+            setPage(1)
           }
           setHasMore(false)
         }
       } catch {
         if (!isAppending) {
           const cached = discussionsCache.get(cacheKey)
-          if (!cached?.data?.length) {
-            if (!catToFetch && activeTab === 'latest') {
-              setPosts(DEFAULT_POSTS)
-            } else {
-              setPosts([])
-            }
+          if (cached && Array.isArray(cached.data)) {
+            setPosts(cached.data)
+          } else {
+            setPosts([])
           }
         }
       } finally {
@@ -471,7 +310,7 @@ export default function Forum() {
         setLoadingMore(false)
       }
     },
-    [activeTab, user]
+    [activeTab, user, searchQuery, tagQuery]
   )
 
   const sentinelRef = useInfiniteScroll({
@@ -485,18 +324,27 @@ export default function Forum() {
   })
 
   const handleClearCategory = useCallback(() => {
+    const next = {}
+    if (searchQuery) next.search = searchQuery
+    if (tagQuery) next.tag = tagQuery
+    setSearchParams(next)
+  }, [searchQuery, tagQuery, setSearchParams])
+
+  const handleClearFilters = useCallback(() => {
     setSearchParams({})
   }, [setSearchParams])
 
   const handleSelectCategory = useCallback(
     (catId) => {
-      if (selectedCategory === catId) {
-        setSearchParams({})
-      } else {
-        setSearchParams({ category: catId })
+      const next = {}
+      if (searchQuery) next.search = searchQuery
+      if (tagQuery) next.tag = tagQuery
+      if (selectedCategory !== catId) {
+        next.category = catId
       }
+      setSearchParams(next)
     },
-    [selectedCategory, setSearchParams]
+    [selectedCategory, searchQuery, tagQuery, setSearchParams]
   )
 
   const handleOpenNewPost = useCallback(
@@ -517,7 +365,7 @@ export default function Forum() {
     setPage(1)
     setHasMore(true)
     loadPosts(selectedCategory, 1, false)
-  }, [selectedCategory, activeTab, loadPosts])
+  }, [selectedCategory, searchQuery, tagQuery, activeTab, loadPosts])
 
   const handleVote = async (e, post) => {
     e.stopPropagation()
@@ -673,13 +521,21 @@ export default function Forum() {
           </button>
         </div>
 
-        {selectedCategory && (
+        {(selectedCategory || searchQuery || tagQuery) && (
           <div className="active-cat-pill-bar">
-            <span>Filtered by: <strong>{selectedCategory}</strong></span>
+            {selectedCategory && (
+              <span>Category: <strong>{selectedCategory}</strong></span>
+            )}
+            {searchQuery && (
+              <span>Search: <strong>"{searchQuery}"</strong></span>
+            )}
+            {tagQuery && (
+              <span>Tag: <strong>#{tagQuery}</strong></span>
+            )}
             <button
               type="button"
               className="clear-cat-btn"
-              onClick={handleClearCategory}
+              onClick={handleClearFilters}
             >
               <X size={14} /> Clear
             </button>
@@ -769,6 +625,19 @@ export default function Forum() {
                     onClick={() => setActiveTab('latest')}
                   >
                     View All Discussions
+                  </button>
+                </>
+              ) : searchQuery ? (
+                <>
+                  <Search size={32} className="forum-empty-icon" />
+                  <h3>No discussions found</h3>
+                  <p>No results matched "{searchQuery}". Try different keywords.</p>
+                  <button
+                    type="button"
+                    className="forum-empty-new-btn"
+                    onClick={handleClearFilters}
+                  >
+                    Clear Search
                   </button>
                 </>
               ) : (

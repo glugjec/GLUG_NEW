@@ -351,11 +351,35 @@ export default function TopBar() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  useEffect(() => {
+    if (location.pathname === '/forum') {
+      const params = new URLSearchParams(location.search)
+      setSearchTerm(params.get('search') || '')
+    }
+  }, [location.pathname, location.search])
+
   const handleSearchSubmit = (e) => {
     e.preventDefault()
-    if (searchTerm.trim()) {
-      navigate(`/forum?search=${encodeURIComponent(searchTerm.trim())}`)
+    const trimmed = searchTerm.trim()
+    if (trimmed) {
+      navigate(`/forum?search=${encodeURIComponent(trimmed)}`)
       setMobileSearchOpen(false)
+    } else if (location.pathname === '/forum') {
+      const params = new URLSearchParams(location.search)
+      params.delete('search')
+      navigate({ pathname: '/forum', search: params.toString() ? `?${params.toString()}` : '' })
+      setMobileSearchOpen(false)
+    }
+  }
+
+  const handleClearSearch = () => {
+    setSearchTerm('')
+    if (location.pathname === '/forum') {
+      const params = new URLSearchParams(location.search)
+      if (params.has('search')) {
+        params.delete('search')
+        navigate({ pathname: '/forum', search: params.toString() ? `?${params.toString()}` : '' })
+      }
     }
   }
 
@@ -394,7 +418,7 @@ export default function TopBar() {
               <button
                 type="button"
                 className="topbar-mobile-search-clear"
-                onClick={() => setSearchTerm('')}
+                onClick={handleClearSearch}
                 aria-label="Clear search"
               >
                 <X size={15} />
@@ -414,9 +438,16 @@ export default function TopBar() {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-        <div className="topbar-search-shortcut">
-          <span>⌘ K</span>
-        </div>
+        {searchTerm && (
+          <button
+            type="button"
+            className="topbar-search-clear"
+            onClick={handleClearSearch}
+            aria-label="Clear search"
+          >
+            <X size={15} />
+          </button>
+        )}
       </form>
 
       <div className="topbar-actions">
