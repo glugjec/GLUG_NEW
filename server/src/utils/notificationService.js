@@ -42,7 +42,7 @@ export async function createNotification({
 
     const emailAllowed =
       recipient.preferences?.emailNotifs !== false &&
-      (type !== 'reply' || recipient.preferences?.replyNotifs !== false);
+      recipient.preferences?.replyNotifs !== false;
 
     if (emailAllowed && recipient.email) {
       mailQueue

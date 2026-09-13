@@ -77,6 +77,14 @@ export default function Settings() {
       if (user.preferences?.theme) {
         setTheme(user.preferences.theme)
       }
+      if (user.preferences) {
+        setNotifs((prev) => ({
+          ...prev,
+          replies: user.preferences.replyNotifs !== false,
+          events: user.preferences.eventNotifs !== false,
+          newsletter: Boolean(user.preferences.newsletterNotifs),
+        }))
+      }
     }
   }, [user])
 
@@ -173,10 +181,13 @@ export default function Settings() {
       authApi.updateProfile({
         preferences: {
           ...user.preferences,
-          emailNotifs: updated.newsletter,
+          emailNotifs: true,
           replyNotifs: updated.replies,
-          eventNotifs: updated.events
+          eventNotifs: updated.events,
+          newsletterNotifs: updated.newsletter
         }
+      }).then((res) => {
+        if (res?.user) updateUser(res.user)
       }).catch(() => {})
     }
   }

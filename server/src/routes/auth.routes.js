@@ -569,6 +569,7 @@ router.put('/me', requireAuth, async (req, res) => {
         emailNotifs: preferences.emailNotifs !== undefined ? !!preferences.emailNotifs : (user.preferences?.emailNotifs ?? true),
         replyNotifs: preferences.replyNotifs !== undefined ? !!preferences.replyNotifs : (user.preferences?.replyNotifs ?? true),
         eventNotifs: preferences.eventNotifs !== undefined ? !!preferences.eventNotifs : (user.preferences?.eventNotifs ?? true),
+        newsletterNotifs: preferences.newsletterNotifs !== undefined ? !!preferences.newsletterNotifs : (user.preferences?.newsletterNotifs ?? false),
         theme: typeof preferences.theme === 'string' ? preferences.theme : (user.preferences?.theme || 'dark'),
       };
     }

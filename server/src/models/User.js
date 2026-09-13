@@ -66,6 +66,7 @@ const userSchema = new mongoose.Schema(
       emailNotifs: { type: Boolean, default: true },
       replyNotifs: { type: Boolean, default: true },
       eventNotifs: { type: Boolean, default: true },
+      newsletterNotifs: { type: Boolean, default: false },
       theme: { type: String, default: 'dark' },
     },
     communityRole: {
