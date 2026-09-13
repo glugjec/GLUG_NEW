@@ -186,6 +186,7 @@ export default function Chat() {
       setLoadingConversations(true);
       const res = await chatApi.getConversations();
       setConversations(res.conversations || []);
+      window.dispatchEvent(new CustomEvent('chat-unread-updated'));
     } catch (err) {
       console.error('[Chat Load Conversations Error]', err);
     } finally {
@@ -236,6 +237,7 @@ export default function Chat() {
         setConversations((prev) =>
           prev.map((c) => (c.id === convId ? { ...c, unreadCount: 0 } : c))
         );
+        window.dispatchEvent(new CustomEvent('chat-unread-updated'));
       }
     } catch (err) {
       console.error('[Load Messages Error]', err);

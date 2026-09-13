@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { avatarInitials, avatarColor } from '../common/avatar.js'
 import { Search, Bell, ChevronDown, LogOut, User, Settings as SettingsIcon, MessageSquare, ArrowLeft, X, CheckCheck } from 'lucide-react'
-import { notificationsApi } from '../../api.js'
+import { notificationsApi, chatApi } from '../../api.js'
 
 function formatRelativeTime(date) {
   if (!date) return ''
@@ -94,6 +94,7 @@ export default function TopBar() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [unreadNotifCount, setUnreadNotifCount] = useState(0)
+  const [unreadChatCount, setUnreadChatCount] = useState(0)
   const [notifications, setNotifications] = useState(() => {
     return notificationsCache.data || []
   })
@@ -108,6 +109,7 @@ export default function TopBar() {
     if (!user) {
       notificationsCache = { userId: null, data: [], timestamp: 0 }
       setUnreadNotifCount(0)
+      setUnreadChatCount(0)
       setNotifications([])
       return
     }
@@ -118,15 +120,22 @@ export default function TopBar() {
     }
 
     let isMounted = true
-    const fetchUnread = async () => {
+
+    const fetchAllCounts = async () => {
+      if (document.hidden) return
       try {
-        const res = await notificationsApi.unreadCount()
-        if (isMounted && typeof res.unreadCount === 'number') {
-          setUnreadNotifCount(res.unreadCount)
+        const [notifRes, chatRes] = await Promise.all([
+          notificationsApi.unreadCount(),
+          chatApi.getUnreadCount(),
+        ])
+        if (!isMounted) return
+        if (typeof notifRes?.unreadCount === 'number') {
+          setUnreadNotifCount(notifRes.unreadCount)
         }
-      } catch (err) {
-        // silent
-      }
+        if (typeof chatRes?.unreadCount === 'number') {
+          setUnreadChatCount(chatRes.unreadCount)
+        }
+      } catch (err) {}
     }
 
     const prefetchNotifications = async () => {
@@ -140,20 +149,60 @@ export default function TopBar() {
           }
           setNotifications(res.notifications)
         }
-      } catch (err) {
-        // silent
+      } catch (err) {}
+    }
+
+    fetchAllCounts()
+    prefetchNotifications()
+
+    const interval = setInterval(() => {
+      if (!document.hidden) {
+        fetchAllCounts()
+      }
+    }, 60000)
+
+    const handleVisibilityOrFocus = () => {
+      if (!document.hidden) {
+        fetchAllCounts()
       }
     }
 
-    fetchUnread()
-    prefetchNotifications()
+    const handleChatUpdate = () => {
+      chatApi.getUnreadCount().then((res) => {
+        if (isMounted && typeof res?.unreadCount === 'number') {
+          setUnreadChatCount(res.unreadCount)
+        }
+      }).catch(() => {})
+    }
 
-    const interval = setInterval(fetchUnread, 30000)
+    window.addEventListener('chat-unread-updated', handleChatUpdate)
+    window.addEventListener('focus', handleVisibilityOrFocus)
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus)
+
     return () => {
       isMounted = false
       clearInterval(interval)
+      window.removeEventListener('chat-unread-updated', handleChatUpdate)
+      window.removeEventListener('focus', handleVisibilityOrFocus)
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus)
     }
   }, [user])
+
+  useEffect(() => {
+    if (!user) {
+      setUnreadChatCount(0)
+      return
+    }
+    let isMounted = true
+    chatApi.getUnreadCount().then((res) => {
+      if (isMounted && typeof res?.unreadCount === 'number') {
+        setUnreadChatCount(res.unreadCount)
+      }
+    }).catch(() => {})
+    return () => {
+      isMounted = false
+    }
+  }, [user, location.pathname])
 
   useEffect(() => {
     if (!notifOpen || !user) return
@@ -485,6 +534,11 @@ export default function TopBar() {
         {user && (
           <Link to="/chat" className="topbar-icon-btn" title="Direct Messages">
             <MessageSquare size={17} />
+            {unreadChatCount > 0 && (
+              <span className="notif-badge">
+                {unreadChatCount > 99 ? '99+' : unreadChatCount}
+              </span>
+            )}
           </Link>
         )}
 
