@@ -19,7 +19,7 @@ import Register from './pages/Register.jsx'
 import ForgotPassword from './pages/ForgotPassword.jsx'
 import PlaceholderPage from './pages/PlaceholderPage.jsx'
 import About from './pages/About.jsx'
-import { Users, Calendar, Info } from 'lucide-react'
+import { Users, Calendar, Info, FileText } from 'lucide-react'
 
 export default function App() {
   const location = useLocation()
@@ -47,7 +47,16 @@ export default function App() {
             <Route path="/feed" element={<ForYou />} />
             <Route path="/categories" element={<Categories />} />
             <Route path="/terminal" element={<TerminalPage />} />
-            <Route path="/resources" element={<Resources />} />
+            <Route
+              path="/resources"
+              element={
+                <PlaceholderPage
+                  title="GLUG Resources & Roadmaps"
+                  subtitle="Curated Linux roadmaps, distribution selection guides, cheat sheets, and open-source learning materials are currently in progress."
+                  icon={FileText}
+                />
+              }
+            />
             <Route path="/compiler" element={<Compiler />} />
             <Route path="/forum" element={<Forum />} />
             <Route path="/discussions" element={<Forum />} />
