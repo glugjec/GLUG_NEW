@@ -18,6 +18,7 @@ import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
 import ForgotPassword from './pages/ForgotPassword.jsx'
 import PlaceholderPage from './pages/PlaceholderPage.jsx'
+import About from './pages/About.jsx'
 import { Users, Calendar, Info } from 'lucide-react'
 
 export default function App() {
@@ -74,16 +75,7 @@ export default function App() {
                 />
               }
             />
-            <Route
-              path="/about"
-              element={
-                <PlaceholderPage
-                  title="About GLUG"
-                  subtitle="The GNU/Linux User Group is a student-driven initiative fostering open source technology and collaborative learning."
-                  icon={Info}
-                />
-              }
-            />
+            <Route path="/about" element={<About />} />
             <Route path="*" element={<Home />} />
           </Route>
         </Routes>
