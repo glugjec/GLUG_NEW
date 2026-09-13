@@ -67,7 +67,7 @@ const userSchema = new mongoose.Schema(
       isMember: { type: Boolean, default: false, index: true },
       category: {
         type: String,
-        enum: ['', 'Mentor', 'Head', 'Advisor', 'Co-Head', 'Team Lead', 'Coordinator'],
+        enum: ['', 'Mentor', 'Alumni', 'Head', 'Club Head', 'Advisor', 'Co-Head', 'Team Lead', 'Coordinator'],
         default: '',
       },
       positionTitle: { type: String, default: '' },

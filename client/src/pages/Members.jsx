@@ -13,6 +13,7 @@ import {
   AlertCircle,
   Crown,
   Compass,
+  GraduationCap,
 } from 'lucide-react';
 import { membersApi } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -47,11 +48,14 @@ function TwitterIcon({ size = 14 }) {
 
 const TIER_CONFIG = {
   'Mentor': { weight: 1, label: 'Mentor', color: 'purple', icon: Sparkles },
-  'Head': { weight: 2, label: 'Head', color: 'gold', icon: Crown },
-  'Advisor': { weight: 3, label: 'Advisor', color: 'blue', icon: Compass },
-  'Co-Head': { weight: 4, label: 'Co-Head', color: 'purple', icon: Shield },
-  'Team Lead': { weight: 5, label: 'Team Lead', color: 'cyan', icon: Award },
-  'Coordinator': { weight: 6, label: 'Coordinator', color: 'emerald', icon: Users },
+  'Alumni': { weight: 2, label: 'Alumni', color: 'orange', icon: GraduationCap },
+  'Head': { weight: 3, label: 'Club Head', color: 'gold', icon: Crown },
+  'Club Head': { weight: 3, label: 'Club Head', color: 'gold', icon: Crown },
+  'Advisor': { weight: 4, label: 'Advisor', color: 'blue', icon: Compass },
+  'Co-Head': { weight: 5, label: 'Co-Head', color: 'purple', icon: Shield },
+  'Team Lead': { weight: 6, label: 'Team Lead', color: 'cyan', icon: Award },
+  'Lead': { weight: 6, label: 'Team Lead', color: 'cyan', icon: Award },
+  'Coordinator': { weight: 7, label: 'Coordinator', color: 'emerald', icon: Users },
 };
 
 const HIERARCHY_SECTIONS = [
@@ -61,6 +65,13 @@ const HIERARCHY_SECTIONS = [
     description: 'Guiding the community with technical wisdom and long-term vision',
     icon: Sparkles,
     color: 'purple',
+  },
+  {
+    key: 'Alumni',
+    title: 'Alumni',
+    description: 'Former core members and leaders continuing to guide and support GLUG',
+    icon: GraduationCap,
+    color: 'orange',
   },
   {
     key: 'Head',
@@ -198,6 +209,7 @@ export default function Members() {
   const groupedMembers = useMemo(() => {
     const map = {
       'Mentor': [],
+      'Alumni': [],
       'Head': [],
       'Advisor': [],
       'Co-Head': [],

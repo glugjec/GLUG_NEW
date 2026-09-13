@@ -221,6 +221,7 @@
 .tier-header-icon.blue   { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
 .tier-header-icon.cyan   { background: rgba(6,182,212,0.15);  color: #22d3ee; border: 1px solid rgba(6,182,212,0.3); }
 .tier-header-icon.emerald{ background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
+.tier-header-icon.orange { background: rgba(249,115,22,0.15); color: #fb923c; border: 1px solid rgba(249,115,22,0.3); }
 
 .tier-header-text h2 {
   font-size: 1.3rem;
@@ -282,6 +283,8 @@
 .member-card.tier-cyan:hover   { border-color: rgba(6,182,212,0.45); }
 .member-card.tier-emerald{ border-color: rgba(16,185,129,0.22); }
 .member-card.tier-emerald:hover{ border-color: rgba(16,185,129,0.45); }
+.member-card.tier-orange { border-color: rgba(249,115,22,0.22); }
+.member-card.tier-orange:hover { border-color: rgba(249,115,22,0.45); }
 
 /* ─── Card Glow ─── */
 .member-card-glow {
@@ -300,6 +303,7 @@
 .member-card.tier-blue .member-card-glow   { background: radial-gradient(ellipse at top left, rgba(59,130,246,0.07) 0%, transparent 60%); }
 .member-card.tier-cyan .member-card-glow   { background: radial-gradient(ellipse at top left, rgba(6,182,212,0.07) 0%, transparent 60%); }
 .member-card.tier-emerald .member-card-glow{ background: radial-gradient(ellipse at top left, rgba(16,185,129,0.07) 0%, transparent 60%); }
+.member-card.tier-orange .member-card-glow { background: radial-gradient(ellipse at top left, rgba(249,115,22,0.07) 0%, transparent 60%); }
 
 /* ─── Card Top ─── */
 .member-card-top {
@@ -365,6 +369,7 @@
 .member-tier-badge.emerald{ background: rgba(16,185,129,0.14); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
 .member-tier-badge.purple { background: rgba(168,85,247,0.14); color: #c084fc; border: 1px solid rgba(168,85,247,0.3); }
 .member-tier-badge.blue   { background: rgba(59,130,246,0.14); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+.member-tier-badge.orange { background: rgba(249,115,22,0.14); color: #fb923c; border: 1px solid rgba(249,115,22,0.3); }
 
 /* ─── Card Info ─── */
 .member-info {

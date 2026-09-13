@@ -806,7 +806,7 @@ export default function AdminDashboard() {
                       </td>
                       <td>
                         <span className={`admin-tier-chip tier-${(m.communityRole?.category || "lead").toLowerCase().replace(/\s+/g, '-')}`}>
-                          {m.communityRole?.category || "Member"}
+                          {m.communityRole?.category === "Head" ? "Club Head" : (m.communityRole?.category || "Member")}
                         </span>
                       </td>
                       <td>
@@ -1605,7 +1605,8 @@ export default function AdminDashboard() {
                     onChange={(e) => setTeamForm({ ...teamForm, category: e.target.value })}
                   >
                     <option value="Mentor">Mentor</option>
-                    <option value="Head">Head</option>
+                    <option value="Alumni">Alumni</option>
+                    <option value="Head">Club Head</option>
                     <option value="Advisor">Advisor</option>
                     <option value="Co-Head">Co-Head</option>
                     <option value="Team Lead">Team Lead</option>

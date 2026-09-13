@@ -396,10 +396,13 @@ router.put("/team/:userId", async (req, res) => {
 
     const validCategories = [
       "Mentor",
+      "Alumni",
       "Head",
+      "Club Head",
       "Advisor",
       "Co-Head",
       "Team Lead",
+      "Lead",
       "Coordinator",
     ];
 

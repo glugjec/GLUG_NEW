@@ -1413,6 +1413,12 @@ select.admin-form-input {
   border: 1px solid rgba(168, 85, 247, 0.3);
 }
 
+.admin-tier-chip.tier-alumni {
+  background: rgba(249, 115, 22, 0.15);
+  color: #fb923c;
+  border: 1px solid rgba(249, 115, 22, 0.3);
+}
+
 .admin-tier-chip.tier-head,
 .admin-tier-chip.tier-club-head {
   background: rgba(234, 179, 8, 0.15);
