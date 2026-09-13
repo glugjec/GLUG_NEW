@@ -200,6 +200,20 @@ class AsyncMailQueue {
 
 export const mailQueue = new AsyncMailQueue(2, 3);
 
+function getClientBaseUrl() {
+  const envUrl =
+    process.env.CLIENT_URL ||
+    process.env.FRONTEND_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : null) ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
+    process.env.RENDER_EXTERNAL_URL;
+
+  if (envUrl) {
+    return envUrl.replace(/\/+$/, '');
+  }
+  return 'http://localhost:5173';
+}
+
 export async function sendNotificationMail({
   to,
   recipientUsername,
@@ -209,7 +223,7 @@ export async function sendNotificationMail({
   commentBody,
   postId,
 }) {
-  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  const clientUrl = getClientBaseUrl();
   const postUrl = `${clientUrl}/posts/${postId}`;
   const settingsUrl = `${clientUrl}/settings`;
   const from = process.env.EMAIL_FROM || '"GLUG Community" <glug.jec@gmail.com>';
