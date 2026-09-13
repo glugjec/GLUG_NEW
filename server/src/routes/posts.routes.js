@@ -6,6 +6,7 @@ import { Vote } from '../models/Vote.js';
 import { Bookmark } from '../models/Bookmark.js';
 import { requireAuth, optionalAuth, requireAdmin } from '../middleware/auth.js';
 import { calculateNextVoteScore } from '../utils/voteCalculator.js';
+import { createNotification } from '../utils/notificationService.js';
 
 const router = Router();
 const recentViews = new Map();
@@ -634,9 +635,10 @@ router.post('/:id/comments', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'This discussion has been locked by an administrator' });
     }
 
+    let parent = null;
     let parentId = null;
     if (parentComment && mongoose.Types.ObjectId.isValid(parentComment)) {
-      const parent = await Comment.findOne({ _id: parentComment, post: post._id });
+      parent = await Comment.findOne({ _id: parentComment, post: post._id });
       if (parent) {
         parentId = parent._id;
       }
@@ -651,6 +653,41 @@ router.post('/:id/comments', requireAuth, async (req, res) => {
 
     post.commentCount = (post.commentCount || 0) + 1;
     await post.save();
+
+    if (parent && parent.author) {
+      createNotification({
+        senderId: req.user.id,
+        recipientId: parent.author,
+        type: 'reply',
+        postId: post._id,
+        commentId: comment._id,
+        commentBody: comment.body,
+      });
+
+      if (
+        post.author &&
+        post.author.toString() !== req.user.id &&
+        post.author.toString() !== parent.author.toString()
+      ) {
+        createNotification({
+          senderId: req.user.id,
+          recipientId: post.author,
+          type: 'comment',
+          postId: post._id,
+          commentId: comment._id,
+          commentBody: comment.body,
+        });
+      }
+    } else if (post.author) {
+      createNotification({
+        senderId: req.user.id,
+        recipientId: post.author,
+        type: 'comment',
+        postId: post._id,
+        commentId: comment._id,
+        commentBody: comment.body,
+      });
+    }
 
     const populated = await Comment.findById(comment._id).populate(
       'author',

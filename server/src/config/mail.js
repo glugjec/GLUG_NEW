@@ -147,3 +147,184 @@ export async function sendOtpMail({ to, otp, purpose = 'registration' }) {
     throw new Error('Failed to send verification email');
   }
 }
+
+class AsyncMailQueue {
+  constructor(concurrency = 2, maxRetries = 3) {
+    this.concurrency = concurrency;
+    this.maxRetries = maxRetries;
+    this.queue = [];
+    this.active = 0;
+  }
+
+  add(task) {
+    return new Promise((resolve, reject) => {
+      this.queue.push({
+        task,
+        attempts: 0,
+        resolve,
+        reject,
+      });
+      this.process();
+    });
+  }
+
+  async process() {
+    if (this.active >= this.concurrency || this.queue.length === 0) {
+      return;
+    }
+
+    this.active++;
+    const item = this.queue.shift();
+
+    try {
+      item.attempts++;
+      const result = await item.task();
+      item.resolve(result);
+    } catch (err) {
+      if (item.attempts < this.maxRetries) {
+        const delay = Math.pow(2, item.attempts) * 1000;
+        setTimeout(() => {
+          this.queue.push(item);
+          this.process();
+        }, delay);
+      } else {
+        console.error('[Mail Queue Failure]', err.message);
+        item.reject(err);
+      }
+    } finally {
+      this.active--;
+      this.process();
+    }
+  }
+}
+
+export const mailQueue = new AsyncMailQueue(2, 3);
+
+export async function sendNotificationMail({
+  to,
+  recipientUsername,
+  senderUsername,
+  type,
+  postTitle,
+  commentBody,
+  postId,
+}) {
+  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  const postUrl = `${clientUrl}/posts/${postId}`;
+  const settingsUrl = `${clientUrl}/settings`;
+  const from = process.env.EMAIL_FROM || '"GLUG Community" <glug.jec@gmail.com>';
+
+  const isReply = type === 'reply';
+  const actionText = isReply ? 'replied to your comment' : 'commented on your post';
+  const subject = isReply
+    ? `${senderUsername} replied to your comment on "${postTitle}"`
+    : `${senderUsername} commented on "${postTitle}"`;
+
+  const cleanBody = String(commentBody || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br/>');
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${subject}</title>
+      </head>
+      <body style="margin: 0; padding: 16px 8px; background-color: #07090e; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+        <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 520px; margin: 0 auto;">
+          <tr>
+            <td align="center">
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #0f1422; border: 1px solid #1a2336; border-radius: 18px; overflow: hidden; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);">
+                <tr>
+                  <td height="4" style="background: linear-gradient(90deg, #2563eb 0%, #38bdf8 50%, #6366f1 100%);"></td>
+                </tr>
+
+                <tr>
+                  <td style="padding: 24px 20px;">
+                    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 20px;">
+                      <tr>
+                        <td align="left" valign="middle">
+                          <div style="font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: 0.5px; line-height: 1.1;">GLUG</div>
+                          <div style="font-size: 10px; color: #60a5fa; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; margin-top: 3px;">GNU/Linux User Group</div>
+                        </td>
+                        <td align="right" valign="middle">
+                          <span style="white-space: nowrap; display: inline-block; background: rgba(37, 99, 235, 0.15); border: 1px solid rgba(59, 130, 246, 0.35); border-radius: 20px; padding: 4px 10px; font-size: 10px; font-weight: 700; color: #93c5fd; text-transform: uppercase; letter-spacing: 0.05em;">
+                            ${isReply ? 'New Reply' : 'New Comment'}
+                          </span>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <div style="font-size: 15px; color: #f1f5f9; margin-bottom: 12px; font-weight: 500;">
+                      Hello <span style="color: #60a5fa; font-weight: 700;">@${recipientUsername || 'user'}</span>,
+                    </div>
+
+                    <div style="font-size: 13.5px; color: #94a3b8; line-height: 1.5; margin-bottom: 12px;">
+                      <span style="color: #ffffff; font-weight: 700;">@${senderUsername}</span> ${actionText}:
+                    </div>
+
+                    <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid #1e293b; border-radius: 10px; padding: 10px 14px; margin-bottom: 14px;">
+                      <div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 3px;">Post</div>
+                      <div style="font-size: 13.5px; font-weight: 600; color: #38bdf8; line-height: 1.4;">${postTitle}</div>
+                    </div>
+
+                    <div style="background: #131929; border: 1px solid #1e293b; border-left: 3px solid #2563eb; border-radius: 10px; padding: 14px 16px; margin-bottom: 22px;">
+                      <div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;">
+                        ${isReply ? 'Reply' : 'Comment'}
+                      </div>
+                      <div style="font-size: 13.5px; color: #cbd5e1; line-height: 1.55; word-break: break-word;">
+                        ${cleanBody}
+                      </div>
+                    </div>
+
+                    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 22px;">
+                      <tr>
+                        <td align="center">
+                          <a href="${postUrl}" target="_blank" style="display: inline-block; background: #2563eb; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: #ffffff; text-decoration: none; font-size: 13.5px; font-weight: 600; padding: 12px 28px; border-radius: 9px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35); letter-spacing: 0.2px;">
+                            View Discussion &rarr;
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <div style="height: 1px; background: #1a2336; margin: 18px 0 14px 0;"></div>
+
+                    <div style="font-size: 11px; color: #64748b; line-height: 1.5; text-align: center;">
+                      You received this email based on your GLUG notification preferences.<br/>
+                      Manage alerts in your <a href="${settingsUrl}" target="_blank" style="color: #60a5fa; text-decoration: none;">Account Settings</a>.
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+    </html>
+  `;
+
+  if (!transporter) {
+    console.log('\n' + '='.repeat(54));
+    console.log('  [GLUG DEV MODE] NOTIFICATION EMAIL CONSOLE FALLBACK');
+    console.log(`  To: ${to}`);
+    console.log(`  Subject: ${subject}`);
+    console.log(`  Preview: "${commentBody?.slice(0, 80)}..."`);
+    console.log(`  Target: ${postUrl}`);
+    console.log('='.repeat(54) + '\n');
+    return { success: true, mode: 'dev-console' };
+  }
+
+  const info = await transporter.sendMail({
+    from,
+    to,
+    subject,
+    html,
+    text: `${senderUsername} ${actionText} on "${postTitle}":\n\n${commentBody}\n\nView discussion: ${postUrl}`,
+  });
+  return { success: true, messageId: info.messageId };
+}
+

@@ -125,6 +125,13 @@ export const uploadApi = {
   },
 };
 
+export const notificationsApi = {
+  list: () => client.get('/notifications'),
+  unreadCount: () => client.get('/notifications/unread-count'),
+  markRead: (id) => client.put(`/notifications/${id}/read`),
+  markAllRead: () => client.put('/notifications/read-all'),
+};
+
 export default api;
 
 

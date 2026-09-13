@@ -2,7 +2,18 @@ import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { avatarInitials, avatarColor } from '../common/avatar.js'
-import { Search, Bell, ChevronDown, LogOut, User, Settings as SettingsIcon, MessageSquare, ArrowLeft, X } from 'lucide-react'
+import { Search, Bell, ChevronDown, LogOut, User, Settings as SettingsIcon, MessageSquare, ArrowLeft, X, CheckCheck } from 'lucide-react'
+import { notificationsApi } from '../../api.js'
+
+function formatRelativeTime(date) {
+  if (!date) return ''
+  const diff = (Date.now() - new Date(date).getTime()) / 1000
+  if (diff < 60) return 'Just now'
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
+  if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`
+  return new Date(date).toLocaleDateString()
+}
 
 function TopBarAvatar({ src, username, email, size = 30, className = '' }) {
   const [error, setError] = useState(false)
@@ -76,11 +87,88 @@ export default function TopBar() {
   const [searchTerm, setSearchTerm] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0)
+  const [notifications, setNotifications] = useState([])
+  const [notifLoading, setNotifLoading] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const inputRef = useRef(null)
   const mobileInputRef = useRef(null)
   const menuRef = useRef(null)
   const notifRef = useRef(null)
+
+  useEffect(() => {
+    if (!user) {
+      setUnreadNotifCount(0)
+      setNotifications([])
+      return
+    }
+
+    let isMounted = true
+    const fetchUnread = async () => {
+      try {
+        const res = await notificationsApi.unreadCount()
+        if (isMounted && typeof res.unreadCount === 'number') {
+          setUnreadNotifCount(res.unreadCount)
+        }
+      } catch (err) {
+        // silent
+      }
+    }
+
+    fetchUnread()
+    const interval = setInterval(fetchUnread, 30000)
+    return () => {
+      isMounted = false
+      clearInterval(interval)
+    }
+  }, [user])
+
+  useEffect(() => {
+    if (!notifOpen || !user) return
+    let isMounted = true
+    setNotifLoading(true)
+    notificationsApi
+      .list()
+      .then((res) => {
+        if (isMounted && res?.notifications) {
+          setNotifications(res.notifications)
+        }
+      })
+      .catch((err) => {
+        console.error('[Notifications Error]', err)
+      })
+      .finally(() => {
+        if (isMounted) setNotifLoading(false)
+      })
+    return () => {
+      isMounted = false
+    }
+  }, [notifOpen, user])
+
+  const handleMarkAllRead = async () => {
+    try {
+      await notificationsApi.markAllRead()
+      setUnreadNotifCount(0)
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
+    } catch (err) {
+      console.error('[Mark All Read Error]', err)
+    }
+  }
+
+  const handleNotificationClick = async (notif) => {
+    if (!notif.isRead) {
+      notificationsApi.markRead(notif.id || notif._id).catch(() => {})
+      setUnreadNotifCount((prev) => Math.max(0, prev - 1))
+      setNotifications((prev) =>
+        prev.map((n) => ((n.id === notif.id || n._id === notif._id) ? { ...n, isRead: true } : n))
+      )
+    }
+    setNotifOpen(false)
+    const targetPostId = notif.post?.id || notif.post?._id || notif.post
+    if (targetPostId) {
+      navigate(`/posts/${targetPostId}`)
+    }
+  }
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -220,23 +308,77 @@ export default function TopBar() {
             aria-label="Notifications"
           >
             <Bell size={19} />
-            <span className="notif-dot"></span>
+            {unreadNotifCount > 0 && (
+              <span className="notif-badge">
+                {unreadNotifCount > 99 ? '99+' : unreadNotifCount}
+              </span>
+            )}
           </button>
 
           {notifOpen && (
             <div className="notif-popover">
               <div className="notif-header">
-                <span className="notif-title">Notifications</span>
-                <span className="notif-count">1 new</span>
-              </div>
-              <div className="notif-list">
-                <div className="notif-item">
-                  <div className="notif-dot-unread"></div>
-                  <div className="notif-content">
-                    <p className="notif-text">Welcome to GLUG! Check out upcoming workshops and join the community forum.</p>
-                    <span className="notif-time">Just now</span>
-                  </div>
+                <div className="notif-header-left">
+                  <span className="notif-title">Notifications</span>
+                  {unreadNotifCount > 0 && (
+                    <span className="notif-count">{unreadNotifCount} new</span>
+                  )}
                 </div>
+                {user && unreadNotifCount > 0 && (
+                  <button
+                    type="button"
+                    className="notif-mark-all-btn"
+                    onClick={handleMarkAllRead}
+                  >
+                    Mark all read
+                  </button>
+                )}
+              </div>
+
+              <div className="notif-list">
+                {!user ? (
+                  <div className="notif-empty">
+                    <p>Please sign in to view your notifications.</p>
+                    <Link
+                      to="/login"
+                      className="topbar-btn-signin"
+                      style={{ marginTop: '0.4rem' }}
+                      onClick={() => setNotifOpen(false)}
+                    >
+                      Sign In
+                    </Link>
+                  </div>
+                ) : notifLoading ? (
+                  <div className="notif-loading">Loading notifications...</div>
+                ) : notifications.length === 0 ? (
+                  <div className="notif-empty">
+                    <Bell size={24} style={{ opacity: 0.35, marginBottom: '4px' }} />
+                    <p>No notifications yet</p>
+                  </div>
+                ) : (
+                  notifications.map((notif) => (
+                    <div
+                      key={notif.id || notif._id}
+                      className={`notif-item ${notif.isRead ? '' : 'is-unread'}`}
+                      onClick={() => handleNotificationClick(notif)}
+                    >
+                      <div className="notif-avatar-wrap">
+                        <TopBarAvatar
+                          src={notif.sender?.avatar}
+                          username={notif.sender?.username}
+                          size={28}
+                        />
+                      </div>
+                      <div className="notif-content">
+                        <p className="notif-text">{notif.message}</p>
+                        <span className="notif-time">
+                          {formatRelativeTime(notif.createdAt)}
+                        </span>
+                      </div>
+                      {!notif.isRead && <div className="notif-dot-unread" />}
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}

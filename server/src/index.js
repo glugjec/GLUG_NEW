@@ -13,6 +13,7 @@ import adminRoutes from './routes/admin.routes.js';
 import compileRoutes from './routes/compile.routes.js';
 import uploadRoutes from './routes/upload.routes.js';
 import chatRoutes from './routes/chat.routes.js';
+import notificationRoutes from './routes/notification.routes.js';
 
 const app = express();
 app.set('trust proxy', 1);
@@ -77,6 +78,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api', compileRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.use('/api/*', (req, res) => {
   res.status(404).json({ error: 'Endpoint not found' });
