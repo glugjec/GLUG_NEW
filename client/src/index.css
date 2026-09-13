@@ -3410,6 +3410,16 @@ body.glug-mobile-search-open .sidebar-hamburger {
     background: var(--bg-hover);
   }
 
+  body.glug-modal-open .sidebar-hamburger,
+  body:has(.modal-backdrop) .sidebar-hamburger,
+  body:has(.forum-modal-backdrop) .sidebar-hamburger,
+  body:has(.terminal-modal-backdrop) .sidebar-hamburger,
+  body:has(.confirm-delete-overlay) .sidebar-hamburger,
+  body:has(.admin-modal-overlay) .sidebar-hamburger,
+  body:has(.admin-confirm-overlay) .sidebar-hamburger {
+    display: none !important;
+  }
+
   .topbar-v2 {
     padding: 0 0.85rem 0 3.75rem;
     position: sticky;

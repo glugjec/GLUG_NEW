@@ -228,6 +228,15 @@ export default function Profile() {
   }
 
   useEffect(() => {
+    if (editModalOpen) {
+      document.body.classList.add('glug-modal-open')
+    } else {
+      document.body.classList.remove('glug-modal-open')
+    }
+    return () => document.body.classList.remove('glug-modal-open')
+  }, [editModalOpen])
+
+  useEffect(() => {
     if (!editModalOpen) return
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') closeEditModal()
