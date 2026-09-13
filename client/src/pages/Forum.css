@@ -1490,3 +1490,151 @@
   margin-top: 1rem;
 }
 
+.forum-people-results-card {
+  background: var(--bg-card, #0f172a);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.people-results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.people-results-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text, #f8fafc);
+}
+
+.people-results-count {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(59, 130, 246, 0.16);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.people-results-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  color: var(--text-dim, #94a3b8);
+  font-size: 0.82rem;
+}
+
+.people-results-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.people-result-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.45rem 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  user-select: none;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.people-result-item:hover {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.35);
+  transform: translateY(-1px);
+}
+
+.people-result-item:active {
+  transform: translateY(0);
+}
+
+.people-result-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.people-result-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.people-result-username {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.people-result-handle {
+  font-size: 0.76rem;
+  color: var(--text-dim, #64748b);
+  font-weight: 500;
+}
+
+.people-result-role-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.1rem 0.45rem;
+  border-radius: 4px;
+  background: rgba(99, 102, 241, 0.18);
+  color: #a5b4fc;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.people-result-role-badge.admin {
+  background: rgba(239, 68, 68, 0.18);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.people-result-bio {
+  font-size: 0.76rem;
+  color: var(--text-dim, #94a3b8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0.2rem 0 0;
+}
+
+.people-result-skills {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+
+.people-skill-chip {
+  font-size: 0.66rem;
+  padding: 0.08rem 0.4rem;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+}
+
+.people-result-subtext {
+  font-size: 0.74rem;
+  color: var(--text-dim, #64748b);
+  display: block;
+  margin-top: 0.15rem;
+}
+
+

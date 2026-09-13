@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { postsApi } from '../api.js'
+import { postsApi, usersApi } from '../api.js'
 import { discussionsCache } from '../utils/discussionsCache.js'
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll.js'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -25,6 +25,7 @@ import {
   Clock,
   Bookmark,
   User,
+  Users,
   Layers,
   ArrowRight,
   Send,
@@ -181,6 +182,48 @@ export default function Forum() {
       isMounted = false
     }
   }, [])
+
+  const [matchedUsers, setMatchedUsers] = useState([])
+  const [loadingUsers, setLoadingUsers] = useState(false)
+
+  useEffect(() => {
+    const q = (searchQuery || '').trim()
+    if (!q) {
+      setMatchedUsers([])
+      setLoadingUsers(false)
+      return
+    }
+
+    let isMounted = true
+    const cacheKey = `user_search_${q.toLowerCase()}`
+    const cached = discussionsCache.get(cacheKey)
+    if (cached && Array.isArray(cached.data)) {
+      setMatchedUsers(cached.data)
+      setLoadingUsers(false)
+    } else {
+      setLoadingUsers(true)
+    }
+
+    usersApi
+      .search(q)
+      .then((res) => {
+        if (isMounted) {
+          const list = res?.users || []
+          discussionsCache.set(cacheKey, list, 60000)
+          setMatchedUsers(list)
+        }
+      })
+      .catch(() => {
+        if (isMounted) setMatchedUsers([])
+      })
+      .finally(() => {
+        if (isMounted) setLoadingUsers(false)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [searchQuery])
 
   const [showModal, setShowModal] = useState(false)
   const [newTitle, setNewTitle] = useState('')
@@ -542,6 +585,74 @@ export default function Forum() {
           </div>
         )}
 
+        {searchQuery && (matchedUsers.length > 0 || loadingUsers) && (
+          <div className="forum-people-results-card">
+            <div className="people-results-header">
+              <div className="people-results-title">
+                <Users size={16} />
+                <span>People</span>
+                {!loadingUsers && (
+                  <span className="people-results-count">{matchedUsers.length}</span>
+                )}
+              </div>
+            </div>
+            {loadingUsers ? (
+              <div className="people-results-loading">
+                <Loader2 size={16} className="animate-spin" />
+                <span>Searching people...</span>
+              </div>
+            ) : (
+              <div className="people-results-grid">
+                {matchedUsers.slice(0, 6).map((person) => (
+                  <div
+                    key={person.id}
+                    className="people-result-item"
+                    onClick={() => navigate(`/profile/${encodeURIComponent(person.username)}`)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        navigate(`/profile/${encodeURIComponent(person.username)}`)
+                      }
+                    }}
+                  >
+                    <UserAvatar
+                      src={person.avatar}
+                      username={person.username}
+                      size={40}
+                    />
+                    <div className="people-result-info">
+                      <div className="people-result-name-row">
+                        <span className="people-result-username">{person.name || person.username}</span>
+                        {person.name && <span className="people-result-handle">@{person.username}</span>}
+                        {person.communityRole?.isMember && (
+                          <span className="people-result-role-badge">
+                            {person.communityRole.positionTitle || person.communityRole.category || 'Team'}
+                          </span>
+                        )}
+                        {person.role === 'admin' && !person.communityRole?.isMember && (
+                          <span className="people-result-role-badge admin">Admin</span>
+                        )}
+                      </div>
+                      {person.bio ? (
+                        <p className="people-result-bio">{person.bio}</p>
+                      ) : person.skills?.length > 0 ? (
+                        <div className="people-result-skills">
+                          {person.skills.slice(0, 3).map((s, idx) => (
+                            <span key={idx} className="people-skill-chip">{s}</span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="people-result-subtext">GLUG Member</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="forum-posts-stream">
           {loading ? (
             <div className="forum-skeleton-list">
@@ -631,7 +742,11 @@ export default function Forum() {
                 <>
                   <Search size={32} className="forum-empty-icon" />
                   <h3>No discussions found</h3>
-                  <p>No results matched "{searchQuery}". Try different keywords.</p>
+                  <p>
+                    {matchedUsers.length > 0
+                      ? `No discussions matched "${searchQuery}", but found ${matchedUsers.length} member${matchedUsers.length > 1 ? 's' : ''} above.`
+                      : `No results matched "${searchQuery}". Try different keywords.`}
+                  </p>
                   <button
                     type="button"
                     className="forum-empty-new-btn"

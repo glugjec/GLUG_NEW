@@ -83,6 +83,45 @@ router.get('/team', async (req, res) => {
   }
 });
 
+router.get('/search', async (req, res) => {
+  try {
+    const q = (req.query.q || req.query.search || '').trim();
+    if (!q) {
+      return res.json({ users: [] });
+    }
+
+    const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escaped, 'i');
+
+    const users = await User.find({
+      $or: [
+        { username: { $regex: regex } },
+        { name: { $regex: regex } },
+      ],
+    })
+      .select('name username role avatar bio skills communityRole createdAt')
+      .limit(6)
+      .lean();
+
+    const formatted = users.map((u) => ({
+      id: u._id.toString(),
+      name: u.name || '',
+      username: u.username,
+      role: u.role,
+      avatar: u.avatar || '',
+      bio: u.bio || '',
+      skills: u.skills || [],
+      communityRole: u.communityRole || { isMember: false },
+      createdAt: u.createdAt,
+    }));
+
+    return res.json({ users: formatted });
+  } catch (err) {
+    console.error('[Search Users Error]', err);
+    return res.status(500).json({ error: 'Failed to search users' });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   try {
     const isObjectId = /^[0-9a-fA-F]{24}$/.test(req.params.id);

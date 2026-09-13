@@ -134,6 +134,7 @@ export const usersApi = {
   getPosts: (id) => client.get(`/users/${id}/posts`),
   getTerminalState: () => client.get('/users/me/terminal'),
   saveTerminalState: (state) => client.put('/users/me/terminal', state),
+  search: (query) => client.get('/users/search', { params: { q: query } }),
 };
 
 export const resourcesApi = {

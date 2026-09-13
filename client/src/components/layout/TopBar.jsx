@@ -351,23 +351,18 @@ export default function TopBar() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  useEffect(() => {
-    if (location.pathname === '/forum') {
-      const params = new URLSearchParams(location.search)
-      setSearchTerm(params.get('search') || '')
-    }
-  }, [location.pathname, location.search])
-
   const handleSearchSubmit = (e) => {
     e.preventDefault()
     const trimmed = searchTerm.trim()
     if (trimmed) {
       navigate(`/forum?search=${encodeURIComponent(trimmed)}`)
+      setSearchTerm('')
       setMobileSearchOpen(false)
     } else if (location.pathname === '/forum') {
       const params = new URLSearchParams(location.search)
       params.delete('search')
       navigate({ pathname: '/forum', search: params.toString() ? `?${params.toString()}` : '' })
+      setSearchTerm('')
       setMobileSearchOpen(false)
     }
   }
