@@ -130,6 +130,7 @@
 
 .glug-tiptap-content p {
   margin: 0 0 0.7em;
+  min-height: 1.6em;
 }
 
 .glug-tiptap-content p:last-child {

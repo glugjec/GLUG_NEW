@@ -81,12 +81,134 @@ function UserAvatar({ src, username, size = 36, className = '' }) {
   )
 }
 
+function InlineReplyBox({
+  targetAuthor,
+  commentId,
+  onSubmit,
+  onCancel,
+  submitting
+}) {
+  const [text, setText] = useState('')
+  const textareaRef = useRef(null)
+
+  useEffect(() => {
+    textareaRef.current?.focus()
+  }, [])
+
+  return (
+    <div className="inline-nested-reply">
+      <div className="inline-reply-header">
+        <span className="inline-reply-target">
+          <CornerDownRight size={13} />
+          <span>Replying to <strong>@{targetAuthor}</strong></span>
+        </span>
+      </div>
+      <textarea
+        ref={textareaRef}
+        placeholder={`Write a reply to @${targetAuthor}...`}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault()
+            if (!submitting && text.trim()) {
+              onSubmit(text, commentId)
+            }
+          }
+        }}
+        className="inline-reply-textarea"
+        rows={2}
+      />
+      <div className="inline-reply-footer">
+        <div className="inline-reply-btn-group">
+          <button
+            type="button"
+            className="btn-cancel-inline-reply"
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn-submit-inline-reply"
+            disabled={submitting || !text.trim()}
+            onClick={() => onSubmit(text, commentId)}
+          >
+            {submitting ? 'Posting…' : 'Reply'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function MainReplyComposer({
+  user,
+  isLocked,
+  submitting,
+  showToast,
+  onSubmit
+}) {
+  const [text, setText] = useState('')
+  const [imageUploading, setImageUploading] = useState(false)
+
+  const handleSubmit = async () => {
+    if (submitting || imageUploading) return
+    const hasContent = text.replace(/<[^>]*>/g, '').trim().length > 0 || text.includes('<img')
+    if (!hasContent) return
+    await onSubmit(text)
+    setText('')
+  }
+
+  const hasValidContent = Boolean(
+    text.replace(/<[^>]*>/g, '').trim().length > 0 || text.includes('<img')
+  )
+
+  return (
+    <div className="reply-composer-card">
+      {isLocked && (
+        <div className="discussion-admin-lock-note">
+          <Lock size={14} />
+          <span>This discussion is locked to the public. You are replying as an administrator.</span>
+        </div>
+      )}
+      <div className="reply-composer-body">
+        <UserAvatar
+          src={user?.avatar}
+          username={user?.username}
+          size={38}
+          className="composer-avatar"
+        />
+        <div className="composer-rte-container">
+          <RichTextEditor
+            content={text}
+            onChange={setText}
+            placeholder="Write a reply..."
+            minHeight="100px"
+            onError={showToast}
+            toolbarPosition="bottom"
+            onUploadingChange={setImageUploading}
+            actions={
+              <button
+                type="button"
+                className="btn-post-reply"
+                disabled={submitting || imageUploading || !hasValidContent}
+                onClick={handleSubmit}
+              >
+                {submitting ? 'Posting…' : 'Post Reply'}
+              </button>
+            }
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function CommentThreadItem({
   comment,
   activeReplyId,
   setActiveReplyId,
-  subReplyText,
-  setSubReplyText,
   handleAddComment,
   handleCommentVote,
   handleDeleteComment,
@@ -210,52 +332,13 @@ function CommentThreadItem({
       </div>
 
       {(!isLocked || user?.role === 'admin') && isReplying && (
-        <div className="inline-nested-reply">
-          <div className="inline-reply-header">
-            <span className="inline-reply-target">
-              <CornerDownRight size={13} />
-              <span>Replying to <strong>@{rAuthor}</strong></span>
-            </span>
-          </div>
-          <textarea
-            placeholder={`Write a reply to @${rAuthor}...`}
-            value={subReplyText}
-            onChange={(e) => setSubReplyText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                if (!submitting && subReplyText.trim()) {
-                  handleAddComment(subReplyText, commentId)
-                }
-              }
-            }}
-            className="inline-reply-textarea"
-            rows={2}
-            autoFocus
-          />
-          <div className="inline-reply-footer">
-            <div className="inline-reply-btn-group">
-              <button
-                type="button"
-                className="btn-cancel-inline-reply"
-                onClick={() => {
-                  setActiveReplyId(null)
-                  setSubReplyText('')
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn-submit-inline-reply"
-                disabled={submitting || !subReplyText.trim()}
-                onClick={() => handleAddComment(subReplyText, commentId)}
-              >
-                {submitting ? 'Posting…' : 'Reply'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <InlineReplyBox
+          targetAuthor={rAuthor}
+          commentId={commentId}
+          onSubmit={handleAddComment}
+          onCancel={() => setActiveReplyId(null)}
+          submitting={submitting}
+        />
       )}
 
       {hasReplies && (
@@ -364,52 +447,13 @@ function CommentThreadItem({
                     </div>
 
                     {(!isLocked || user?.role === 'admin') && isRepReplying && (
-                      <div className="inline-nested-reply">
-                        <div className="inline-reply-header">
-                          <span className="inline-reply-target">
-                            <CornerDownRight size={13} />
-                            <span>Replying to <strong>@{repAuthor}</strong></span>
-                          </span>
-                        </div>
-                        <textarea
-                          placeholder={`Write a reply to @${repAuthor}...`}
-                          value={subReplyText}
-                          onChange={(e) => setSubReplyText(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                              e.preventDefault()
-                              if (!submitting && subReplyText.trim()) {
-                                handleAddComment(subReplyText, repId)
-                              }
-                            }
-                          }}
-                          className="inline-reply-textarea"
-                          rows={2}
-                          autoFocus
-                        />
-                        <div className="inline-reply-footer">
-                          <div className="inline-reply-btn-group">
-                            <button
-                              type="button"
-                              className="btn-cancel-inline-reply"
-                              onClick={() => {
-                                setActiveReplyId(null)
-                                setSubReplyText('')
-                              }}
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              type="button"
-                              className="btn-submit-inline-reply"
-                              disabled={submitting || !subReplyText.trim()}
-                              onClick={() => handleAddComment(subReplyText, repId)}
-                            >
-                              {submitting ? 'Posting…' : 'Reply'}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
+                      <InlineReplyBox
+                        targetAuthor={repAuthor}
+                        commentId={repId}
+                        onSubmit={handleAddComment}
+                        onCancel={() => setActiveReplyId(null)}
+                        submitting={submitting}
+                      />
                     )}
                   </div>
                 )
@@ -533,16 +577,13 @@ export default function PostDetail() {
   const [post, setPost] = useState(null)
   const [comments, setComments] = useState([])
   const [loading, setLoading] = useState(true)
-  const [replyText, setReplyText] = useState('')
   const [activeReplyId, setActiveReplyId] = useState(null)
-  const [subReplyText, setSubReplyText] = useState('')
   const [bookmarked, setBookmarked] = useState(false)
   const [showMoreMenu, setShowMoreMenu] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
   const [sortBy, setSortBy] = useState('best')
   const [visibleRootCount, setVisibleRootCount] = useState(5)
   const [submitting, setSubmitting] = useState(false)
-  const [imageUploading, setImageUploading] = useState(false)
   const [showDeletePostModal, setShowDeletePostModal] = useState(false)
   const [isDeletingPost, setIsDeletingPost] = useState(false)
   const [commentToDelete, setCommentToDelete] = useState(null)
@@ -829,7 +870,6 @@ export default function PostDetail() {
       showToast('This discussion is locked from replies')
       return
     }
-    if (!parentId && imageUploading) return
     const hasContent = text.replace(/<[^>]*>/g, '').trim().length > 0 || text.includes('<img')
     if (!hasContent) return
     setSubmitting(true)
@@ -859,9 +899,7 @@ export default function PostDetail() {
       }
       if (parentId) {
         setActiveReplyId(null)
-        setSubReplyText('')
       } else {
-        setReplyText('')
         setVisibleRootCount((prev) => prev + 1)
       }
       showToast('Reply posted!')
@@ -1283,8 +1321,6 @@ export default function PostDetail() {
                     comment={root}
                     activeReplyId={activeReplyId}
                     setActiveReplyId={setActiveReplyId}
-                    subReplyText={subReplyText}
-                    setSubReplyText={setSubReplyText}
                     handleAddComment={handleAddComment}
                     handleCommentVote={handleCommentVote}
                     handleDeleteComment={promptDeleteComment}
@@ -1334,47 +1370,13 @@ export default function PostDetail() {
                 </div>
               </div>
             ) : user ? (
-              <div className="reply-composer-card">
-                {activePost.isLocked && (
-                  <div className="discussion-admin-lock-note">
-                    <Lock size={14} />
-                    <span>This discussion is locked to the public. You are replying as an administrator.</span>
-                  </div>
-                )}
-                <div className="reply-composer-body">
-                  <UserAvatar
-                    src={user?.avatar}
-                    username={user.username}
-                    size={38}
-                    className="composer-avatar"
-                  />
-                  <div className="composer-rte-container">
-                    <RichTextEditor
-                      content={replyText}
-                      onChange={setReplyText}
-                      placeholder="Write a reply..."
-                      minHeight="100px"
-                      onError={showToast}
-                      toolbarPosition="bottom"
-                      onUploadingChange={setImageUploading}
-                      actions={
-                        <button
-                          type="button"
-                          className="btn-post-reply"
-                          disabled={
-                            submitting ||
-                            imageUploading ||
-                            (!replyText.replace(/<[^>]*>/g, '').trim() && !replyText.includes('<img'))
-                          }
-                          onClick={() => handleAddComment(replyText)}
-                        >
-                          {submitting ? 'Posting…' : 'Post Reply'}
-                        </button>
-                      }
-                    />
-                  </div>
-                </div>
-              </div>
+              <MainReplyComposer
+                user={user}
+                isLocked={activePost.isLocked}
+                submitting={submitting}
+                showToast={showToast}
+                onSubmit={(text) => handleAddComment(text)}
+              />
             ) : (
               <div className="reply-composer-card reply-login-gate">
                 <div className="login-gate-left">

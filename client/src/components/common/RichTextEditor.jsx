@@ -137,9 +137,6 @@ export default function RichTextEditor({
         return false
       }
     },
-    onTransaction: () => {
-      forceUpdate()
-    },
     onSelectionUpdate: () => {
       forceUpdate()
     },

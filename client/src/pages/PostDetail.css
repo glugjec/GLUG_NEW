@@ -663,18 +663,15 @@
   flex-direction: column;
   gap: 0.65rem;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
   animation: inlineReplyFade 0.15s ease-out;
 }
 
 @keyframes inlineReplyFade {
   from {
     opacity: 0;
-    transform: translateY(-4px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
@@ -721,7 +718,6 @@
   width: 100%;
   outline: none;
   box-sizing: border-box;
-  transition: border-color 0.15s ease, background 0.15s ease;
 }
 
 .inline-reply-textarea:focus {
@@ -988,27 +984,6 @@
 .tool-icon-btn:hover {
   background: var(--bg-hover);
   color: var(--text);
-}
-
-.btn-post-reply {
-  background: #3b82f6;
-  color: #fff;
-  border: none;
-  padding: 0.5rem 1.35rem;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.btn-post-reply:hover:not(:disabled) {
-  background: #2563eb;
-}
-
-.btn-post-reply:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
 }
 
 .discussion-sidebar-col {
